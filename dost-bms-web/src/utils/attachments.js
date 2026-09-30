@@ -24,7 +24,7 @@ export function getAttachmentPreviewUrl(file = {}) {
   if (directUrl) {
     try {
       const parsed = new URL(directUrl, window.location.origin);
-      const apiOrigin = new URL(import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1').origin;
+      const apiOrigin = new URL(import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1', window.location.origin).origin;
 
       // Re-host any /generated/* path under the configured API origin so that
       // requests always go to the correct server regardless of what host:port
@@ -58,7 +58,7 @@ export function getGeneratedFileUrl(url = '') {
   if (!url) return url;
   try {
     const parsed = new URL(url, window.location.origin);
-    const apiOrigin = new URL(import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1').origin;
+    const apiOrigin = new URL(import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1', window.location.origin).origin;
     if (parsed.pathname.startsWith('/generated/')) {
       return `${apiOrigin}${parsed.pathname}`;
     }

@@ -41,6 +41,21 @@ Test accounts (password `Test12345`):
 Restart the mock API after changing anything under `dost-bms-web/mock/`. To reset the data, delete `dost-bms-web/mock/mock.sqlite`
 and start again.
 
+## Live demo (free hosting on Render)
+
+`render.yaml` at the top of this repo describes a free demo host: one web service that serves the site and the mock API together, so there is one link to share. It is for showing the system, not the production setup.
+
+To publish it (once, by anyone on the team with a free Render account):
+1. On https://render.com choose **New -> Blueprint** and connect this GitHub repo.
+2. Render reads `render.yaml`. Confirm, and wait for the first build (a few minutes).
+3. Copy the service address (like `https://bms-t214-demo.onrender.com`), then put it in the repo's **About -> Website** box so it shows on the front page, and add it here.
+
+Good to know:
+- The free plan sleeps when idle, so the first visit after a quiet period takes about 30 seconds.
+- The data resets to the seed data whenever the service restarts or redeploys.
+- The mock API does **not check passwords**: anyone who can open the link can log in as any test account, including admins. It holds only mock data. Do not put real DOST data in it. If the link should not be public, use a private repo or add a login in front (ask before sharing it outside the team).
+- It redeploys by itself each time `main` changes.
+
 ## Team workflow
 
 - Work on a branch and open a pull request into `main`. Do not commit straight to `main`.

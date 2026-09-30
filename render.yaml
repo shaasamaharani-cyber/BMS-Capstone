@@ -1,0 +1,19 @@
+# Demo hosting on Render (https://render.com) - one free web service serves the site and the mock API.
+# Not the production setup: DOST's real system will be Laravel. Data resets whenever the service restarts or redeploys.
+# Steps: Render dashboard -> New -> Blueprint -> pick this repo. See "Live demo" in README.md.
+services:
+  - type: web
+    name: bms-t214-demo
+    runtime: node
+    plan: free
+    rootDir: dost-bms-web
+    buildCommand: npm ci && npm run build -- --mode mock
+    startCommand: node --no-warnings mock/sqlite-api-server.mjs
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: VITE_API_URL
+        value: /api/v1
+      - key: MOCK_SERVE_STATIC
+        value: dist
