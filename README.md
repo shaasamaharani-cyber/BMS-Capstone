@@ -19,26 +19,51 @@ front end can switch over later. Any Laravel back end will be added to this repo
 ### 1. Before you start
 
 - **Node.js 22.13 or newer.** Check with `node -v` in a terminal. If it is older or the command is not found, install the current LTS from https://nodejs.org and open a **new** terminal window. The mock API uses Node's built-in `node:sqlite`, which older versions do not have.
-- **The code.** Either `git clone https://github.com/shaasamaharani-cyber/BMS-Capstone`, or on the repo page choose **Code -> Download ZIP** and unzip it (the folder is then called `BMS-Capstone-main`).
 
-Every command below must be run **inside the `dost-bms-web` folder**, not the top-level repo folder (the top level has no `package.json`).
+The commands below can be copied exactly as they are. There is no path to fill in. The `npm` commands must run **inside the `dost-bms-web` folder**, not the top-level repo folder (the top level has no `package.json`); the steps below take you there.
 
 ### 2. Windows (PowerShell)
 
-PowerShell often blocks `npm` with "running scripts is disabled on this system". Use `npm.cmd` (it always works):
+PowerShell often blocks `npm` with "running scripts is disabled on this system". Use `npm.cmd` (it always works).
+
+**With Git installed** (https://git-scm.com). This puts the code in a new `BMS-Capstone` folder inside your user folder:
 
 ```powershell
-cd C:\path\to\BMS-Capstone\dost-bms-web
+cd $HOME
+git clone https://github.com/shaasamaharani-cyber/BMS-Capstone
+cd BMS-Capstone\dost-bms-web
 npm.cmd install
 npm.cmd run dev:mock
 ```
 
-Or open **Command Prompt** (`cmd`) instead of PowerShell and use plain `npm install` and `npm run dev:mock`.
+**Without Git** (ZIP download):
+1. On the repo page choose **Code -> Download ZIP**, then right-click the ZIP and **Extract All**.
+2. In File Explorer open the extracted folders until you are inside **`dost-bms-web`**. You should see `package.json` in the list.
+3. Click the address bar at the top of File Explorer, type `powershell` and press **Enter**. A terminal opens already inside that folder.
+4. Run:
+
+```powershell
+npm.cmd install
+npm.cmd run dev:mock
+```
+
+You can also use **Command Prompt** (`cmd`) instead of PowerShell, with plain `npm install` and `npm run dev:mock`.
 
 ### 3. Mac (Terminal)
 
+**With Git:**
+
 ```bash
-cd /path/to/BMS-Capstone/dost-bms-web
+cd ~
+git clone https://github.com/shaasamaharani-cyber/BMS-Capstone
+cd BMS-Capstone/dost-bms-web
+npm install
+npm run dev:mock
+```
+
+**Without Git** (ZIP download): unzip it, open Terminal, type `cd ` (with a space after it), drag the **`dost-bms-web`** folder from Finder into the Terminal window and press **Return**. Then run:
+
+```bash
 npm install
 npm run dev:mock
 ```
