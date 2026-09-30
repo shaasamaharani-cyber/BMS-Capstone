@@ -1,0 +1,191 @@
+/*
+ * System Name: Budget Management System
+ * Module Name: Components Module
+ *
+ * Purpose of this file:
+ * Define CSS styles and layout rules for sidebar.
+ *
+ * Author(s): QUT Group 27
+ *
+ * Copyright (C) 2026
+ * by the Department of Science and Technology - Central Office
+ * Developed by Team 27, Queensland University of Technology
+ * All rights reserved.
+ */
+
+.sidebar {
+  width: var(--sidebar-w);
+  height: 100vh;
+  background-color: var(--color-sidebar-bg);
+  display: flex;
+  flex-direction: column;
+  color: var(--color-sidebar-text);
+  position: sticky;
+  top: 0;
+  transition: width var(--transition-base);
+  overflow: hidden;
+}
+
+.sidebar.collapsed {
+  width: var(--sidebar-w-collapsed);
+}
+
+/*
+ * Logo area is rendered as a <button> so the entire row (logo + system
+ * name) is the click target for collapsing / expanding the sidebar.
+ * Native button styling is reset so it looks identical to the previous
+ * div, with hover and focus affordances to signal interactivity.
+ */
+.logoArea {
+  width: 100%;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-5);
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  color: #FFFFFF;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.logoArea:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.logoArea:focus-visible {
+  outline: 2px solid var(--color-sidebar-text-active);
+  outline-offset: -2px;
+}
+
+.sidebar.collapsed .logoArea {
+  padding: 0;
+  justify-content: center;
+}
+
+.logoIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--color-primary);
+  border-radius: var(--radius-md);
+  margin-right: var(--space-3);
+  color: #FFFFFF;
+}
+
+.logoImage {
+  width: 50px;
+  height: 50px;
+  margin-right: var(--space-3);
+  border-radius: var(--radius-md);
+  object-fit: contain;
+  background: #FFFFFF;
+  padding: 2px;
+}
+
+.sidebar.collapsed .logoImage {
+  margin-right: 0;
+}
+
+/*
+ * The system name sits next to the logo image in the expanded sidebar.
+ * It is allowed to wrap onto a second line so the full text stays visible
+ * inside the fixed sidebar width; the parent .logoArea handles vertical
+ * centering via its own flex alignment.
+ */
+.logoText {
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 0.2px;
+  line-height: 1.2;
+}
+
+.sidebar.collapsed .logoText {
+  display: none;
+}
+
+.nav {
+  flex: 1;
+  padding: var(--space-4) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  color: var(--color-sidebar-text);
+  text-decoration: none;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.sidebar.collapsed .navLink {
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.navLink:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #FFFFFF;
+}
+
+.navLink.active {
+  background-color: var(--color-sidebar-active);
+  color: var(--color-sidebar-text-active);
+}
+
+.navIcon {
+  margin-right: var(--space-3);
+  display: flex;
+  align-items: center;
+}
+
+.sidebar.collapsed .navIcon {
+  margin-right: 0;
+}
+
+.navLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar.collapsed .navLabel {
+  display: none;
+}
+
+.bottomArea {
+  padding: var(--space-4) var(--space-3);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.helpLink {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  color: var(--color-sidebar-text);
+  text-decoration: none;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.sidebar.collapsed .helpLink {
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.helpLink:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #FFFFFF;
+}

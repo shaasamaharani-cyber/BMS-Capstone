@@ -1,0 +1,164 @@
+/*
+ * System Name: Budget Management System
+ * Module Name: Components Module
+ *
+ * Purpose of this file:
+ * Define CSS styles and layout rules for progress_steps.
+ *
+ * Author(s): QUT Group 27
+ *
+ * Copyright (C) 2026
+ * by the Department of Science and Technology - Central Office
+ * Developed by Team 27, Queensland University of Technology
+ * All rights reserved.
+ */
+
+.container {
+  display: flex;
+  font-family: var(--font-sans);
+}
+
+.horizontal {
+  flex-direction: row;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.vertical {
+  flex-direction: column;
+}
+
+.stepWrapper {
+  display: flex;
+  position: relative;
+}
+
+.horizontal .stepWrapper {
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+}
+
+.horizontal .stepWrapper:last-child {
+  flex: unset; /* Let the last one just be the size of the circle */
+}
+
+.vertical .stepWrapper {
+  flex-direction: row;
+  min-height: 60px;
+}
+
+.indicatorContainer {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.horizontal .indicatorContainer {
+  width: 100%;
+}
+.horizontal .stepWrapper:last-child .indicatorContainer {
+  width: auto;
+}
+
+.vertical .indicatorContainer {
+  flex-direction: column;
+  margin-right: var(--space-3);
+}
+
+.circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: 600;
+  z-index: 2;
+  transition: all var(--transition-base);
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.sm .circle {
+  width: 24px;
+  height: 24px;
+  font-size: 11px;
+}
+.md .circle {
+  width: 32px;
+  height: 32px;
+  font-size: 13px;
+}
+
+.line {
+  background-color: var(--color-border);
+  position: absolute;
+  z-index: 1;
+}
+
+.horizontal .line {
+  height: 2px;
+  top: 50%;
+  left: 50%;
+  right: -50%;
+  transform: translateY(-50%);
+}
+
+.vertical .line {
+  width: 2px;
+  left: 50%;
+  top: 100%;
+  bottom: 0; /* Extends to next item wrapper */
+  transform: translateX(-50%);
+  height: 100%; /* Requires minimum height on stepWrapper */
+}
+
+.content {
+  margin-top: var(--space-2);
+  text-align: center;
+}
+
+.vertical .content {
+  margin-top: 0;
+  text-align: left;
+  padding-bottom: var(--space-4);
+}
+
+.label {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.description {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+/* Statuses */
+.completed .circle {
+  background-color: var(--color-status-approved-border);
+  border-color: var(--color-status-approved-border);
+  color: var(--color-surface);
+}
+.completed .line {
+  background-color: var(--color-status-approved-border);
+}
+
+.active .circle {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.active .label {
+  color: var(--color-primary);
+}
+
+.error .circle {
+  background-color: var(--color-status-rejected-border);
+  border-color: var(--color-status-rejected-border);
+  color: var(--color-surface);
+}
+.error .label {
+  color: var(--color-status-rejected-text);
+}

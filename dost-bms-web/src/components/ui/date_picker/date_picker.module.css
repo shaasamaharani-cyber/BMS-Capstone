@@ -1,0 +1,121 @@
+/*
+ * System Name: Budget Management System
+ * Module Name: Components Module
+ *
+ * Purpose of this file:
+ * Define CSS styles and layout rules for date_picker.
+ *
+ * Author(s): QUT Group 27
+ *
+ * Copyright (C) 2026
+ * by the Department of Science and Technology - Central Office
+ * Developed by Team 27, Queensland University of Technology
+ * All rights reserved.
+ */
+
+.container {
+  position: relative;
+  width: 100%;
+}
+
+.trigger {
+  width: 100%;
+}
+
+.popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 280px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-dropdown);
+  z-index: 1000;
+  padding: var(--space-3);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+
+.navBtn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+}
+.navBtn:hover {
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+}
+
+.monthLabel {
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: var(--space-2);
+}
+
+.weekday {
+  text-align: center;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.daysGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.day, .emptyDay {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-sm);
+  border-radius: var(--radius-sm);
+}
+
+.day {
+  cursor: pointer;
+  color: var(--color-text-primary);
+}
+
+.day:hover:not(.disabledDay):not(.selectedDay) {
+  background: var(--color-bg);
+}
+
+.today {
+  color: var(--color-primary);
+  font-weight: 600;
+  border: 1px solid var(--color-primary-subtle);
+}
+
+.selectedDay {
+  background: var(--color-primary);
+  color: var(--color-surface);
+  font-weight: 600;
+}
+
+.inRangeDay {
+  background: var(--color-primary-subtle);
+}
+
+.disabledDay {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+  opacity: 0.5;
+}

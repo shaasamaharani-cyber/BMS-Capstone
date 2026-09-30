@@ -1,0 +1,91 @@
+/*
+ * System Name: Budget Management System
+ * Module Name: Components Module
+ *
+ * Purpose of this file:
+ * Define CSS styles and layout rules for badge.
+ *
+ * Author(s): QUT Group 27
+ *
+ * Copyright (C) 2026
+ * by the Department of Science and Technology - Central Office
+ * Developed by Team 27, Queensland University of Technology
+ * All rights reserved.
+ */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+  gap: var(--space-1);
+}
+
+.size-sm {
+  padding: 2px 8px;
+  font-size: var(--font-size-xs);
+}
+.size-md {
+  padding: 4px 10px;
+  font-size: var(--font-size-sm);
+}
+
+/* Status variants matching design tokens */
+.status-pending {
+  background-color: var(--color-status-pending-bg);
+  color: var(--color-status-pending-text);
+  border-color: var(--color-status-pending-border);
+}
+.status-pending .dot { background-color: var(--color-status-pending-text); }
+
+.status-reviewed {
+  background-color: var(--color-status-reviewed-bg);
+  color: var(--color-status-reviewed-text);
+  border-color: var(--color-status-reviewed-border);
+}
+.status-reviewed .dot { background-color: var(--color-status-reviewed-text); }
+
+.status-draft {
+  background-color: var(--color-status-draft-bg);
+  color: var(--color-status-draft-text);
+  border-color: var(--color-status-draft-border);
+}
+.status-draft .dot { background-color: var(--color-status-draft-text); }
+
+.status-rejected {
+  background-color: var(--color-status-rejected-bg);
+  color: var(--color-status-rejected-text);
+  border-color: var(--color-status-rejected-border);
+}
+.status-rejected .dot { background-color: var(--color-status-rejected-text); }
+
+.status-approved {
+  background-color: var(--color-status-approved-bg);
+  color: var(--color-status-approved-text);
+  border-color: var(--color-status-approved-border);
+}
+.status-approved .dot { background-color: var(--color-status-approved-text); }
+
+.status-cancelled {
+  background-color: #e2e8f0;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+.status-cancelled .dot { background-color: #334155; }
+
+.status-consolidated {
+  background-color: #ede9fe;
+  color: #5b21b6;
+  border-color: #ddd6fe;
+}
+.status-consolidated .dot { background-color: #5b21b6; }
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}

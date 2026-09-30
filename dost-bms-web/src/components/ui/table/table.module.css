@@ -1,0 +1,88 @@
+/*
+ * System Name: Budget Management System
+ * Module Name: Components Module
+ *
+ * Purpose of this file:
+ * Define CSS styles and layout rules for table.
+ *
+ * Author(s): QUT Group 27
+ *
+ * Copyright (C) 2026
+ * by the Department of Science and Technology - Central Office
+ * Developed by Team 27, Queensland University of Technology
+ * All rights reserved.
+ */
+
+.tableWrapper {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  max-height: 100%;
+}
+
+.table {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+.thead {
+  position: sticky;
+  top: 0;
+  background: var(--color-surface);
+  z-index: 10;
+  box-shadow: 0 1px 0 var(--color-border);
+}
+
+.th {
+  padding: var(--space-3) var(--space-4) !important;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background-color: var(--color-surface) !important;
+  border-bottom: 1px solid var(--color-border) !important;
+  white-space: nowrap;
+}
+
+.td {
+  padding: var(--space-3) var(--space-4) !important;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--color-border) !important;
+}
+
+.clickableRow {
+  cursor: pointer;
+}
+
+.empty {
+  text-align: center;
+  padding: var(--space-6) !important;
+  color: var(--color-text-muted);
+}
+
+.sortIcon, .sortIconActive {
+  display: inline-block;
+  margin-left: var(--space-1);
+  font-size: 10px;
+}
+
+.sortIcon {
+  color: var(--color-text-muted);
+  opacity: 0.5;
+}
+
+.sortIconActive {
+  color: var(--color-primary);
+  font-weight: bold;
+}
+
+.skeletonRow {
+  height: 20px;
+  width: 100%;
+  max-width: 80%;
+  border-radius: var(--radius-sm);
+}
+
+/* Bootstrap hover override for our tokens */
+table.table-hover > tbody > tr:hover > * {
+  background-color: var(--color-primary-subtle);
+  color: var(--color-text-primary);
+}

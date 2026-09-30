@@ -1,0 +1,47 @@
+{
+  "name": "dost-bms-web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "dev:mock": "concurrently -k -n sqlite-api,vite -c cyan,green \"npm run mock:api\" \"npm run dev -- --mode mock\"",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "mock:seed": "node --no-warnings mock/seed-sqlite.mjs",
+    "mock:reset": "npm run mock:seed",
+    "mock:sync": "node --no-warnings mock/sync-sqlite-resource.mjs",
+    "mock:api": "node --no-warnings mock/sqlite-api-server.mjs",
+    "mock:json": "json-server --watch mock/db.json --port 4001"
+  },
+  "dependencies": {
+    "axios": "^1.15.2",
+    "bootstrap": "^5.3.8",
+    "bootstrap-icons": "^1.13.1",
+    "chart.js": "^4.5.1",
+    "lucide-react": "^1.14.0",
+    "mathjs": "^15.2.0",
+    "pdfkit": "^0.18.0",
+    "prop-types": "^15.8.1",
+    "react": "^19.2.4",
+    "react-chartjs-2": "^5.3.1",
+    "react-dom": "^19.2.4",
+    "react-icons": "^5.6.0",
+    "react-router-dom": "^7.14.1",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.4.0",
+    "json-server": "^1.0.0-beta.15",
+    "vite": "^8.0.4"
+  }
+}

@@ -1,0 +1,224 @@
+/*
+ * System Name: Budget Management System
+ * Module Name: Styles Module
+ *
+ * Purpose of this file:
+ * Define CSS styles and layout rules for dashboard.
+ *
+ * Author(s): QUT Group 27
+ *
+ * Copyright (C) 2026
+ * by the Department of Science and Technology - Central Office
+ * Developed by Team 27, Queensland University of Technology
+ * All rights reserved.
+ */
+
+/* Dashboard — layout and presentation (Financial Dashboard page) */
+
+.dashboard-page
+{
+	padding-bottom: var(--space-10);
+}
+
+.dashboard-page .dashboard-tab-section
+{
+	margin-top: var(--space-4);
+}
+
+.dashboard-page .dashboard-filter-label
+{
+	font-size: var(--font-size-sm);
+	font-weight: 600;
+	color: var(--color-text-secondary);
+	margin-bottom: var(--space-2);
+}
+
+.dashboard-page .dashboard-section
+{
+	margin-bottom: var(--space-8);
+}
+
+.dashboard-page .dashboard-section__title
+{
+	letter-spacing: -0.02em;
+	color: var(--color-text-primary);
+}
+
+.dashboard-page .dashboard-panel
+{
+	border-radius: var(--radius-xl);
+	border: 0.5px solid var(--color-border);
+	background: var(--color-surface);
+	box-shadow: var(--shadow-card);
+	padding: var(--space-5);
+	transition: box-shadow var(--transition-base);
+}
+
+.dashboard-page .dashboard-panel:hover
+{
+	box-shadow: var(--shadow-dropdown);
+}
+
+.dashboard-page .dashboard-panel__toolbar
+{
+	padding-bottom: var(--space-4);
+	margin-bottom: var(--space-4);
+	border-bottom: 1px solid var(--color-border);
+}
+
+.dashboard-page .dashboard-panel__chart-title
+{
+	font-size: var(--font-size-sm);
+	font-weight: 600;
+	color: var(--color-text-secondary);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	margin-bottom: var(--space-3);
+}
+
+.dashboard-page .dashboard-panel__body--charts .dashboard-chart
+{
+	margin-top: var(--space-2);
+}
+
+.dashboard-page .dashboard-chart-card
+{
+	height: 100%;
+	border-radius: var(--radius-lg);
+	border: 0.5px solid var(--color-border);
+	background: var(--surface-2);
+	padding: var(--space-4);
+}
+
+.dashboard-page .dashboard-status-card
+{
+	position: relative;
+	background: var(--color-surface);
+	border: 0.5px solid var(--color-border);
+	border-radius: var(--radius-xl);
+	padding: var(--space-5);
+	box-shadow: var(--shadow-card);
+	min-height: 7.5rem;
+	transition:
+		box-shadow var(--transition-base),
+		border-color var(--transition-base),
+		transform var(--transition-fast);
+}
+
+.dashboard-page .dashboard-status-card:hover
+{
+	box-shadow: var(--shadow-dropdown);
+	transform: translateY(-1px);
+}
+
+.dashboard-page .dashboard-status-card::before
+{
+	content: '';
+	position: absolute;
+	left: 0;
+	top: var(--space-4);
+	bottom: var(--space-4);
+	width: 3px;
+	border-radius: var(--radius-full);
+	background: var(--color-border);
+}
+
+.dashboard-page .dashboard-status-card--pending::before
+{
+	background: var(--color-status-pending-border);
+}
+
+.dashboard-page .dashboard-status-card--reviewed::before
+{
+	background: var(--color-status-reviewed-border);
+}
+
+.dashboard-page .dashboard-status-card--consolidated::before
+{
+	background: var(--color-status-consolidated-text);
+}
+
+.dashboard-page .dashboard-status-card--rejected::before
+{
+	background: var(--color-status-rejected-border);
+}
+
+.dashboard-page .dashboard-status-card .dashboard-status-card__value
+{
+	font-variant-numeric: tabular-nums;
+	font-feature-settings: 'tnum' 1;
+	margin-top: var(--space-3);
+}
+
+.dashboard-page .dashboard-chart
+{
+	position: relative;
+	width: 100%;
+	height: 320px;
+}
+
+.dashboard-page .dashboard-chart--small
+{
+	height: 260px;
+}
+
+.dashboard-page .dashboard-alert
+{
+	border-radius: var(--radius-lg);
+	padding: var(--space-4) var(--space-5);
+	font-size: var(--font-size-sm);
+	font-weight: 500;
+	margin-top: var(--space-4);
+	margin-bottom: 0;
+	border: 0.5px solid var(--color-border);
+}
+
+.dashboard-page .dashboard-alert--danger
+{
+	background: var(--err-bg);
+	color: var(--err);
+	border-color: var(--err);
+}
+
+.dashboard-page .dashboard-table-shell
+{
+	border-radius: var(--radius-xl);
+	border: 0.5px solid var(--color-border);
+	background: var(--color-surface);
+	box-shadow: var(--shadow-card);
+	padding: var(--space-4) var(--space-5);
+	overflow: hidden;
+}
+
+.dashboard-page .dashboard-rate--good
+{
+	color: var(--color-status-approved-text);
+	font-weight: 600;
+}
+
+.dashboard-page .dashboard-rate--bad
+{
+	color: var(--color-status-rejected-text);
+	font-weight: 600;
+}
+
+.dashboard-rate--green
+{
+	color: var(--ok);
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+}
+
+.dashboard-rate--amber
+{
+	color: var(--warn);
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+}
+
+.dashboard-rate--red
+{
+	color: var(--err);
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /Users/lenhutkhangvo/Developer/bms/dost-bms-api/app/Http/Controllers -name \"*.php\" | xargs grep -l \"unified\\\\|UnifiedBudget\" 2>/dev/null | head -5)",
+      "Read(//Users/lenhutkhangvo/Developer/bms/dost-bms-api/app/Http/Controllers/**)"
+    ]
+  }
+}

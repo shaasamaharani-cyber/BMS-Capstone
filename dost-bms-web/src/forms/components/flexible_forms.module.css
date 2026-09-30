@@ -1,0 +1,250 @@
+/*
+ * System Name: Budget Management System
+ * Module Name: Forms Module
+ *
+ * Purpose of this file:
+ * Define CSS styles and layout rules for flexible_forms.
+ *
+ * Author(s): QUT Group 27
+ *
+ * Copyright (C) 2026
+ * by the Department of Science and Technology - Central Office
+ * Developed by Team 27, Queensland University of Technology
+ * All rights reserved.
+ */
+
+.formShell {
+  display: grid;
+  gap: 1rem;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.headerGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.span1 { grid-column: span 1; }
+.span2 { grid-column: span 2; }
+.span3 { grid-column: span 3; }
+
+.fieldLabel {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.section {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.sectionHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.85rem 1rem;
+  background: var(--color-bg-subtle, #f8f9fb);
+  text-align: left;
+  font-weight: 700;
+}
+
+.sectionBody {
+  padding: 1rem;
+}
+
+.tableWrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.dynamicTable {
+  width: max-content;
+  min-width: 760px;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.dynamicTable th,
+.dynamicTable td {
+  border: 1px solid var(--color-border);
+  padding: 0.35rem;
+  vertical-align: top;
+}
+
+.dynamicTable th {
+  background: #f3f5f8;
+  font-weight: 700;
+  text-align: center;
+}
+
+.cellInput,
+.cellSelect,
+.cellTextarea {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  padding: 0.35rem 0.45rem;
+  color: inherit;
+}
+
+.cellInput:focus,
+.cellSelect:focus,
+.cellTextarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  background: #fff;
+}
+
+.cellTextarea {
+  min-height: 2.4rem;
+  resize: vertical;
+}
+
+.computedCell {
+  display: block;
+  padding: 0.35rem 0.45rem;
+  font-weight: 700;
+}
+
+.actionCol {
+  width: 3.5rem;
+}
+
+.actionCell {
+  width: 3.5rem;
+  min-width: 3.5rem;
+  max-width: 3.5rem;
+  padding: 0.2rem !important;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.actionButton {
+  display: inline-flex;
+  width: 1.35rem;
+  height: 1.35rem;
+  align-items: center;
+  justify-content: center;
+  margin: 0 0.075rem;
+  padding: 0;
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.addButton {
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--color-primary);
+}
+
+.deleteButton {
+  border: 0;
+  border-radius: 50%;
+  background: #f4d6d6;
+  color: #8a1f1f;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.8rem;
+}
+
+.tabButton {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  padding: 0.45rem 0.75rem;
+}
+
+.activeTab {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.builder {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr) 320px;
+  gap: 1rem;
+  align-items: start;
+}
+
+.panel {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  padding: 1rem;
+}
+
+.treeButton {
+  width: 100%;
+  display: block;
+  border: 0;
+  background: transparent;
+  padding: 0.35rem 0.25rem;
+  text-align: left;
+  border-radius: var(--radius-sm);
+}
+
+.treeButton:hover,
+.treeButtonActive {
+  background: #eef2ff;
+}
+
+.footer {
+  display: grid;
+  gap: 1rem;
+  border-top: 1px solid var(--color-border);
+  padding-top: 1rem;
+}
+
+.signers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.signerLine {
+  border-top: 1px solid var(--color-text-muted);
+  padding-top: 0.4rem;
+  text-align: center;
+  margin-top: 2rem;
+}
+
+@media (max-width: 1100px) {
+  .builder {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .headerGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .span1,
+  .span2,
+  .span3 {
+    grid-column: span 1;
+  }
+}

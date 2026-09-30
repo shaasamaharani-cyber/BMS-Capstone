@@ -1,0 +1,135 @@
+/*
+ * System Name: Budget Management System
+ * Module Name: Components Module
+ *
+ * Purpose of this file:
+ * Define CSS styles and layout rules for tabs.
+ *
+ * Author(s): QUT Group 27
+ *
+ * Copyright (C) 2026
+ * by the Department of Science and Technology - Central Office
+ * Developed by Team 27, Queensland University of Technology
+ * All rights reserved.
+ */
+
+.tabsContainer {
+  display: flex;
+  position: relative;
+  width: 100%;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  transition: all var(--transition-base);
+  color: var(--color-text-secondary);
+}
+
+.tab.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+}
+
+.badge {
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+}
+
+/* Variant: underline */
+.variant-underline {
+  border-bottom: 1px solid var(--color-border);
+}
+.variant-underline .tab {
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: -1px;
+}
+.variant-underline .tab:hover:not(.disabled) {
+  color: var(--color-text-primary);
+}
+.variant-underline .tab.active {
+  color: var(--color-primary);
+}
+.variant-underline .tab.active .badge {
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+}
+.underlineActive {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: var(--color-primary);
+  border-top-left-radius: 2px;
+  border-top-right-radius: 2px;
+  animation: slideIn var(--transition-fast);
+}
+
+/* Variant: pills */
+.variant-pills {
+  gap: var(--space-2);
+}
+.variant-pills .tab {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
+}
+.variant-pills .tab:hover:not(.disabled) {
+  background: var(--color-bg);
+}
+.variant-pills .tab.active {
+  background: var(--color-primary);
+  color: var(--color-surface);
+}
+
+/* Variant: bordered */
+.variant-bordered .tab {
+  border: 1px solid var(--color-border);
+  padding: var(--space-2) var(--space-4);
+}
+.variant-bordered .tab:first-child {
+  border-top-left-radius: var(--radius-md);
+  border-bottom-left-radius: var(--radius-md);
+}
+.variant-bordered .tab:last-child {
+  border-top-right-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
+}
+.variant-bordered .tab + .tab {
+  margin-left: -1px;
+}
+.variant-bordered .tab.active {
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  z-index: 1;
+}
+
+/* Sizes */
+.size-sm.tab {
+  font-size: var(--font-size-sm);
+}
+.size-md.tab {
+  font-size: var(--font-size-base);
+}
+
+@keyframes slideIn {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}

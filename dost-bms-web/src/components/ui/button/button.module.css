@@ -1,0 +1,105 @@
+/*
+ * System Name: Budget Management System
+ * Module Name: Components Module
+ *
+ * Purpose of this file:
+ * Define CSS styles and layout rules for button.
+ *
+ * Author(s): QUT Group 27
+ *
+ * Copyright (C) 2026
+ * by the Department of Science and Technology - Central Office
+ * Developed by Team 27, Queensland University of Technology
+ * All rights reserved.
+ */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+/* Sizes */
+.size-sm {
+  height: 32px;
+  padding: 0 var(--space-3);
+  font-size: var(--font-size-sm);
+}
+.size-md {
+  height: 38px;
+  padding: 0 var(--space-4);
+  font-size: var(--font-size-base);
+}
+.size-lg {
+  height: 44px;
+  padding: 0 var(--space-5);
+  font-size: var(--font-size-md);
+}
+
+/* Variants */
+.variant-primary {
+  background-color: var(--color-primary);
+  color: var(--color-surface);
+}
+.variant-primary:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+}
+
+.variant-secondary {
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-card);
+}
+.variant-secondary:hover:not(:disabled) {
+  background-color: var(--color-bg);
+}
+
+.variant-ghost {
+  background-color: transparent;
+  color: var(--color-text-secondary);
+}
+.variant-ghost:hover:not(:disabled) {
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+}
+
+.variant-danger {
+  background-color: var(--color-status-rejected-border);
+  color: var(--color-surface);
+}
+.variant-danger:hover:not(:disabled) {
+  background-color: var(--color-status-rejected-text);
+}
+
+.variant-outline {
+  background-color: transparent;
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+.variant-outline:hover:not(:disabled) {
+  background-color: var(--color-primary-subtle);
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+}

@@ -1,0 +1,153 @@
+/*
+ * System Name: Budget Management System
+ * Module Name: Components Module
+ *
+ * Purpose of this file:
+ * Define CSS styles and layout rules for dropdown.
+ *
+ * Author(s): QUT Group 27
+ *
+ * Copyright (C) 2026
+ * by the Department of Science and Technology - Central Office
+ * Developed by Team 27, Queensland University of Technology
+ * All rights reserved.
+ */
+
+.container {
+  position: relative;
+  width: 100%;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 38px;
+  padding: 0 var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.trigger:hover {
+  border-color: var(--color-primary-light);
+}
+
+.trigger.open {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(46, 63, 163, 0.15);
+}
+
+.trigger.error {
+  border-color: var(--color-status-rejected-border);
+}
+
+.trigger.disabled {
+  background-color: var(--color-bg);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.valueWrap {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.placeholder {
+  color: var(--color-text-muted);
+}
+
+.value {
+  color: var(--color-text-primary);
+}
+
+.icon {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  margin-left: var(--space-2);
+}
+
+.menu {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-dropdown);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.searchWrap {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  background: var(--color-surface);
+  z-index: 2;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 6px var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  outline: none;
+}
+.searchInput:focus {
+  border-color: var(--color-primary);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-1) 0;
+}
+
+.option {
+  padding: var(--space-2) var(--space-3);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  color: var(--color-text-primary);
+}
+
+.option:hover:not(.optionDisabled) {
+  background: var(--color-primary-subtle);
+}
+
+.option.selected {
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.optionDisabled {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.checkbox {
+  margin-right: var(--space-2);
+  cursor: pointer;
+}
+
+.optionIcon {
+  margin-right: var(--space-2);
+  display: flex;
+}
+
+.noResults {
+  padding: var(--space-3);
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}

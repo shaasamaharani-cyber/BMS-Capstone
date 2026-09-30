@@ -1,0 +1,116 @@
+/*
+ * System Name: Budget Management System
+ * Module Name: Styles Module
+ *
+ * Purpose of this file:
+ * Define CSS styles and layout rules for globals.
+ *
+ * Author(s): QUT Group 27
+ *
+ * Copyright (C) 2026
+ * by the Department of Science and Technology - Central Office
+ * Developed by Team 27, Queensland University of Technology
+ * All rights reserved.
+ */
+
+/* 1. Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+/* 2. Import Bootstrap 5 */
+@import 'bootstrap/dist/css/bootstrap.min.css';
+
+/* 3. Import design tokens */
+@import './tokens.css';
+@import './utilities.css';
+
+/* 4. Global resets */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { font-size: 14px; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 5. Bootstrap overrides to match DOST palette */
+.btn-primary {
+  background-color: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+}
+.btn-primary:hover {
+  background-color: var(--color-primary-hover) !important;
+  border-color: var(--color-primary-hover) !important;
+}
+:root {
+  --bs-primary: var(--color-primary);
+  --bs-primary-rgb: 46, 63, 163;
+  --bs-border-radius: var(--radius-md);
+  --bs-font-sans-serif: var(--font-sans);
+}
+
+/* 6. App layout shell */
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.app-content {
+  flex: 1;
+  padding: var(--space-6) var(--space-8);
+  overflow-y: auto;
+}
+
+.print-only {
+  display: none;
+}
+
+@media print {
+  body[data-print-target] * {
+    visibility: hidden !important;
+  }
+
+  body[data-print-target] .print-area,
+  body[data-print-target] .print-area * {
+    visibility: visible !important;
+  }
+
+  body[data-print-target] .print-area {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  table {
+    font-size: 10px;
+    border-collapse: collapse;
+  }
+
+  td, th {
+    border: 1px solid #ccc;
+    padding: 4px 6px;
+  }
+
+  .app-content {
+    padding: 0;
+    overflow: visible;
+  }
+}

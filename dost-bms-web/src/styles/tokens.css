@@ -1,0 +1,193 @@
+/*
+ * System Name: Budget Management System
+ * Module Name: Styles Module
+ *
+ * Purpose of this file:
+ * Define CSS styles and layout rules for tokens.
+ *
+ * Author(s): QUT Group 27
+ *
+ * Copyright (C) 2026
+ * by the Department of Science and Technology - Central Office
+ * Developed by Team 27, Queensland University of Technology
+ * All rights reserved.
+ */
+
+:root {
+  /* ─────────────────────────────────────────────
+     DOST BMS — redesigned
+     ───────────────────────────────────────────── */
+
+  /* Primary = DOST navy, tweakable */
+  --brand-h: 252;
+  --brand-c: 0.14;
+  --brand-l: 0.24;
+  --brand: oklch(var(--brand-l) var(--brand-c) var(--brand-h));
+  --brand-600: oklch(0.32 0.13 var(--brand-h));
+  --brand-500: oklch(0.42 0.12 var(--brand-h));
+  --brand-100: oklch(0.94 0.035 var(--brand-h));
+  --brand-50: oklch(0.975 0.015 var(--brand-h));
+
+  /* Neutrals — warm-cool near-white */
+  --bg: oklch(0.985 0.004 255);
+  --surface: oklch(1 0 0);
+  --surface-2: oklch(0.975 0.005 255);
+  --line: oklch(0.92 0.006 255);
+  --line-2: oklch(0.88 0.008 255);
+  --ink: oklch(0.22 0.015 255);
+  --ink-2: oklch(0.38 0.014 255);
+  --ink-3: oklch(0.55 0.012 255);
+  --ink-4: oklch(0.7 0.01 255);
+
+  /* Semantic — low chroma, editorial */
+  --ok: oklch(0.54 0.14 155);
+  --ok-bg: oklch(0.96 0.05 155);
+  --warn: oklch(0.62 0.14 60);
+  --warn-bg: oklch(0.965 0.05 75);
+  --err: oklch(0.54 0.18 25);
+  --err-bg: oklch(0.965 0.04 25);
+  --info: oklch(0.48 0.13 250);
+  --info-bg: oklch(0.96 0.03 250);
+
+  /* Category colors */
+  --ps: oklch(0.48 0.13 265);
+  --ps-bg: oklch(0.955 0.035 265);
+  --mooe: oklch(0.62 0.14 60);
+  --mooe-bg: oklch(0.965 0.05 75);
+  --co: oklch(0.54 0.14 155);
+  --co-bg: oklch(0.96 0.05 155);
+  --tag: oklch(0.52 0.14 300);
+  --tag-bg: oklch(0.96 0.04 300);
+
+  /* Geometry */
+  --radius: 6px;
+  --radius-lg: 10px;
+  --radius-sm: 4px;
+  --shadow-1: 0 1px 2px rgba(10, 14, 40, 0.04), 0 1px 1px rgba(10, 14, 40, 0.03);
+  --shadow-2: 0 2px 8px rgba(10, 14, 40, 0.05), 0 1px 2px rgba(10, 14, 40, 0.04);
+
+  /* Density */
+  --pad-card: 24px;
+  --pad-row: 16px;
+  --gap: 20px;
+  --sidebar-w: 244px;
+  --sidebar-w-collapsed: 72px;
+  --topbar-h: 60px;
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+
+  /* ─────────────────────────────────────────────
+     Legacy aliases (keeps existing components working)
+     ───────────────────────────────────────────── */
+
+  /* Brand */
+  --color-primary: var(--brand);
+  --color-primary-dark: var(--brand-600);
+  --color-primary-light: var(--brand-500);
+  --color-primary-hover: var(--brand-600);
+  --color-primary-subtle: var(--brand-50);
+  --color-accent: var(--warn);
+
+  /* Sidebar */
+  --color-sidebar-bg: var(--color-primary);
+  --color-sidebar-active: var(--color-bg);
+  --color-sidebar-text: var(--brand-100);
+  --color-sidebar-text-active: var(--color-primary);
+
+  /* Status badge colors */
+  --color-status-pending-bg: var(--warn-bg);
+  --color-status-pending-text: var(--warn);
+  --color-status-pending-border: var(--warn);
+
+  --color-status-reviewed-bg: var(--info-bg);
+  --color-status-reviewed-text: var(--info);
+  --color-status-reviewed-border: var(--info);
+
+  --color-status-draft-bg: var(--surface-2);
+  --color-status-draft-text: var(--ink-2);
+  --color-status-draft-border: var(--line-2);
+
+  --color-status-rejected-bg: var(--err-bg);
+  --color-status-rejected-text: var(--err);
+  --color-status-rejected-border: var(--err);
+
+  --color-status-approved-bg: var(--ok-bg);
+  --color-status-approved-text: var(--ok);
+  --color-status-approved-border: var(--ok);
+
+  --color-status-consolidated-text: var(--tag);
+
+  /* Neutral palette */
+  --color-surface: var(--surface);
+  --color-bg: var(--bg);
+  --color-border: var(--line);
+  --color-text-primary: var(--ink);
+  --color-text-secondary: var(--ink-2);
+  --color-text-muted: var(--ink-3);
+
+  /* Typography scale (kept for existing layouts) */
+  --font-size-xs: 11px;
+  --font-size-sm: 13px;
+  --font-size-base: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 22px;
+  --font-size-2xl: 28px;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Radius (legacy names) */
+  --radius-md: var(--radius);
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* Elevation (legacy names) */
+  --shadow-card: var(--shadow-1);
+  --shadow-dropdown: var(--shadow-2);
+
+  /* Transition */
+  --transition-fast: 120ms ease;
+  --transition-base: 200ms ease;
+}
+
+/* Compact density tweak */
+body[data-density='compact'] {
+  --pad-card: 16px;
+  --pad-row: 12px;
+  --gap: 14px;
+}
+
+body[data-radius='sharp'] {
+  --radius: 2px;
+  --radius-lg: 4px;
+  --radius-sm: 0;
+}
+body[data-radius='rounded'] {
+  --radius: 10px;
+  --radius-lg: 14px;
+  --radius-sm: 6px;
+}
+
+body[data-dark='on'] {
+  --bg: oklch(0.17 0.02 260);
+  --surface: oklch(0.22 0.025 260);
+  --surface-2: oklch(0.19 0.02 260);
+  --line: oklch(0.3 0.02 260);
+  --line-2: oklch(0.36 0.025 260);
+  --ink: oklch(0.97 0.005 260);
+  --ink-2: oklch(0.82 0.01 260);
+  --ink-3: oklch(0.65 0.015 260);
+  --ink-4: oklch(0.52 0.015 260);
+  --brand-100: oklch(0.32 0.08 var(--brand-h));
+  --brand-50: oklch(0.26 0.04 var(--brand-h));
+}

@@ -1,0 +1,116 @@
+/*
+ * System Name: Budget Management System
+ * Module Name: Components Module
+ *
+ * Purpose of this file:
+ * Define CSS styles and layout rules for tree_timeline.
+ *
+ * Author(s): QUT Group 27
+ *
+ * Copyright (C) 2026
+ * by the Department of Science and Technology - Central Office
+ * Developed by Team 27, Queensland University of Technology
+ * All rights reserved.
+ */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-sans);
+}
+
+.nestedContainer {
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.nodeWrapper {
+  display: flex;
+  position: relative;
+  min-height: 48px;
+}
+
+.timelineArea {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 24px;
+  margin-right: var(--space-3);
+  position: relative;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-border);
+  z-index: 2;
+  margin-top: 4px; /* Align with text */
+}
+
+/* Status variants */
+.dot.completed { background: var(--color-status-approved-border); }
+.dot.active { background: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-subtle); }
+.dot.error { background: var(--color-status-rejected-border); }
+.dot.pending { background: var(--color-border); border: 2px solid var(--color-surface); box-shadow: 0 0 0 1px var(--color-border); }
+
+.line {
+  width: 2px;
+  background: var(--color-border);
+  position: absolute;
+  top: 16px;
+  bottom: 0;
+  z-index: 1;
+}
+
+.contentArea {
+  flex: 1;
+  padding-bottom: var(--space-4);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+}
+
+.dateActorGroup {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.actor {
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.titleGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.title {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.expander {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+.description {
+  margin-top: var(--space-1);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.children {
+  display: none;
+}
+
+.children.expanded {
+  display: block;
+}

@@ -1,0 +1,95 @@
+/*
+ * System Name: Budget Management System
+ * Module Name: Authentication Module
+ *
+ * Purpose of this file:
+ * Styles for the LoginPage component.
+ *
+ * Author(s): QUT Group 27
+ *
+ * Copyright (C) 2026
+ * by the Department of Science and Technology - Central Office
+ * Developed by Team 27, Queensland University of Technology
+ * All rights reserved.
+ */
+
+.pageWrapper {
+  background-color: #f0f2f5;
+}
+
+.logo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+}
+
+.dostTitle {
+  font-size: 1.75rem;
+  letter-spacing: 0.08em;
+  color: #1a3a6c;
+}
+
+.subtitle {
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  line-height: 1.5;
+}
+
+.systemTitle {
+  font-size: 1.05rem;
+  letter-spacing: 0.05em;
+  color: #1a3a6c;
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  border-radius: 12px;
+}
+
+.cardHeading {
+  color: #1a3a6c;
+}
+
+.fieldLabel {
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  color: #495057;
+}
+
+.formControl {
+  border-radius: 8px;
+}
+
+.checkLabel {
+  font-size: 0.85rem;
+}
+
+.forgotBtn {
+  font-size: 0.85rem;
+}
+
+.errorAlert {
+  font-size: 0.85rem;
+  border-radius: 8px;
+}
+
+.submitBtn {
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  letter-spacing: 0.06em;
+}
+
+.footer {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.mockHint {
+  background: var(--color-bg);
+  border: 1px dashed var(--color-border);
+}
+
+.mockHint tr:hover td {
+  background: var(--color-primary-subtle);
+}
