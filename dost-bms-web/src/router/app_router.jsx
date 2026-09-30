@@ -23,6 +23,7 @@ import DashboardPage from '../pages/dashboard/dashboard_page';
 import BudgetRequestsPage from '../pages/budget_requests/budget_requests_page';
 import BudgetRequestDetailPage from '../pages/budget_requests/budget_request_detail_page';
 import NewBudgetRequest from '../pages/budget_requests/new_budget_request';
+import UnifiedRequestPage from '../pages/unified_request/unified_request_page';
 import EditBudgetRequest from '../pages/budget_requests/edit_budget_request';
 import BudgetReviewPage from '../pages/budget_review/budget_review_page';
 import BudgetReviewDetailPage from '../pages/budget_review/budget_review_detail_page';
@@ -52,6 +53,12 @@ export default function AppRouter() {
           } />
           <Route path="budget-requests/new" element={
             <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS}><NewBudgetRequest /></PermissionRoute>
+          } />
+          <Route path="budget-requests/unified/new" element={
+            <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS}><UnifiedRequestPage /></PermissionRoute>
+          } />
+          <Route path="budget-requests/unified/:id" element={
+            <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS}><UnifiedRequestPage /></PermissionRoute>
           } />
           <Route path="budget-requests/:id/edit" element={
             <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS}><EditBudgetRequest /></PermissionRoute>

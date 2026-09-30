@@ -25,6 +25,7 @@ import {
 } from '../../utils/requesting_unit_scope';
 import PageHeader from '../../components/layout/page_header';
 import { getFiscalYear } from '../../utils/helpers';
+import { getBudgetRequestEditPath } from '../../utils/budget_request_utils';
 import { Button, Input, Dropdown, Table, Badge, Pagination } from '../../components/ui';
 
 const PAGE_SIZE = 10;
@@ -50,6 +51,7 @@ const normalizeRow = (row) => ({
   lastUpdated: row?.br_updated_at || row?.br_created_at || null,
   createdAt: row?.br_created_at || null,
   totalAmount: row?.br_total_amount || '0.00',
+  unified: Boolean(row?.br_unified_request),
 });
 
 export default function BudgetRequestsPage() {
@@ -326,7 +328,7 @@ export default function BudgetRequestsPage() {
           <ul className="dropdown-menu">
             <li><button type="button" className="dropdown-item" onClick={() => navigate(`/budget-requests/${row.id}`)}>View</button></li>
             {['Draft', 'Rejected'].includes(String(row.status || '')) ? (
-              <li><button type="button" className="dropdown-item" onClick={() => navigate(`/budget-requests/${row.id}/edit`)}>Edit</button></li>
+              <li><button type="button" className="dropdown-item" onClick={() => navigate(getBudgetRequestEditPath(row.id, row.unified))}>Edit</button></li>
             ) : null}
           </ul>
         </div>
@@ -338,7 +340,7 @@ export default function BudgetRequestsPage() {
     <div>
       <div className="page-sticky-header-shell">
         <PageHeader title="Budget Requests">
-          <Button onClick={() => navigate('/budget-requests/new')}>
+          <Button onClick={() => navigate('/budget-requests/unified/new')}>
             + New Request
           </Button>
         </PageHeader>

@@ -30,6 +30,9 @@ import { Badge, Dropdown, MetricCard, Pagination, Table, Tabs, Typography } from
 import PageHeader from '../../components/layout/page_header';
 import DashboardFilters from '../../components/shared/dashboard_filters';
 import { getDashboardData } from '../../api';
+import { useAuth } from '../../context/auth_context';
+import { isRequesterRole } from '../../utils/requesting_unit_scope';
+import RequesterDashboard from './requester_dashboard';
 import { formatCurrency, formatRate, getRateClassName } from '../../utils/formatters';
 import '../../styles/dashboard.css';
 import '../../styles/tokens.css';
@@ -286,7 +289,7 @@ function normalizeDashboardPayload(objRaw)
   };
 }
 
-export default function DashboardPage()
+function OrganisationDashboard()
 {
   const [strActiveTab,       setStrActiveTab]       = useState('planning');
   const [objDraftFilters,    setObjDraftFilters]    = useState(DEFAULT_FILTERS);
@@ -709,4 +712,12 @@ export default function DashboardPage()
       )}
     </div>
   );
+}
+
+// Each role gets the dashboard that answers its own question; requesters only ever see their own unit
+export default function DashboardPage()
+{
+  const { user } = useAuth();
+
+  return isRequesterRole(user) ? <RequesterDashboard /> : <OrganisationDashboard />;
 }
