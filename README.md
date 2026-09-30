@@ -16,16 +16,36 @@ front end can switch over later. Any Laravel back end will be added to this repo
 
 ## Run it locally
 
-Needs Node.js 22 or newer (the mock API uses the built-in `node:sqlite`).
+### 1. Before you start
+
+- **Node.js 22.13 or newer.** Check with `node -v` in a terminal. If it is older or the command is not found, install the current LTS from https://nodejs.org and open a **new** terminal window. The mock API uses Node's built-in `node:sqlite`, which older versions do not have.
+- **The code.** Either `git clone https://github.com/shaasamaharani-cyber/BMS-Capstone`, or on the repo page choose **Code -> Download ZIP** and unzip it (the folder is then called `BMS-Capstone-main`).
+
+Every command below must be run **inside the `dost-bms-web` folder**, not the top-level repo folder (the top level has no `package.json`).
+
+### 2. Windows (PowerShell)
+
+PowerShell often blocks `npm` with "running scripts is disabled on this system". Use `npm.cmd` (it always works):
+
+```powershell
+cd C:\path\to\BMS-Capstone\dost-bms-web
+npm.cmd install
+npm.cmd run dev:mock
+```
+
+Or open **Command Prompt** (`cmd`) instead of PowerShell and use plain `npm install` and `npm run dev:mock`.
+
+### 3. Mac (Terminal)
 
 ```bash
-cd dost-bms-web
+cd /path/to/BMS-Capstone/dost-bms-web
 npm install
 npm run dev:mock
 ```
 
-Open http://localhost:5173. The mock API starts on port 4000 and creates its own database (`mock/mock.sqlite`, not committed) the first time.
-On Windows PowerShell use `npm.cmd` instead of `npm` if scripts are blocked.
+### 4. Open it
+
+Wait until the terminal shows both `SQLite mock API ready` and `Local: http://localhost:5173/`, then open that address (normally http://localhost:5173) and sign in with a test account below. The mock API runs on port 4000 and creates its own database (`mock/mock.sqlite`, not committed) the first time. Stop everything with `Ctrl + C` in the terminal.
 
 Test accounts (password `Test12345`):
 
@@ -40,6 +60,30 @@ Test accounts (password `Test12345`):
 
 Restart the mock API after changing anything under `dost-bms-web/mock/`. To reset the data, delete `dost-bms-web/mock/mock.sqlite`
 and start again.
+
+### If it does not work
+
+| What you see | Cause and fix |
+|---|---|
+| `running scripts is disabled on this system` (PowerShell) | Use `npm.cmd` instead of `npm`, or use Command Prompt. |
+| `Could not read package.json` or `ENOENT ... package.json` | You are in the wrong folder. `cd` into `dost-bms-web` first. |
+| `No such built-in module: node:sqlite`, or errors mentioning `node:sqlite` | Node is too old. Run `node -v`; install 22.13 or newer. |
+| `'npm' is not recognized` / `command not found: npm` | Node is not installed, or the terminal was open before installing it. Install Node, then open a new terminal. |
+| `EADDRINUSE` / `address already in use` | Another copy is still running (port 4000 or 5173). Stop it with `Ctrl + C` in its terminal, or use other ports (below). |
+| The page opens but login fails or lists are empty | The mock API is not running. Scroll up in the terminal for the `[sqlite-api]` error. Usually the port problem above. |
+
+To run a second copy at the same time, give its API another port and tell the site where that API is, then start as usual. Vite picks the next free site port by itself (5174, 5175, ...): open the address it prints after `Local:`.
+
+```powershell
+# Windows PowerShell
+$env:MOCK_API_PORT = "4100"; $env:VITE_API_URL = "http://localhost:4100/api/v1"
+npm.cmd run dev:mock
+```
+
+```bash
+# Mac
+MOCK_API_PORT=4100 VITE_API_URL=http://localhost:4100/api/v1 npm run dev:mock
+```
 
 ## Live demo (free hosting on Render)
 
