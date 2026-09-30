@@ -1,0 +1,247 @@
+/*
+ * System Name: Budget Management System
+ * Module Name: Dashboard Module
+ *
+ * Purpose of this file:
+ * Layout and presentation for the requester dashboard.
+ *
+ * Author(s): QUT Group T214
+ *
+ * Copyright (C) 2026
+ * by the Department of Science and Technology - Central Office
+ * All rights reserved.
+ */
+
+.page
+{
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-4);
+	padding-bottom: var(--space-10);
+}
+
+.card
+{
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: var(--radius-lg);
+	padding: var(--space-5);
+	box-shadow: var(--shadow-1);
+}
+
+.cardTitle
+{
+	font-size: var(--font-size-md);
+	font-weight: 600;
+	color: var(--ink);
+	margin: 0 0 var(--space-3);
+}
+
+.subTitle
+{
+	font-size: var(--font-size-sm);
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--ink-3);
+	margin: var(--space-5) 0 var(--space-2);
+}
+
+.muted
+{
+	display: block;
+	font-size: var(--font-size-sm);
+	color: var(--ink-3);
+	font-weight: 400;
+}
+
+.remark
+{
+	display: block;
+	font-size: var(--font-size-sm);
+	color: var(--err);
+	margin-top: 2px;
+}
+
+.errorBanner
+{
+	background: var(--err-bg);
+	color: var(--err);
+	border-radius: var(--radius);
+	padding: var(--space-3) var(--space-4);
+}
+
+.actionRow
+{
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: var(--space-4);
+	padding: var(--space-3) 0;
+	border-bottom: 1px solid var(--line);
+}
+
+.actionRow:last-child
+{
+	border-bottom: 0;
+}
+
+.pipeline
+{
+	display: grid;
+	grid-template-columns: repeat(5, minmax(0, 1fr));
+	gap: var(--space-3);
+	margin-bottom: var(--space-4);
+}
+
+.pipelineStep
+{
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	background: var(--surface-2);
+	border: 1px solid var(--line);
+	border-radius: var(--radius-lg);
+	padding: var(--space-3);
+}
+
+.pipelineCount
+{
+	font-size: var(--font-size-xl);
+	font-weight: 700;
+	color: var(--ink);
+}
+
+.pipelineLabel
+{
+	font-size: var(--font-size-xs);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--ink-3);
+}
+
+.table
+{
+	width: 100%;
+	border-collapse: collapse;
+	font-size: var(--font-size-sm);
+}
+
+.table th
+{
+	text-align: left;
+	font-size: var(--font-size-xs);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--ink-3);
+	padding: var(--space-2);
+	border-bottom: 1px solid var(--line-2);
+}
+
+.table td
+{
+	padding: var(--space-2);
+	border-bottom: 1px solid var(--line);
+	vertical-align: top;
+}
+
+.numeric
+{
+	text-align: right !important;
+	white-space: nowrap;
+}
+
+.linkRow
+{
+	margin-top: var(--space-3);
+	font-size: var(--font-size-sm);
+}
+
+.amounts
+{
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: var(--space-3);
+}
+
+.amount
+{
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	background: var(--surface-2);
+	border: 1px solid var(--line);
+	border-radius: var(--radius-lg);
+	padding: var(--space-3);
+}
+
+.amountLabel
+{
+	font-size: var(--font-size-xs);
+	color: var(--ink-3);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+.amountValue
+{
+	font-size: var(--font-size-md);
+	font-weight: 700;
+	color: var(--ink);
+}
+
+.rates
+{
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: var(--space-3);
+	margin-top: var(--space-3);
+}
+
+.rate
+{
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	border: 1px solid var(--line);
+	border-radius: var(--radius-lg);
+	padding: var(--space-3);
+}
+
+.rateValue
+{
+	font-size: var(--font-size-2xl);
+	font-weight: 700;
+}
+
+.rateLabel
+{
+	font-size: var(--font-size-base);
+	font-weight: 600;
+	color: var(--ink);
+}
+
+.attentionList
+{
+	margin: 0;
+	padding-left: var(--space-5);
+	font-size: var(--font-size-sm);
+	color: var(--ink-2);
+}
+
+.footnote
+{
+	margin: var(--space-3) 0 0;
+	font-size: var(--font-size-xs);
+	color: var(--ink-3);
+}
+
+@media (max-width: 900px)
+{
+	.pipeline,
+	.amounts,
+	.rates
+	{
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}

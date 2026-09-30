@@ -1,4 +1,6 @@
 import { buildDashboardData } from '../services/dashboard.mjs';
+import { resolveRequestActor } from '../services/requestActor.mjs';
+import { isRequesterUser, requestingUnitIdForUser } from '../services/users.mjs';
 
 function normalizeFilterValue(strValue)
 {
@@ -19,6 +21,11 @@ export async function handleDashboard(ctx)
     period: normalizeFilterValue(url.searchParams.get('period')) || 'annually',
     budgetStatus: normalizeFilterValue(url.searchParams.get('budget_status')) || 'all',
   };
+
+  // A requester only ever sees their own unit, whatever filter the browser sends
+  const objActor = resolveRequestActor(db, req);
+  const intActorUnitId = isRequesterUser(objActor) ? requestingUnitIdForUser(objActor) : null;
+  if (intActorUnitId != null) objFilters.requestingUnitId = String(intActorUnitId);
 
   json(res, 200, { data: buildDashboardData(db, objFilters) });
   return true;
