@@ -21,6 +21,9 @@ export function usePermissions() {
   return getPermissionsForUser(user);
 }
 
+// Pass one permission, or a list to allow any of them
 export function useHasPermission(permission) {
-  return usePermissions().includes(permission);
+  const arrPermissions = usePermissions();
+  const arrNeeded = Array.isArray(permission) ? permission : [permission];
+  return arrNeeded.some((strPermission) => arrPermissions.includes(strPermission));
 }

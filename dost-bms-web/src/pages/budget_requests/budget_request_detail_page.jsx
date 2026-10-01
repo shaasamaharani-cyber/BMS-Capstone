@@ -48,9 +48,14 @@ import {
 } from '../../utils/budget_request_utils';
 import { DEFAULT_COST_STRUCTURE, normalizeCostStructure } from '../../utils/cost_structure';
 import { toTitleCase } from '../../utils/formatters';
+import { useHasPermission } from '../../hooks/use_permissions';
+import { PERMISSIONS } from '../../utils/permissions';
 
 export default function BudgetRequestDetailPage() {
   const navigate = useNavigate();
+  // Reviewers reach this page from other screens and have no Budget Requests list to return to
+  const blnHasRequestList = useHasPermission(PERMISSIONS.BUDGET_REQUESTS);
+  const goBack = () => (blnHasRequestList ? navigate('/budget-requests') : navigate(-1));
   const { id } = useParams();
 
   const [objBudgetRequest, setObjBudgetRequest] = useState(null);
@@ -257,19 +262,19 @@ export default function BudgetRequestDetailPage() {
     return (
       <div className="p-4">
         <h5 className="mb-2">Budget request not found.</h5>
-        <Button variant="outline" size="sm" onClick={() => navigate('/budget-requests')}>
+        <Button variant="outline" size="sm" onClick={goBack}>
           Back to list
         </Button>
       </div>
     );
   }
 
-  const actions = [{ label: 'Close', variant: 'outline', onClick: () => navigate('/budget-requests') }];
+  const actions = [{ label: 'Close', variant: 'outline', onClick: goBack }];
 
   return (
     <>
       <div className="d-flex align-items-center gap-2 px-4 py-3 border-bottom">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/budget-requests')} leftIcon={<BsArrowLeft />}>
+        <Button variant="ghost" size="sm" onClick={goBack} leftIcon={<BsArrowLeft />}>
           Back
         </Button>
         <h5 className="mb-0 fw-semibold">

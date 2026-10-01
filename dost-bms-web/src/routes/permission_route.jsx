@@ -29,7 +29,7 @@ export default function PermissionRoute({ permission, redirectTo = '/dashboard',
 }
 
 PermissionRoute.propTypes = {
-  permission: PropTypes.string.isRequired,
+  permission: PropTypes.oneOfType([PropTypes.string, PropTypes.arrayOf(PropTypes.string)]).isRequired,
   redirectTo: PropTypes.string,
   children:   PropTypes.node.isRequired,
 };
