@@ -136,4 +136,16 @@ export const getRateClassName = (value) => {
   return 'dashboard-rate--red';
 };
 
-
+/**
+ * Short peso amount for cards and chart axes, e.g. ₱4.8M, ₱536K, ₱10B.
+ */
+export function formatShortPeso(dblValue)
+{
+  const dblAbs = Math.abs(dblValue);
+  const strSign = dblValue < 0 ? '-' : '';
+  const trim = (dblNumber) => String(Number(dblNumber.toFixed(1)));
+  if (dblAbs >= 1e9) return `${strSign}₱${trim(dblAbs / 1e9)}B`;
+  if (dblAbs >= 1e6) return `${strSign}₱${trim(dblAbs / 1e6)}M`;
+  if (dblAbs >= 1e3) return `${strSign}₱${Math.round(dblAbs / 1e3)}K`;
+  return `${strSign}₱${Math.round(dblAbs)}`;
+}

@@ -13,7 +13,9 @@ export const SAMPLE_INSIGHTS = {
   expenditure: {
     labels: ['FY 21', 'FY 22', 'FY 23', 'FY 24', 'FY 25', 'FY 26', 'FY 27', 'FY 28'],
     todayIndex: 5,
-    values: [2.2, 2.9, 3.4, 4.1, 5.9, 6.4, 7.1, 8.1],
+    values: [2.2, 2.9, 3.4, 4.1, 5.9, 6.4, 7.1, 8.1].map((dblBillions) => dblBillions * 1e9),
+    subtitle: 'FY 2021 – 2028 (₱ Billion)',
+    yTicks: [0, 3e9, 6e9, 10e9],
   },
   alerts: [
     { key: 'rnd',      level: 'danger',  title: 'R&D',      message: 'Projected expenditure is expected to exceed the current allocation by ₱48M.' },

@@ -630,7 +630,10 @@ function OrganisationDashboard()
                 <ProjectedExpenditureChart {...SAMPLE_INSIGHTS.expenditure} />
               </div>
               <div className="col-lg-5">
-                <FinancialAlerts alerts={SAMPLE_INSIGHTS.alerts} />
+                <FinancialAlerts
+                  alerts={SAMPLE_INSIGHTS.alerts}
+                  onView={() => document.getElementById('dashboard-monitoring-performance-heading')?.scrollIntoView({ behavior: 'smooth' })}
+                />
               </div>
             </div>
           </section>

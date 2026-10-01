@@ -299,6 +299,9 @@ function buildVarianceByCategory(arrAppropriations, arrExecutions, intDivisor)
 
   return ['PS', 'MOOE', 'CO', 'TAG'].map((strCode) => ({
     category:          strCode,
+    appropriation:     r2(objApprop[strCode] / intDivisor),
+    allotment:         r2(objAllot[strCode]  / intDivisor),
+    obligation:        r2(objOblig[strCode]  / intDivisor),
     releasedVariance:  r2((objApprop[strCode] - objAllot[strCode]) / intDivisor),
     executionVariance: r2((objAllot[strCode]  - objOblig[strCode]) / intDivisor),
   }));
@@ -452,6 +455,10 @@ export function buildDashboardData(db, objFilters)
         values: arrVarianceRows.map((r) => r.executionVariance),
       },
       performanceRows: buildPerformanceRows(db, objFilters, intDivisor),
+      // Per-category totals for the filtered scope (used by the requester dashboard's alerts and planning insight)
+      categoryRows: arrVarianceRows.map(({ category, appropriation, allotment, obligation }) => ({
+        category, appropriation, allotment, obligation,
+      })),
     },
   };
 }

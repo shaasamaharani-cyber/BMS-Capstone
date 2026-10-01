@@ -14,7 +14,7 @@
 
 import PropTypes from 'prop-types';
 import { Line } from 'react-chartjs-2';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatShortPeso } from '../../utils/formatters';
 import styles from './execution_insights.module.css';
 
 function SectionTitle({ id, title, tag })
@@ -34,16 +34,7 @@ function percentOf(dblPart, dblWhole)
   return dblWhole > 0 ? (dblPart / dblWhole) * 100 : 0;
 }
 
-function formatShortPeso(dblValue)
-{
-  const dblAbs = Math.abs(dblValue);
-  if (dblAbs >= 1e9) return `₱${(dblValue / 1e9).toFixed(1)}B`;
-  if (dblAbs >= 1e6) return `₱${(dblValue / 1e6).toFixed(1)}M`;
-  if (dblAbs >= 1e3) return `₱${Math.round(dblValue / 1e3)}K`;
-  return `₱${dblValue}`;
-}
-
-export function ExecutionAmountCards({ summaryCards })
+export function ExecutionAmountCards({ summaryCards, title = 'Budget Execution Amount', tag = 'ENHANCED' })
 {
   const objByKey = Object.fromEntries((summaryCards || []).map((objCard) => [objCard.key, Number(objCard.value) || 0]));
   const { appropriation = 0, allotment = 0, obligation = 0, disbursement = 0 } = objByKey;
@@ -57,7 +48,7 @@ export function ExecutionAmountCards({ summaryCards })
 
   return (
     <section className={styles.section} aria-labelledby="exec-amount-heading">
-      <SectionTitle id="exec-amount-heading" title="Budget Execution Amount" tag="ENHANCED" />
+      <SectionTitle id="exec-amount-heading" title={title} tag={tag} />
       <div className="row g-3">
         {arrCards.map((objCard) => (
           <div className="col-sm-6 col-xl-3" key={objCard.key}>
@@ -78,7 +69,7 @@ export function ExecutionAmountCards({ summaryCards })
   );
 }
 
-ExecutionAmountCards.propTypes = { summaryCards: PropTypes.array };
+ExecutionAmountCards.propTypes = { summaryCards: PropTypes.array, title: PropTypes.string, tag: PropTypes.string };
 
 export function FinancialOverview({ summaryCards, projectedYearEnd, projectedVariance })
 {
@@ -152,7 +143,7 @@ const todayLinePlugin = {
   },
 };
 
-export function ProjectedExpenditureChart({ labels, values, todayIndex })
+export function ProjectedExpenditureChart({ labels, values, todayIndex, subtitle, yTicks })
 {
   const strBlue = '#14a7e0';
   // Actual stops at today, projected starts at today so the two lines join
@@ -162,7 +153,7 @@ export function ProjectedExpenditureChart({ labels, values, todayIndex })
   const objData = {
     labels,
     datasets: [
-      { label: 'Actual', data: arrActual, borderColor: strBlue, backgroundColor: strBlue, tension: 0.4, pointRadius: 0, borderWidth: 2 },
+      { label: 'Actual', data: arrActual, borderColor: strBlue, backgroundColor: strBlue, tension: 0.4, pointRadius: 0, borderWidth: 2, spanGaps: true },
       { label: 'Projected', data: arrProjected, borderColor: strBlue, backgroundColor: strBlue, borderDash: [6, 4], tension: 0.4, pointRadius: 0, borderWidth: 2 },
     ],
   };
@@ -172,16 +163,16 @@ export function ProjectedExpenditureChart({ labels, values, todayIndex })
     maintainAspectRatio: false,
     plugins: {
       legend: { position: 'bottom', labels: { color: strBlue, usePointStyle: true, boxHeight: 6, font: { size: 11 } } },
-      tooltip: { callbacks: { label: (objCtx) => `${objCtx.dataset.label}: ₱${objCtx.parsed.y}B` } },
+      tooltip: { callbacks: { label: (objCtx) => `${objCtx.dataset.label}: ${formatShortPeso(objCtx.parsed.y)}` } },
       todayLine: { index: todayIndex },
     },
     scales: {
       x: { grid: { display: false }, ticks: { font: { size: 11 } } },
       y: {
         min: 0,
-        max: 10,
-        afterBuildTicks: (objAxis) => { objAxis.ticks = [0, 3, 6, 10].map((intValue) => ({ value: intValue })); },
-        ticks: { callback: (dblValue) => `₱${dblValue}B`, font: { size: 11 } },
+        max: yTicks ? yTicks[yTicks.length - 1] : undefined,
+        afterBuildTicks: yTicks ? (objAxis) => { objAxis.ticks = yTicks.map((dblValue) => ({ value: dblValue })); } : undefined,
+        ticks: { maxTicksLimit: 5, callback: (dblValue) => formatShortPeso(dblValue), font: { size: 11 } },
         grid: { borderDash: [4, 4] },
       },
     },
@@ -190,7 +181,7 @@ export function ProjectedExpenditureChart({ labels, values, todayIndex })
   return (
     <div className={styles.panel}>
       <h3 className={styles.panelTitle}>Actual and Projected Expenditure <span className={styles.tag}>NEW</span></h3>
-      <div className={styles.panelSubtitle}>FY 2021 – 2028 (₱ Billion)</div>
+      {subtitle && <div className={styles.panelSubtitle}>{subtitle}</div>}
       <div className={styles.chart}>
         <Line data={objData} options={objOptions} plugins={[todayLinePlugin]} />
       </div>
@@ -202,6 +193,8 @@ ProjectedExpenditureChart.propTypes = {
   labels: PropTypes.arrayOf(PropTypes.string).isRequired,
   values: PropTypes.arrayOf(PropTypes.number).isRequired,
   todayIndex: PropTypes.number.isRequired,
+  subtitle: PropTypes.string,
+  yTicks: PropTypes.arrayOf(PropTypes.number),
 };
 
 export function FinancialAlerts({ alerts, onView })
@@ -210,6 +203,7 @@ export function FinancialAlerts({ alerts, onView })
     <div className={styles.panel}>
       <h3 className={styles.panelTitle}>Financial Alerts <span className={styles.tag}>NEW</span></h3>
       <div className={styles.alertList}>
+        {alerts.length === 0 && <p className={styles.alertText}>No alerts. Every category is within the expected range.</p>}
         {alerts.map((objAlert) => (
           <div key={objAlert.key} className={`${styles.alert} ${styles[`alert_${objAlert.level}`]}`}>
             <div className={styles.alertHead}>
@@ -217,7 +211,7 @@ export function FinancialAlerts({ alerts, onView })
                 <span className={styles.alertDot} aria-hidden="true" />
                 {objAlert.title}
               </span>
-              <button type="button" className={styles.viewButton} onClick={() => onView?.(objAlert)}>View</button>
+                {onView && <button type="button" className={styles.viewButton} onClick={() => onView(objAlert)}>View</button>}
             </div>
             <p className={styles.alertText}>{objAlert.message}</p>
           </div>
@@ -231,14 +225,17 @@ FinancialAlerts.propTypes = { alerts: PropTypes.array.isRequired, onView: PropTy
 
 export function PlanningInsight({ year, items })
 {
+  const intColumnWidth = Math.max(3, Math.floor(12 / Math.max(1, items.length)));
+
   return (
     <section className={`${styles.panel} ${styles.section}`} aria-labelledby="planning-insight-heading">
       <h3 id="planning-insight-heading" className={styles.panelTitle}>
         {year} Budget Planning Insight <span className={styles.tag}>NEW</span>
       </h3>
+      {items.length === 0 && <p className={styles.panelSubtitle}>No allocation recorded yet to plan from.</p>}
       <div className="row g-4 mt-1">
         {items.map((objItem) => (
-          <div className="col-lg-4" key={objItem.key}>
+          <div className={`col-lg-${intColumnWidth}`} key={objItem.key}>
             <div className={styles.insightTitle}>{objItem.title}</div>
             <div className={styles.insightRow}>
               <span>{year - 1} Allocation</span>
