@@ -22,13 +22,14 @@ import PageHeader from '../../components/layout/page_header';
 import { useAuth } from '../../context/auth_context';
 import { getScopedRequestingUnitId } from '../../utils/requesting_unit_scope';
 import { extractApiRows, getBudgetRequestEditPath } from '../../utils/budget_request_utils';
-import { formatCurrency, formatTimestamp } from '../../utils/formatters';
-import { ExecutionAmountCards, FinancialAlerts, FinancialOverview, PlanningInsight, ProjectedExpenditureChart } from './execution_insights';
-import { buildCategoryAlerts, buildExpenditureProjection, buildPlanningInsight } from './unit_insights';
+import { formatCurrency, formatRate, formatTimestamp, getRateClassName } from '../../utils/formatters';
 import styles from './requester_dashboard.module.css';
 
 const UNIFIED_DRAFT_KEY = 'dost-bms.unified-request.draft';
 const RECENT_REQUEST_COUNT = 5;
+
+// Same colour bands as the existing dashboard (green 90+, amber 75-89, red below 75). DOST has not confirmed its own targets.
+const ATTENTION_BELOW = 90;
 
 const STATUS_STEPS = [
   { key: 'draft', label: 'Draft' },
@@ -37,6 +38,12 @@ const STATUS_STEPS = [
   { key: 'reviewed', label: 'Reviewed' },
   { key: 'consolidated', label: 'Consolidated' },
 ];
+
+const RATE_MEANINGS = {
+  executionRate: { label: 'Committed', help: 'Obligation as a share of allotment' },
+  disbursementRate: { label: 'Paid out of commitments', help: 'Disbursement as a share of obligation' },
+  absorptionRate: { label: 'Paid out of released funds', help: 'Disbursement as a share of allotment' },
+};
 
 function readLocalDraft() {
   try {
@@ -48,22 +55,20 @@ function readLocalDraft() {
   }
 }
 
-// Every fiscal year (not in the future) with spending recorded for this unit, oldest first. The newest one is the
-// year the dashboard reports on; the earlier ones feed the expenditure trend.
+// The newest fiscal year (not in the future) that has spending recorded for this unit
 async function loadUnitExecution(intUnitId) {
   const objBase = await getDashboardData({ requesting_unit_id: intUnitId, period: 'annually' });
   const intThisYear = new Date().getFullYear();
   const arrYears = (objBase.filters?.fiscalYears || [])
     .filter((objYear) => Number(objYear.label) <= intThisYear)
-    .sort((objA, objB) => Number(objA.label) - Number(objB.label));
+    .sort((objA, objB) => Number(objB.label) - Number(objA.label));
 
-  const arrData = await Promise.all(arrYears.map((objYear) => getDashboardData({ requesting_unit_id: intUnitId, fiscal_year_id: objYear.value, period: 'annually' })));
-  const arrHistory = arrYears
-    .map((objYear, intIndex) => ({ yearLabel: objYear.label, objRow: arrData[intIndex].monitoring?.performanceRows?.[0], objMonitoring: arrData[intIndex].monitoring }))
-    .filter((objYear) => objYear.objRow);
-
-  if (arrHistory.length === 0) return null;
-  return { ...arrHistory[arrHistory.length - 1], arrHistory };
+  for (const objYear of arrYears) {
+    const objData = await getDashboardData({ requesting_unit_id: intUnitId, fiscal_year_id: objYear.value, period: 'annually' });
+    const objRow = objData.monitoring?.performanceRows?.[0];
+    if (objRow) return { yearLabel: objYear.label, objRow, objMonitoring: objData.monitoring };
+  }
+  return null;
 }
 
 export default function RequesterDashboard() {
@@ -102,20 +107,11 @@ export default function RequesterDashboard() {
   const arrRecent = [...arrRequests].sort((objA, objB) => new Date(objB.br_updated_at || 0) - new Date(objA.br_updated_at || 0)).slice(0, RECENT_REQUEST_COUNT);
   const countByStatus = (strKey) => arrRequests.filter((objRequest) => String(objRequest.br_status).toLowerCase() === strKey).length;
 
-  const objInsights = useMemo(() => {
-    if (!objExecution) return null;
-    const { objRow, objMonitoring, arrHistory } = objExecution;
-    const objProjection = buildExpenditureProjection(arrHistory);
-    return {
-      arrSummaryCards: ['appropriation', 'allotment', 'obligation', 'disbursement'].map((strKey) => ({ key: strKey, value: objRow[strKey] })),
-      objProjection,
-      dblProjectedVariance: objProjection.projectedNextYear - Number(objRow.appropriation),
-      arrAlerts: buildCategoryAlerts(objMonitoring.categoryRows),
-      arrPlanning: buildPlanningInsight(objMonitoring.categoryRows),
-    };
-  }, [objExecution]);
-
-  const scrollToGaps = () => document.getElementById('requester-gaps-heading')?.scrollIntoView({ behavior: 'smooth' });
+  const arrAttention = objExecution
+    ? Object.entries(RATE_MEANINGS)
+      .map(([strKey, objMeaning]) => ({ strKey, ...objMeaning, numValue: objExecution.objRow[strKey] }))
+      .filter((objRate) => objRate.numValue < ATTENTION_BELOW)
+    : [];
 
   const arrGaps = objExecution
     ? (objExecution.objMonitoring.releasedVariance?.labels || []).map((strLabel, intIndex) => ({
@@ -192,38 +188,43 @@ export default function RequesterDashboard() {
         <div className={styles.linkRow}><Link to="/budget-requests">See all my requests</Link></div>
       </section>
 
-      {!blnLoading && !objExecution && (
-        <section className={`dashboard-panel ${styles.card}`}>
-          <h3 className={`dashboard-section__title ${styles.cardTitle}`}>How {strUnitName} is spending</h3>
-          <p className={styles.muted}>No spending has been recorded for your unit yet.</p>
-        </section>
-      )}
+      <section className={`dashboard-panel ${styles.card}`}>
+        <h3 className={`dashboard-section__title ${styles.cardTitle}`}>How {strUnitName} is spending {objExecution ? `- FY${objExecution.yearLabel}` : ''}</h3>
+        {!blnLoading && !objExecution && <p className={styles.muted}>No spending has been recorded for your unit yet.</p>}
 
-      {objInsights && (
-        <>
-          <ExecutionAmountCards summaryCards={objInsights.arrSummaryCards} title={`How ${strUnitName} is spending - FY${objExecution.yearLabel}`} />
-
-          <FinancialOverview
-            summaryCards={objInsights.arrSummaryCards}
-            projectedYearEnd={objInsights.objProjection.projectedNextYear}
-            projectedVariance={objInsights.dblProjectedVariance}
-          />
-
-          <section className={styles.insightRow}>
-            <div className="row g-3">
-              <div className="col-lg-7">
-                <ProjectedExpenditureChart {...objInsights.objProjection} />
-              </div>
-              <div className="col-lg-5">
-                <FinancialAlerts alerts={objInsights.arrAlerts} onView={scrollToGaps} />
-              </div>
+        {objExecution && (
+          <>
+            <div className={styles.amounts}>
+              {[['Appropriation', 'appropriation'], ['Allotment (released)', 'allotment'], ['Obligation (committed)', 'obligation'], ['Disbursement (paid)', 'disbursement']].map(([strLabel, strKey]) => (
+                <div key={strKey} className={styles.amount}>
+                  <span className={styles.amountLabel}>{strLabel}</span>
+                  <span className={styles.amountValue}>{formatCurrency(objExecution.objRow[strKey])}</span>
+                </div>
+              ))}
             </div>
-          </section>
 
-          <PlanningInsight year={Number(objExecution.yearLabel) + 1} items={objInsights.arrPlanning} />
+            <div className={styles.rates}>
+              {Object.entries(RATE_MEANINGS).map(([strKey, objMeaning]) => (
+                <div key={strKey} className={styles.rate}>
+                  <span className={`${styles.rateValue} ${getRateClassName(objExecution.objRow[strKey])}`}>{formatRate(objExecution.objRow[strKey])}</span>
+                  <span className={styles.rateLabel}>{objMeaning.label}</span>
+                  <span className={styles.muted}>{objMeaning.help}</span>
+                </div>
+              ))}
+            </div>
 
-          <section className={`dashboard-panel ${styles.card}`}>
-            <h3 id="requester-gaps-heading" className={`dashboard-section__title ${styles.cardTitle}`}>Where the gaps are, by category</h3>
+            <h4 className={styles.subTitle}>What needs attention</h4>
+            {arrAttention.length === 0
+              ? <p className={styles.muted}>All three rates are at {ATTENTION_BELOW}% or above.</p>
+              : (
+                <ul className={styles.attentionList}>
+                  {arrAttention.map((objRate) => (
+                    <li key={objRate.strKey}><span className={getRateClassName(objRate.numValue)}>{formatRate(objRate.numValue)}</span> - {objRate.label.toLowerCase()} is below {ATTENTION_BELOW}%. {objRate.help}.</li>
+                  ))}
+                </ul>
+              )}
+
+            <h4 className={styles.subTitle}>Where the gaps are, by category</h4>
             <table className={styles.table}>
               <thead><tr><th>Category</th><th className={styles.numeric}>Not yet released</th><th className={styles.numeric}>Released but not committed</th></tr></thead>
               <tbody>
@@ -233,12 +234,12 @@ export default function RequesterDashboard() {
               </tbody>
             </table>
             <p className={styles.footnote}>
-              Figures are demonstration data for FY{objExecution.yearLabel}. Projections follow a straight-line trend of the amounts paid, and the alert
-              bands (90% and 75%) follow the existing dashboard; neither is a DOST target yet. Amounts are in PHP.
+              Figures are demonstration data for FY{objExecution.yearLabel}. Colour bands follow the existing dashboard and are not yet DOST targets.
+              Amounts are in PHP.
             </p>
-          </section>
-        </>
-      )}
+          </>
+        )}
+      </section>
     </div>
   );
 }
