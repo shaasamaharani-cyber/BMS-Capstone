@@ -26,13 +26,21 @@ import {
   Title,
   Tooltip,
 } from 'chart.js';
-import { Badge, Dropdown, MetricCard, Pagination, Table, Tabs, Typography } from '../../components/ui';
+import { Badge, Dropdown, Pagination, Table, Tabs, Typography } from '../../components/ui';
 import PageHeader from '../../components/layout/page_header';
 import DashboardFilters from '../../components/shared/dashboard_filters';
 import { getDashboardData } from '../../api';
 import { useAuth } from '../../context/auth_context';
 import { isRequesterRole } from '../../utils/requesting_unit_scope';
 import RequesterDashboard from './requester_dashboard';
+import {
+  ExecutionAmountCards,
+  FinancialAlerts,
+  FinancialOverview,
+  PlanningInsight,
+  ProjectedExpenditureChart,
+} from './execution_insights';
+import { SAMPLE_INSIGHTS } from './execution_insights_sample';
 import { formatCurrency, formatRate, getRateClassName } from '../../utils/formatters';
 import '../../styles/dashboard.css';
 import '../../styles/tokens.css';
@@ -608,31 +616,26 @@ function OrganisationDashboard()
 
       {strActiveTab === 'monitoring' && (
         <div className="dashboard-tab-section">
-          <section className="dashboard-section" aria-labelledby="dashboard-monitoring-amounts-heading">
-            <div className="row">
-              <div className="col-12 mb-3">
-                <Typography
-                  id="dashboard-monitoring-amounts-heading"
-                  variant="h4"
-                  className="dashboard-section__title"
-                >
-                  Budget Execution Amount
-                </Typography>
+          <ExecutionAmountCards summaryCards={objDashboardData?.monitoring?.summaryCards} />
+
+          <FinancialOverview
+            summaryCards={objDashboardData?.monitoring?.summaryCards}
+            projectedYearEnd={SAMPLE_INSIGHTS.projectedYearEnd}
+            projectedVariance={SAMPLE_INSIGHTS.projectedVariance}
+          />
+
+          <section className="dashboard-section">
+            <div className="row g-3">
+              <div className="col-lg-7">
+                <ProjectedExpenditureChart {...SAMPLE_INSIGHTS.expenditure} />
+              </div>
+              <div className="col-lg-5">
+                <FinancialAlerts alerts={SAMPLE_INSIGHTS.alerts} />
               </div>
             </div>
-            <div className="row g-3">
-              {(objDashboardData?.monitoring?.summaryCards || []).map((objCard) => (
-                <div className="col-sm-6 col-xl-3" key={objCard.key}>
-                  <MetricCard
-                    label={objCard.label}
-                    value={formatCurrency(objCard.value)}
-                    subtitle="Filtered Result"
-                    accentColor={PASTEL_TREND_COLORS[objCard.key] || '#6c757d'}
-                  />
-                </div>
-              ))}
-            </div>
           </section>
+
+          <PlanningInsight year={SAMPLE_INSIGHTS.planningYear} items={SAMPLE_INSIGHTS.planning} />
 
           <section className="dashboard-section" aria-labelledby="dashboard-monitoring-trend-heading">
             <div className="row">

@@ -1,0 +1,230 @@
+/* Enhanced Budget Execution Monitoring – matches the Figma "Enhanced Dashboard" frame */
+
+.section
+{
+	margin-bottom: 28px;
+}
+
+.sectionTitle
+{
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 16px;
+	font-weight: 600;
+	color: var(--ink);
+	margin: 0 0 12px;
+}
+
+.tag
+{
+	display: inline-block;
+	background: #14a7e0;
+	color: #fff;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	padding: 2px 8px;
+	border-radius: 3px;
+	vertical-align: middle;
+}
+
+/* ---- Cards ---- */
+.card
+{
+	height: 100%;
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-left-width: 3px;
+	border-radius: 6px;
+	padding: 18px 18px 16px;
+}
+
+.card_blue  { border-color: #9fdcf4; border-left-color: #14a7e0; }
+.card_dark  { border-color: #b8bcc4; border-left-color: #3a3f47; }
+.card_green { border-color: #7fcf9a; border-left-color: #1f9d55; }
+.card_red   { border-color: #f3b4b4; border-left-color: #e05252; }
+
+.cardHead
+{
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.cardLabel
+{
+	font-size: 12px;
+	font-weight: 500;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	color: var(--ink-3);
+}
+
+.ratePill
+{
+	font-size: 11px;
+	font-weight: 600;
+	color: #1f7a45;
+	background: #e7f6ec;
+	padding: 2px 6px;
+	border-radius: 4px;
+}
+
+.cardAmount
+{
+	font-size: 18px;
+	font-weight: 700;
+	color: var(--ink);
+	margin: 8px 0 4px;
+}
+
+.bigValue
+{
+	font-size: 28px;
+	font-weight: 700;
+	color: var(--ink);
+	margin: 6px 0 4px;
+}
+
+.cardNote       { font-size: 12px; color: var(--ink-3); }
+.cardNoteOk     { font-size: 12px; color: #1f9d55; }
+.cardNoteInfo   { font-size: 12px; color: #14a7e0; }
+.cardNoteDanger { font-size: 12px; color: #d33; }
+.textDanger     { color: #d33; }
+
+/* ---- Panels ---- */
+.panel
+{
+	height: 100%;
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	padding: 20px;
+}
+
+.panelTitle
+{
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--ink);
+	margin: 0 0 4px;
+}
+
+.panelSubtitle
+{
+	font-size: 12px;
+	color: var(--ink-3);
+	margin-bottom: 8px;
+}
+
+.chart
+{
+	position: relative;
+	height: 220px;
+}
+
+/* ---- Alerts ---- */
+.alertList
+{
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	margin-top: 12px;
+}
+
+.alert
+{
+	border: 1px solid;
+	border-radius: 6px;
+	padding: 12px 12px 10px;
+}
+
+.alert_danger  { background: #fdecec; border-color: #f6c6c6; --alert-color: #d33; }
+.alert_warning { background: #fdf6e3; border-color: #f3e2b0; --alert-color: #e8890c; }
+.alert_notice  { background: #fdf9e6; border-color: #f2e7a8; --alert-color: #f2c200; }
+
+.alertHead
+{
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.alertTitle
+{
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-weight: 600;
+	font-size: 14px;
+	color: var(--alert-color);
+}
+
+.alert_notice .alertTitle { color: #c99a00; }
+
+.alertDot
+{
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+	background: var(--alert-color);
+}
+
+.alertText
+{
+	font-size: 12px;
+	color: var(--ink-2);
+	margin: 8px 0 0;
+}
+
+.viewButton
+{
+	font-size: 12px;
+	color: var(--alert-color);
+	background: #fff;
+	border: 1px solid var(--line-2);
+	border-radius: 4px;
+	padding: 2px 10px;
+	cursor: pointer;
+}
+
+/* ---- Planning insight ---- */
+.insightTitle
+{
+	font-weight: 600;
+	font-size: 14px;
+	color: var(--ink);
+	margin-bottom: 12px;
+}
+
+.insightRow
+{
+	display: flex;
+	justify-content: space-between;
+	font-size: 13px;
+	color: var(--ink-3);
+	padding: 8px 0;
+	border-bottom: 1px solid var(--line);
+}
+
+.insightValue  { color: var(--ink-2); }
+.tone_danger   { color: #d33;    font-weight: 600; }
+.tone_ok       { color: #1f9d55; font-weight: 600; }
+.tone_warning  { color: #e8890c; font-weight: 600; }
+.tone_info     { color: #14a7e0; font-weight: 600; }
+
+.insightNote
+{
+	margin-top: 14px;
+	font-size: 12px;
+	border-radius: 6px;
+	padding: 10px 12px;
+}
+
+.note_info    { background: #e8f6fd; color: #0d7fb0; }
+.note_ok      { background: #e9f7ee; color: #1b7a43; }
+.note_warning { background: #fdf6e3; color: #a86400; }
