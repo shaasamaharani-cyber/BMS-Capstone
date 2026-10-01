@@ -9,9 +9,9 @@ const ROLE_PERMISSIONS = {
   executive: ['route:dashboard', 'route:budget-consolidation', 'route:budget-tracking', 'route:reports', 'route:forms'],
 };
 
+// Only requesters create and manage budget requests, so full access leaves route:budget-requests out
 const ALL_PERMISSIONS = [
   'route:dashboard',
-  'route:budget-requests',
   'route:budget-review',
   'route:budget-consolidation',
   'route:budget-tracking',

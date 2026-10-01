@@ -63,8 +63,9 @@ export default function AppRouter() {
           <Route path="budget-requests/:id/edit" element={
             <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS}><EditBudgetRequest /></PermissionRoute>
           } />
+          {/* Read-only view stays open to reviewers: the consolidation form links to the source request */}
           <Route path="budget-requests/:id" element={
-            <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS}><BudgetRequestDetailPage /></PermissionRoute>
+            <PermissionRoute permission={[PERMISSIONS.BUDGET_REQUESTS, PERMISSIONS.BUDGET_REVIEW, PERMISSIONS.BUDGET_CONSOLIDATION]}><BudgetRequestDetailPage /></PermissionRoute>
           } />
 
           <Route path="budget-review" element={
