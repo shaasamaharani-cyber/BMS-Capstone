@@ -37,6 +37,7 @@ import { PERMISSIONS, getPermissionsForUser } from '../../utils/permissions';
 import RequesterDashboard from './requester_dashboard';
 import CentralOfficeWork, { ApprovalsWaiting } from './central_office_work';
 import TechAdminDashboard, { AdminSetupCards } from './admin_cards';
+import DrillDown from './drill_down';
 import {
   ExecutionAmountCards,
   FinancialAlerts,
@@ -732,6 +733,10 @@ function OrganisationDashboard({ strCentralView, blnMainAdmin })
               onChange={setIntPerformancePage}
             /> */}
             </div>
+          </section>
+
+          <section className="dashboard-section">
+            <DrillDown strFiscalYearId={String(objAppliedFilters.fiscal_year_id || '')} arrCategories={objFilterOptions.categories} />
           </section>
         </div>
       )}
