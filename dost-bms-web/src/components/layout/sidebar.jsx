@@ -93,7 +93,7 @@ export default function Sidebar() {
         aria-controls="app-sidebar-nav"
         title={strToggleLabel}
       >
-        <img src="../../../public/assets/dost-logo.png" alt="DOST logo" className={styles.logoImage} />
+        <img src="/assets/dost-logo.png" alt="DOST logo" className={styles.logoImage} />
         <span className={styles.logoText}>Budget Management System</span>
       </button>
 
