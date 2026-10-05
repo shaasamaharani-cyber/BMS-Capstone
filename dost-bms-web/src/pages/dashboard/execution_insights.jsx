@@ -15,6 +15,7 @@
 import PropTypes from 'prop-types';
 import { Line } from 'react-chartjs-2';
 import { formatCurrency, formatShortPeso } from '../../utils/formatters';
+import { ProposalTag } from './proposal_sections';
 import styles from './execution_insights.module.css';
 
 function SectionTitle({ id, title, tag })
@@ -22,19 +23,19 @@ function SectionTitle({ id, title, tag })
   return (
     <h2 id={id} className={styles.sectionTitle}>
       {title}
-      {tag && <span className={styles.tag}>{tag}</span>}
+      {tag}
     </h2>
   );
 }
 
-SectionTitle.propTypes = { id: PropTypes.string, title: PropTypes.string.isRequired, tag: PropTypes.string };
+SectionTitle.propTypes = { id: PropTypes.string, title: PropTypes.string.isRequired, tag: PropTypes.node };
 
 function percentOf(dblPart, dblWhole)
 {
   return dblWhole > 0 ? (dblPart / dblWhole) * 100 : 0;
 }
 
-export function ExecutionAmountCards({ summaryCards, title = 'Budget Execution Amount', tag = 'ENHANCED' })
+export function ExecutionAmountCards({ summaryCards, title = 'Budget Execution Amount', tag = <ProposalTag section="overview" /> })
 {
   const objByKey = Object.fromEntries((summaryCards || []).map((objCard) => [objCard.key, Number(objCard.value) || 0]));
   const { appropriation = 0, allotment = 0, obligation = 0, disbursement = 0 } = objByKey;
@@ -69,7 +70,7 @@ export function ExecutionAmountCards({ summaryCards, title = 'Budget Execution A
   );
 }
 
-ExecutionAmountCards.propTypes = { summaryCards: PropTypes.array, title: PropTypes.string, tag: PropTypes.string };
+ExecutionAmountCards.propTypes = { summaryCards: PropTypes.array, title: PropTypes.string, tag: PropTypes.node };
 
 export function FinancialOverview({ summaryCards, projectedYearEnd, projectedVariance })
 {
@@ -79,7 +80,7 @@ export function FinancialOverview({ summaryCards, projectedYearEnd, projectedVar
 
   return (
     <section className={styles.section} aria-labelledby="fin-overview-heading">
-      <SectionTitle id="fin-overview-heading" title="Financial Overview" tag="NEW" />
+      <SectionTitle id="fin-overview-heading" title="Financial Overview" tag={<ProposalTag section="overview" />} />
       <div className="row g-3">
         <div className="col-md-4">
           <div className={`${styles.card} ${styles.card_green}`}>
@@ -180,7 +181,7 @@ export function ProjectedExpenditureChart({ labels, values, todayIndex, subtitle
 
   return (
     <div className={styles.panel}>
-      <h3 className={styles.panelTitle}>Actual and Projected Expenditure <span className={styles.tag}>NEW</span></h3>
+      <h3 className={styles.panelTitle}>Actual and Projected Expenditure <ProposalTag section="forecast" /></h3>
       {subtitle && <div className={styles.panelSubtitle}>{subtitle}</div>}
       <div className={styles.chart}>
         <Line data={objData} options={objOptions} plugins={[todayLinePlugin]} />
@@ -201,7 +202,7 @@ export function FinancialAlerts({ alerts, onView })
 {
   return (
     <div className={styles.panel}>
-      <h3 className={styles.panelTitle}>Financial Alerts <span className={styles.tag}>NEW</span></h3>
+      <h3 className={styles.panelTitle}>Financial Alerts <ProposalTag section="alerts" /></h3>
       <div className={styles.alertList}>
         {alerts.length === 0 && <p className={styles.alertText}>No alerts. Every category is within the expected range.</p>}
         {alerts.map((objAlert) => (
@@ -230,7 +231,7 @@ export function PlanningInsight({ year, items })
   return (
     <section className={`${styles.panel} ${styles.section}`} aria-labelledby="planning-insight-heading">
       <h3 id="planning-insight-heading" className={styles.panelTitle}>
-        {year} Budget Planning Insight <span className={styles.tag}>NEW</span>
+        {year} Budget Planning Insight <ProposalTag section="forecast" />
       </h3>
       {items.length === 0 && <p className={styles.panelSubtitle}>No allocation recorded yet to plan from.</p>}
       <div className="row g-4 mt-1">

@@ -41,6 +41,7 @@ import {
   ProjectedExpenditureChart,
 } from './execution_insights';
 import { SAMPLE_INSIGHTS } from './execution_insights_sample';
+import { FiguresAsOf, SampleDataNote } from './proposal_sections';
 import { formatCurrency, formatRate, getRateClassName } from '../../utils/formatters';
 import '../../styles/dashboard.css';
 import '../../styles/tokens.css';
@@ -309,6 +310,7 @@ function OrganisationDashboard()
   const [strPerformanceSortKey, setStrPerformanceSortKey] = useState('requestingUnit');
   const [strPerformanceSortDir, setStrPerformanceSortDir] = useState('asc');
   const [intPerformancePage, setIntPerformancePage] = useState(1);
+  const strFiscalYearLabel = objFilterOptions.fiscalYears.find((objYear) => String(objYear.value) === String(objAppliedFilters.fiscal_year_id))?.label;
 
   const objChartColors = useMemo(() => ({
     ps:             PASTEL_TREND_COLORS.ps,
@@ -616,7 +618,10 @@ function OrganisationDashboard()
 
       {strActiveTab === 'monitoring' && (
         <div className="dashboard-tab-section">
+          <FiguresAsOf asOf={strFiscalYearLabel ? `fiscal year ${strFiscalYearLabel}` : 'all fiscal years'} source="BMS budget execution records (mock database in Phase 1)" />
           <ExecutionAmountCards summaryCards={objDashboardData?.monitoring?.summaryCards} />
+
+          <SampleDataNote>Projected year-end, projected variance, the expenditure projection, the alerts and the planning insight below use fixed sample figures until the forecasting method is agreed with DOST.</SampleDataNote>
 
           <FinancialOverview
             summaryCards={objDashboardData?.monitoring?.summaryCards}

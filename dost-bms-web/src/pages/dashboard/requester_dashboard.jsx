@@ -23,6 +23,7 @@ import { useAuth } from '../../context/auth_context';
 import { getScopedRequestingUnitId } from '../../utils/requesting_unit_scope';
 import { extractApiRows, getBudgetRequestEditPath } from '../../utils/budget_request_utils';
 import { formatCurrency, formatRate, formatTimestamp, getRateClassName } from '../../utils/formatters';
+import { FiguresAsOf, ProposalTag } from './proposal_sections';
 import styles from './requester_dashboard.module.css';
 
 const UNIFIED_DRAFT_KEY = 'dost-bms.unified-request.draft';
@@ -189,7 +190,8 @@ export default function RequesterDashboard() {
       </section>
 
       <section className={`dashboard-panel ${styles.card}`}>
-        <h3 className={`dashboard-section__title ${styles.cardTitle}`}>How {strUnitName} is spending {objExecution ? `- FY${objExecution.yearLabel}` : ''}</h3>
+        <h3 className={`dashboard-section__title ${styles.cardTitle}`}>How {strUnitName} is spending {objExecution ? `- FY${objExecution.yearLabel}` : ''} <ProposalTag section="overview" /></h3>
+        {objExecution && <FiguresAsOf asOf={`FY${objExecution.yearLabel}`} source="BMS budget execution records for your unit (mock database in Phase 1)" />}
         {!blnLoading && !objExecution && <p className={styles.muted}>No spending has been recorded for your unit yet.</p>}
 
         {objExecution && (
