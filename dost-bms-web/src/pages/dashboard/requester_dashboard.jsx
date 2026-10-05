@@ -22,6 +22,7 @@ import PageHeader from '../../components/layout/page_header';
 import { useAuth } from '../../context/auth_context';
 import { getScopedRequestingUnitId } from '../../utils/requesting_unit_scope';
 import { extractApiRows, getBudgetRequestEditPath } from '../../utils/budget_request_utils';
+import { downloadCsv } from '../../utils/csv';
 import { formatCurrency, formatRate, formatTimestamp, getRateClassName, toTitleCase } from '../../utils/formatters';
 import { FiguresAsOf, ProposalTag } from './proposal_sections';
 import { ATTENTION_BELOW, DUE_SOON_DAYS, daysUntil, formatDay, loadRecentActivity, newestReportFirst, sortByUpdated } from './dashboard_helpers';
@@ -331,6 +332,11 @@ export default function RequesterDashboard() {
           </table>
         )}
         <p className={styles.footnote}>History only. Projections and next-cycle suggestions are prepared by Central Office.</p>
+        {arrHistory.length > 0 && (
+          <div className={styles.linkRow}>
+            <Button size="sm" variant="outline" onClick={() => downloadCsv(`${strUnitName}-spending-by-year.csv`, ['Fiscal year', 'Appropriation', 'Allotment', 'Obligation', 'Disbursement', 'Committed %', 'Paid of commitments %', 'Absorption %'], arrHistory.map((objYear) => [objYear.yearLabel, objYear.objRow.appropriation, objYear.objRow.allotment, objYear.objRow.obligation, objYear.objRow.disbursement, objYear.objRow.executionRate, objYear.objRow.disbursementRate, objYear.objRow.absorptionRate]))}>Download my unit summary (CSV)</Button>
+          </div>
+        )}
       </section>
 
       <section className={`dashboard-panel ${styles.card}`}>

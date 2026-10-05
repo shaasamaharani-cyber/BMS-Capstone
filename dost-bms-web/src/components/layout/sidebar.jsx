@@ -28,7 +28,7 @@ const ALL_NAV_ITEMS = [
   { path: '/budget-review',      label: 'Budget Review',       icon: 'check-square',permission: PERMISSIONS.BUDGET_REVIEW },
   { path: '/budget-consolidation', label: 'Budget Consolidation',  icon: 'layers',      permission: PERMISSIONS.BUDGET_CONSOLIDATION },
   // { path: '/budget-tracking',    label: 'Budget Tracking',     icon: 'bar-chart-2', permission: PERMISSIONS.BUDGET_TRACKING },
-  // { path: '/reports',            label: 'Reports',             icon: 'clipboard',   permission: PERMISSIONS.REPORTS },
+  { path: '/reports',            label: 'Reports',             icon: 'clipboard',   permission: PERMISSIONS.REPORTS },
   { path: '/settings',           label: 'Settings',            icon: 'settings',    permission: PERMISSIONS.SETTINGS },
 ];
 
