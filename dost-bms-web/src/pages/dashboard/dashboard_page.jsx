@@ -34,7 +34,7 @@ import { getDashboardData } from '../../api';
 import { useAuth } from '../../context/auth_context';
 import { isRequesterRole } from '../../utils/requesting_unit_scope';
 import RequesterDashboard from './requester_dashboard';
-import BudgetOfficerWork from './budget_officer_work';
+import CentralOfficeWork, { ApprovalsWaiting } from './central_office_work';
 import {
   ExecutionAmountCards,
   FinancialAlerts,
@@ -65,6 +65,8 @@ const DASHBOARD_TABS = [
 ];
 
 const PERFORMANCE_PAGE_SIZE = 10;
+
+const CENTRAL_VIEWS = { reviewer: 'officer', executive: 'director' };
 
 const PASTEL_TREND_COLORS = {
   appropriation: '#AFCBFF',
@@ -300,9 +302,10 @@ function normalizeDashboardPayload(objRaw)
   };
 }
 
-function OrganisationDashboard({ blnBudgetOfficer })
+function OrganisationDashboard({ strCentralView })
 {
-  const [strActiveTab,       setStrActiveTab]       = useState('planning');
+  // Directors open on Budget Execution Monitoring, where the Financial Overview is (their top section in the proposal)
+  const [strActiveTab,       setStrActiveTab]       = useState(strCentralView === 'director' ? 'monitoring' : 'planning');
   const [objDraftFilters,    setObjDraftFilters]    = useState(DEFAULT_FILTERS);
   const [objAppliedFilters,  setObjAppliedFilters]  = useState(DEFAULT_FILTERS);
   const [objDashboardData,   setObjDashboardData]   = useState(null);
@@ -517,7 +520,8 @@ function OrganisationDashboard({ blnBudgetOfficer })
     <div className="dashboard-page">
       <PageHeader title="Financial Dashboard" />
 
-      {blnBudgetOfficer && <BudgetOfficerWork />}
+      {strCentralView === 'officer' && <CentralOfficeWork strView="officer" />}
+      {strCentralView === 'director' && <ApprovalsWaiting />}
 
       <Tabs
         tabs={DASHBOARD_TABS}
@@ -725,6 +729,8 @@ function OrganisationDashboard({ blnBudgetOfficer })
           </section>
         </div>
       )}
+
+      {strCentralView === 'director' && <div className="mt-4"><CentralOfficeWork strView="director" /></div>}
     </div>
   );
 }
@@ -735,10 +741,16 @@ export default function DashboardPage()
   const { user } = useAuth();
 
   if (isRequesterRole(user)) return <RequesterDashboard />;
-  // The Central Office budget officer (technical staff) also gets a My work block; directors and admins come in later slices
-  return <OrganisationDashboard blnBudgetOfficer={String(user?.role?.role_group || '').toLowerCase() === 'reviewer'} />;
+  // Budget officer (technical staff) and directors get their own cards; admins keep this view until slice 5
+  const strCentralView = CENTRAL_VIEWS[String(user?.role?.role_group || '').toLowerCase()] || null;
+  // Keyed so the starting tab is set again if the role arrives after the first render
+  return <OrganisationDashboard key={strCentralView || 'none'} strCentralView={strCentralView} />;
 }
 
 OrganisationDashboard.propTypes = {
-  blnBudgetOfficer: PropTypes.bool.isRequired,
+  strCentralView: PropTypes.oneOf(['officer', 'director']),
+};
+
+OrganisationDashboard.defaultProps = {
+  strCentralView: null,
 };

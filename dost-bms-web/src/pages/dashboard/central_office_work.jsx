@@ -3,8 +3,9 @@
  * Module Name: Dashboard Module
  *
  * Purpose of this file:
- * "My work" block for the Central Office budget officer, shown above the dashboard tabs:
- * spending monitoring across units, the review queue, alerts, deadlines and stages, recent activity.
+ * Central Office dashboard cards. Budget officer: a "My work" block above the dashboard tabs
+ * (spending monitoring across units, review queue, alerts, deadlines and stages, recent activity).
+ * Directors: "Approvals waiting for me" above the tabs, the other cards (no review queue) below them.
  *
  * Author(s): QUT Group T214
  *
@@ -13,11 +14,12 @@
  * All rights reserved.
  */
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
+import PropTypes from 'prop-types';
 import { Link } from 'react-router-dom';
 import { getBudgetRequests, getDashboardData, getSpendingReports, getUnifiedBudgets } from '../../api';
 import { extractApiRows } from '../../utils/budget_request_utils';
-import { formatRate, formatTimestamp, getRateClassName, toTitleCase } from '../../utils/formatters';
+import { formatCurrency, formatRate, formatTimestamp, getRateClassName, toTitleCase } from '../../utils/formatters';
 import { DUE_SOON_DAYS, daysUntil, formatDay, loadRecentActivity, newestReportFirst, sortByUpdated } from './dashboard_helpers';
 import { ProposalTag } from './proposal_sections';
 import styles from './requester_dashboard.module.css';
@@ -26,7 +28,13 @@ const RECENT_ACTIVITY_COUNT = 10;
 // Same colour band as the rest of the dashboard (amber/red below 90%). DOST has not confirmed its own targets.
 const ATTENTION_BELOW = 90;
 
-export default function BudgetOfficerWork() {
+// Card order per role, from the dashboard proposal's visibility table (review queue is the budget officer's own)
+const CARD_ORDER = {
+  officer: ['monitoring', 'queue', 'alerts', 'calendar', 'activity'],
+  director: ['alerts', 'monitoring', 'calendar', 'activity'],
+};
+
+export default function CentralOfficeWork({ strView }) {
   const [arrReports, setArrReports] = useState([]);
   const [arrQueue, setArrQueue] = useState([]);
   const [arrUnitRows, setArrUnitRows] = useState([]);
@@ -93,10 +101,8 @@ export default function BudgetOfficerWork() {
     })),
   ];
 
-  return (
-    <div className={`dashboard-page ${styles.page}`}>
-      {blnFailed && <div className={styles.errorBanner}>Cannot perform transaction. Error encountered.</div>}
-
+  const objCards = {
+    monitoring: (
       <section className={`dashboard-panel ${styles.card}`}>
         <h3 className={`dashboard-section__title ${styles.cardTitle}`}>Spending Monitoring - all units <ProposalTag section="monitoring" /></h3>
         {blnLoading && <p className={styles.muted}>Loading...</p>}
@@ -116,7 +122,8 @@ export default function BudgetOfficerWork() {
           </>
         )}
       </section>
-
+    ),
+    queue: (
       <section className={`dashboard-panel ${styles.card}`}>
         <h3 className={`dashboard-section__title ${styles.cardTitle}`}>Review queue</h3>
         <table className={styles.table}>
@@ -135,7 +142,8 @@ export default function BudgetOfficerWork() {
         </table>
         <div className={styles.linkRow}><Link to="/budget-review">Open Budget Review</Link></div>
       </section>
-
+    ),
+    alerts: (
       <section className={`dashboard-panel ${styles.card}`}>
         <h3 className={`dashboard-section__title ${styles.cardTitle}`}>Alerts <ProposalTag section="alerts" /></h3>
         {!blnLoading && arrAlerts.length === 0 && <p className={styles.muted}>No alerts right now.</p>}
@@ -148,7 +156,8 @@ export default function BudgetOfficerWork() {
           Committed rates are for FY{strYearLabel}, the year of the current spending report, and use the existing dashboard&apos;s {ATTENTION_BELOW}% colour band. DOST has not yet set its own thresholds.
         </p>
       </section>
-
+    ),
+    calendar: (
       <section className={`dashboard-panel ${styles.card}`}>
         <h3 className={`dashboard-section__title ${styles.cardTitle}`}>Deadlines and stages <ProposalTag section="calendar" /></h3>
         {objPeriod && (
@@ -173,7 +182,8 @@ export default function BudgetOfficerWork() {
           </tbody>
         </table>
       </section>
-
+    ),
+    activity: (
       <section className={`dashboard-panel ${styles.card}`}>
         <h3 className={`dashboard-section__title ${styles.cardTitle}`}>Activity History <ProposalTag section="activity" /></h3>
         {!blnLoading && arrActivity.length === 0 && <p className={styles.muted}>No actions have been recorded on budget requests yet.</p>}
@@ -192,6 +202,59 @@ export default function BudgetOfficerWork() {
             </tbody>
           </table>
         )}
+      </section>
+    ),
+  };
+
+  return (
+    <div className={`dashboard-page ${styles.page}`}>
+      {blnFailed && <div className={styles.errorBanner}>Cannot perform transaction. Error encountered.</div>}
+      {CARD_ORDER[strView].map((strKey) => <Fragment key={strKey}>{objCards[strKey]}</Fragment>)}
+    </div>
+  );
+}
+
+CentralOfficeWork.propTypes = {
+  strView: PropTypes.oneOf(['officer', 'director']).isRequired,
+};
+
+// Directors approve or reject consolidated budgets the budget officer has sent as Pending (as-is steps 8-11)
+export function ApprovalsWaiting() {
+  const [arrPending, setArrPending] = useState([]);
+  const [blnLoading, setBlnLoading] = useState(true);
+  const [blnFailed, setBlnFailed] = useState(false);
+
+  useEffect(() => {
+    let blnMounted = true;
+    getUnifiedBudgets({ per_page: 100 })
+      .then((objBudgets) => {
+        if (blnMounted) setArrPending(extractApiRows(objBudgets).filter((objBudget) => String(objBudget.status).toUpperCase() === 'PENDING'));
+      })
+      .catch(() => { if (blnMounted) setBlnFailed(true); })
+      .finally(() => { if (blnMounted) setBlnLoading(false); });
+    return () => { blnMounted = false; };
+  }, []);
+
+  return (
+    <div className={`dashboard-page ${styles.page}`}>
+      <section className={`dashboard-panel ${styles.card}`}>
+        <h3 className={`dashboard-section__title ${styles.cardTitle}`}>Approvals waiting for me</h3>
+        {blnFailed && <div className={styles.errorBanner}>Cannot perform transaction. Error encountered.</div>}
+        <table className={styles.table}>
+          <thead><tr><th>Consolidated budget</th><th>Fiscal year</th><th className={styles.numeric}>Total</th><th>Sent on</th></tr></thead>
+          <tbody>
+            {arrPending.map((objBudget) => (
+              <tr key={objBudget.id}>
+                <td><Link to={`/budget-consolidation/${objBudget.id}`}>{objBudget.title}</Link><span className={styles.muted}>{objBudget.code}</span></td>
+                <td>{objBudget.fiscalYear}</td>
+                <td className={styles.numeric}>{formatCurrency(objBudget.totals?.grandTotal || 0)}</td>
+                <td>{formatTimestamp(objBudget.lastUpdated)}</td>
+              </tr>
+            ))}
+            {!blnLoading && arrPending.length === 0 && <tr><td colSpan={4} className={styles.muted}>Nothing is waiting for your approval.</td></tr>}
+          </tbody>
+        </table>
+        <p className={styles.footnote}>Open a budget to approve it for the external stages or return it to the Budget Division.</p>
       </section>
     </div>
   );
