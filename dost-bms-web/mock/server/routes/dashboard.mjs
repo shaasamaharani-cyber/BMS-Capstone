@@ -1,3 +1,4 @@
+import { permissionsForUser } from './auth.mjs';
 import { buildDashboardData } from '../services/dashboard.mjs';
 import { resolveRequestActor } from '../services/requestActor.mjs';
 import { isRequesterUser, requestingUnitIdForUser } from '../services/users.mjs';
@@ -24,6 +25,11 @@ export async function handleDashboard(ctx)
 
   // A requester only ever sees their own unit, whatever filter the browser sends
   const objActor = resolveRequestActor(db, req);
+  // Least privilege: an administrator without full access (technical administrator) sees no amounts
+  if (String(objActor?.role?.role_group || '').toLowerCase() === 'admin' && !permissionsForUser(objActor).includes('route:budget-review')) {
+    json(res, 403, { message: 'Unauthorized. Insufficient permissions.' });
+    return true;
+  }
   const intActorUnitId = isRequesterUser(objActor) ? requestingUnitIdForUser(objActor) : null;
   if (intActorUnitId != null) objFilters.requestingUnitId = String(intActorUnitId);
 

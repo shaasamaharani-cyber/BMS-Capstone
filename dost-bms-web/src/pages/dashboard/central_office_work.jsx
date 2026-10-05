@@ -20,13 +20,11 @@ import { Link } from 'react-router-dom';
 import { getBudgetRequests, getDashboardData, getSpendingReports, getUnifiedBudgets } from '../../api';
 import { extractApiRows } from '../../utils/budget_request_utils';
 import { formatCurrency, formatRate, formatTimestamp, getRateClassName, toTitleCase } from '../../utils/formatters';
-import { DUE_SOON_DAYS, daysUntil, formatDay, loadRecentActivity, newestReportFirst, sortByUpdated } from './dashboard_helpers';
+import { ATTENTION_BELOW, DUE_SOON_DAYS, daysUntil, formatDay, loadRecentActivity, newestReportFirst, sortByUpdated } from './dashboard_helpers';
 import { ProposalTag } from './proposal_sections';
 import styles from './requester_dashboard.module.css';
 
 const RECENT_ACTIVITY_COUNT = 10;
-// Same colour band as the rest of the dashboard (amber/red below 90%). DOST has not confirmed its own targets.
-const ATTENTION_BELOW = 90;
 
 // Card order per role, from the dashboard proposal's visibility table (review queue is the budget officer's own)
 const CARD_ORDER = {
@@ -186,22 +184,7 @@ export default function CentralOfficeWork({ strView }) {
     activity: (
       <section className={`dashboard-panel ${styles.card}`}>
         <h3 className={`dashboard-section__title ${styles.cardTitle}`}>Activity History <ProposalTag section="activity" /></h3>
-        {!blnLoading && arrActivity.length === 0 && <p className={styles.muted}>No actions have been recorded on budget requests yet.</p>}
-        {arrActivity.length > 0 && (
-          <table className={styles.table}>
-            <thead><tr><th>When</th><th>Request</th><th>What happened</th><th>By</th></tr></thead>
-            <tbody>
-              {arrActivity.map((objLog) => (
-                <tr key={objLog.bral_id}>
-                  <td>{formatTimestamp(objLog.bral_created_at)}</td>
-                  <td>{objLog.strTitle}<span className={styles.muted}>{objLog.strUnit}</span></td>
-                  <td>{toTitleCase(objLog.bral_action)}{objLog.bral_comment && <span className={styles.muted}>Remark: {objLog.bral_comment}</span>}</td>
-                  <td>{objLog.bral_actor_name || '-'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <ActivityTable arrActivity={arrActivity} blnLoading={blnLoading} />
       </section>
     ),
   };
@@ -219,7 +202,7 @@ CentralOfficeWork.propTypes = {
 };
 
 // Directors approve or reject consolidated budgets the budget officer has sent as Pending (as-is steps 8-11)
-export function ApprovalsWaiting() {
+export function ApprovalsWaiting({ blnCanApprove }) {
   const [arrPending, setArrPending] = useState([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnFailed, setBlnFailed] = useState(false);
@@ -238,7 +221,7 @@ export function ApprovalsWaiting() {
   return (
     <div className={`dashboard-page ${styles.page}`}>
       <section className={`dashboard-panel ${styles.card}`}>
-        <h3 className={`dashboard-section__title ${styles.cardTitle}`}>Approvals waiting for me</h3>
+        <h3 className={`dashboard-section__title ${styles.cardTitle}`}>{blnCanApprove ? 'Approvals waiting for me' : 'Waiting for director approval'}</h3>
         {blnFailed && <div className={styles.errorBanner}>Cannot perform transaction. Error encountered.</div>}
         <table className={styles.table}>
           <thead><tr><th>Consolidated budget</th><th>Fiscal year</th><th className={styles.numeric}>Total</th><th>Sent on</th></tr></thead>
@@ -251,11 +234,41 @@ export function ApprovalsWaiting() {
                 <td>{formatTimestamp(objBudget.lastUpdated)}</td>
               </tr>
             ))}
-            {!blnLoading && arrPending.length === 0 && <tr><td colSpan={4} className={styles.muted}>Nothing is waiting for your approval.</td></tr>}
+            {!blnLoading && arrPending.length === 0 && <tr><td colSpan={4} className={styles.muted}>{blnCanApprove ? 'Nothing is waiting for your approval.' : 'Nothing is waiting for director approval.'}</td></tr>}
           </tbody>
         </table>
-        <p className={styles.footnote}>Open a budget to approve it for the external stages or return it to the Budget Division.</p>
+        <p className={styles.footnote}>{blnCanApprove ? 'Open a budget to approve it for the external stages or return it to the Budget Division.' : 'View only. The finance and planning directors approve or return these budgets.'}</p>
       </section>
     </div>
   );
 }
+
+ApprovalsWaiting.propTypes = {
+  blnCanApprove: PropTypes.bool.isRequired,
+};
+
+// Recent request actions (no peso amounts), shared by the Central Office and admin dashboards
+export function ActivityTable({ arrActivity, blnLoading }) {
+  if (!blnLoading && arrActivity.length === 0) return <p className={styles.muted}>No actions have been recorded on budget requests yet.</p>;
+  if (arrActivity.length === 0) return null;
+  return (
+    <table className={styles.table}>
+      <thead><tr><th>When</th><th>Request</th><th>What happened</th><th>By</th></tr></thead>
+      <tbody>
+        {arrActivity.map((objLog) => (
+          <tr key={objLog.bral_id}>
+            <td>{formatTimestamp(objLog.bral_created_at)}</td>
+            <td>{objLog.strTitle}<span className={styles.muted}>{objLog.strUnit}</span></td>
+            <td>{toTitleCase(objLog.bral_action)}{objLog.bral_comment && <span className={styles.muted}>Remark: {objLog.bral_comment}</span>}</td>
+            <td>{objLog.bral_actor_name || '-'}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+ActivityTable.propTypes = {
+  arrActivity: PropTypes.arrayOf(PropTypes.object).isRequired,
+  blnLoading: PropTypes.bool.isRequired,
+};
