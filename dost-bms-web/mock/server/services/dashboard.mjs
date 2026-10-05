@@ -312,6 +312,7 @@ function buildPerformanceRows(db, objFilters, intDivisor)
 {
   const intFiscalYearId     = objFilters.fiscalYearId     ? Number(objFilters.fiscalYearId)     : null;
   const intRequestingUnitId = objFilters.requestingUnitId ? Number(objFilters.requestingUnitId) : null;
+  const intCategoryId       = objFilters.categoryId       ? Number(objFilters.categoryId)       : null;
 
   const arrUnits = db.rows('requesting-units');
 
@@ -320,6 +321,7 @@ function buildPerformanceRows(db, objFilters, intDivisor)
   db.rows('appropriations')
     .filter((r) => !intFiscalYearId || Number(r.appr_fiscal_year_id) === intFiscalYearId)
     .filter((r) => !intRequestingUnitId || Number(r.appr_requesting_unit_id) === intRequestingUnitId)
+    .filter((r) => !intCategoryId || Number(r.appr_category_id) === intCategoryId)
     .forEach((r) => {
       const id = Number(r.appr_requesting_unit_id);
       objApprByUnit[id] = (objApprByUnit[id] || 0) + toNumber(r.appr_amount);
@@ -330,6 +332,7 @@ function buildPerformanceRows(db, objFilters, intDivisor)
   db.rows('budget-executions')
     .filter((r) => !intFiscalYearId || Number(r.be_fiscal_year_id) === intFiscalYearId)
     .filter((r) => !intRequestingUnitId || Number(r.be_requesting_unit_id) === intRequestingUnitId)
+    .filter((r) => !intCategoryId || Number(r.be_category_id) === intCategoryId)
     .forEach((r) => {
       const id = Number(r.be_requesting_unit_id);
       if (!objExecByUnit[id]) objExecByUnit[id] = { allotment: 0, obligation: 0, disbursement: 0 };
@@ -350,6 +353,7 @@ function buildPerformanceRows(db, objFilters, intDivisor)
       const dblDisbursement = r2(objExec.disbursement / intDivisor);
 
       return {
+        requestingUnitId: objUnit.ru_id,
         requestingUnit:   objUnit.ru_name,
         appropriation:    r2(dblAppropriation),
         allotment:        dblAllotment,
