@@ -24,15 +24,13 @@ import { getScopedRequestingUnitId } from '../../utils/requesting_unit_scope';
 import { extractApiRows, getBudgetRequestEditPath } from '../../utils/budget_request_utils';
 import { formatCurrency, formatRate, formatTimestamp, getRateClassName, toTitleCase } from '../../utils/formatters';
 import { FiguresAsOf, ProposalTag } from './proposal_sections';
-import { DUE_SOON_DAYS, daysUntil, formatDay, loadRecentActivity, newestReportFirst, sortByUpdated } from './dashboard_helpers';
+import { ATTENTION_BELOW, DUE_SOON_DAYS, daysUntil, formatDay, loadRecentActivity, newestReportFirst, sortByUpdated } from './dashboard_helpers';
 import styles from './requester_dashboard.module.css';
 
 const UNIFIED_DRAFT_KEY = 'dost-bms.unified-request.draft';
 const RECENT_REQUEST_COUNT = 5;
 const RECENT_ACTIVITY_COUNT = 5;
 
-// Same colour bands as the existing dashboard (green 90+, amber 75-89, red below 75). DOST has not confirmed its own targets.
-const ATTENTION_BELOW = 90;
 
 const STATUS_STEPS = [
   { key: 'draft', label: 'Draft' },

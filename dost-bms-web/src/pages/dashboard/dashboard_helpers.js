@@ -14,6 +14,9 @@
 
 import { getBudgetRequestActivity } from '../../api';
 
+// Same colour band as the existing dashboard (amber/red below 90%). DOST has not confirmed its own targets.
+export const ATTENTION_BELOW = 90;
+
 // Team assumption (slice 2 plan): a spending report is "due soon" within 14 days of its due date
 export const DUE_SOON_DAYS = 14;
 

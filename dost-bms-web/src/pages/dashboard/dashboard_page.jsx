@@ -33,8 +33,10 @@ import DashboardFilters from '../../components/shared/dashboard_filters';
 import { getDashboardData } from '../../api';
 import { useAuth } from '../../context/auth_context';
 import { isRequesterRole } from '../../utils/requesting_unit_scope';
+import { PERMISSIONS, getPermissionsForUser } from '../../utils/permissions';
 import RequesterDashboard from './requester_dashboard';
 import CentralOfficeWork, { ApprovalsWaiting } from './central_office_work';
+import TechAdminDashboard, { AdminSetupCards } from './admin_cards';
 import {
   ExecutionAmountCards,
   FinancialAlerts,
@@ -302,7 +304,7 @@ function normalizeDashboardPayload(objRaw)
   };
 }
 
-function OrganisationDashboard({ strCentralView })
+function OrganisationDashboard({ strCentralView, blnMainAdmin })
 {
   // Directors open on Budget Execution Monitoring, where the Financial Overview is (their top section in the proposal)
   const [strActiveTab,       setStrActiveTab]       = useState(strCentralView === 'director' ? 'monitoring' : 'planning');
@@ -520,8 +522,9 @@ function OrganisationDashboard({ strCentralView })
     <div className="dashboard-page">
       <PageHeader title="Financial Dashboard" />
 
+      {blnMainAdmin && <AdminSetupCards />}
       {strCentralView === 'officer' && <CentralOfficeWork strView="officer" />}
-      {strCentralView === 'director' && <ApprovalsWaiting />}
+      {strCentralView === 'director' && <ApprovalsWaiting blnCanApprove={!blnMainAdmin} />}
 
       <Tabs
         tabs={DASHBOARD_TABS}
@@ -744,16 +747,16 @@ export default function DashboardPage()
   const { user } = useAuth();
 
   if (isRequesterRole(user)) return <RequesterDashboard />;
-  // Budget officer (technical staff) and directors get their own cards; admins keep this view until slice 5
-  const strCentralView = CENTRAL_VIEWS[String(user?.role?.role_group || '').toLowerCase()] || null;
+  const strGroup = String(user?.role?.role_group || '').toLowerCase();
+  // Main admin (full access) = admin cards + the directors' view until DOST defines the role; tech admin sees no peso amounts
+  const blnMainAdmin = strGroup === 'admin' && getPermissionsForUser(user).includes(PERMISSIONS.BUDGET_REVIEW);
+  if (strGroup === 'admin' && !blnMainAdmin) return <TechAdminDashboard />;
+  const strCentralView = blnMainAdmin ? 'director' : (CENTRAL_VIEWS[strGroup] || null);
   // Keyed so the starting tab is set again if the role arrives after the first render
-  return <OrganisationDashboard key={strCentralView || 'none'} strCentralView={strCentralView} />;
+  return <OrganisationDashboard key={`${strCentralView || 'none'}-${blnMainAdmin}`} strCentralView={strCentralView} blnMainAdmin={blnMainAdmin} />;
 }
 
 OrganisationDashboard.propTypes = {
   strCentralView: PropTypes.oneOf(['officer', 'director']),
-};
-
-OrganisationDashboard.defaultProps = {
-  strCentralView: null,
+  blnMainAdmin: PropTypes.bool.isRequired,
 };
