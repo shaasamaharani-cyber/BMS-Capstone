@@ -629,7 +629,7 @@ function OrganisationDashboard({ strCentralView })
           <FiguresAsOf asOf={strFiscalYearLabel ? `fiscal year ${strFiscalYearLabel}` : 'all fiscal years'} source="BMS budget execution records (mock database in Phase 1)" />
           <ExecutionAmountCards summaryCards={objDashboardData?.monitoring?.summaryCards} />
 
-          <SampleDataNote>Projected year-end, projected variance, the expenditure projection, the alerts and the planning insight below use fixed sample figures until the forecasting method is agreed with DOST.</SampleDataNote>
+          <SampleDataNote>Projected year-end, projected variance, the expenditure projection{strCentralView ? '' : ', the alerts'} and the planning insight below use fixed sample figures until the forecasting method is agreed with DOST.</SampleDataNote>
 
           <FinancialOverview
             summaryCards={objDashboardData?.monitoring?.summaryCards}
@@ -639,15 +639,18 @@ function OrganisationDashboard({ strCentralView })
 
           <section className="dashboard-section">
             <div className="row g-3">
-              <div className="col-lg-7">
+              <div className={strCentralView ? 'col-12' : 'col-lg-7'}>
                 <ProjectedExpenditureChart {...SAMPLE_INSIGHTS.expenditure} />
               </div>
-              <div className="col-lg-5">
-                <FinancialAlerts
-                  alerts={SAMPLE_INSIGHTS.alerts}
-                  onView={() => document.getElementById('dashboard-monitoring-performance-heading')?.scrollIntoView({ behavior: 'smooth' })}
-                />
-              </div>
+              {/* Budget officer and directors see real-data Alerts in their own cards, so the sample panel is hidden for them */}
+              {!strCentralView && (
+                <div className="col-lg-5">
+                  <FinancialAlerts
+                    alerts={SAMPLE_INSIGHTS.alerts}
+                    onView={() => document.getElementById('dashboard-monitoring-performance-heading')?.scrollIntoView({ behavior: 'smooth' })}
+                  />
+                </div>
+              )}
             </div>
           </section>
 
