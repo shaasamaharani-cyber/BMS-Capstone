@@ -16,7 +16,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getBudgetRequestActivity, getBudgetRequests, getDashboardData, getSpendingReports } from '../../api';
+import { getBudgetRequests, getDashboardData, getSpendingReports } from '../../api';
 import { Badge, Button } from '../../components/ui';
 import PageHeader from '../../components/layout/page_header';
 import { useAuth } from '../../context/auth_context';
@@ -24,13 +24,12 @@ import { getScopedRequestingUnitId } from '../../utils/requesting_unit_scope';
 import { extractApiRows, getBudgetRequestEditPath } from '../../utils/budget_request_utils';
 import { formatCurrency, formatRate, formatTimestamp, getRateClassName, toTitleCase } from '../../utils/formatters';
 import { FiguresAsOf, ProposalTag } from './proposal_sections';
+import { DUE_SOON_DAYS, daysUntil, formatDay, loadRecentActivity, newestReportFirst, sortByUpdated } from './dashboard_helpers';
 import styles from './requester_dashboard.module.css';
 
 const UNIFIED_DRAFT_KEY = 'dost-bms.unified-request.draft';
 const RECENT_REQUEST_COUNT = 5;
 const RECENT_ACTIVITY_COUNT = 5;
-// Team assumption (slice 2 plan): a spending report is "due soon" within 14 days of its due date
-const DUE_SOON_DAYS = 14;
 
 // Same colour bands as the existing dashboard (green 90+, amber 75-89, red below 75). DOST has not confirmed its own targets.
 const ATTENTION_BELOW = 90;
@@ -59,10 +58,6 @@ const RATE_MEANINGS = {
   absorptionRate: { label: 'Paid out of released funds', help: 'Disbursement as a share of allotment' },
 };
 
-function sortByUpdated(arrRequests) {
-  return [...arrRequests].sort((objA, objB) => new Date(objB.br_updated_at || 0) - new Date(objA.br_updated_at || 0));
-}
-
 function readLocalDraft() {
   try {
     const objDraft = JSON.parse(localStorage.getItem(UNIFIED_DRAFT_KEY) || 'null');
@@ -85,26 +80,6 @@ async function loadUnitHistory(intUnitId) {
   return arrYears
     .map((objYear, intIndex) => ({ yearLabel: objYear.label, objRow: arrData[intIndex].monitoring?.performanceRows?.[0], objMonitoring: arrData[intIndex].monitoring }))
     .filter((objYear) => objYear.objRow);
-}
-
-// Recent actions across the unit's most recently updated requests
-async function loadRecentActivity(arrRequests) {
-  const arrLogs = await Promise.all(arrRequests.map(async (objRequest) => {
-    const objResponse = await getBudgetRequestActivity(objRequest.id);
-    return (objResponse?.data || []).map((objLog) => ({ ...objLog, strTitle: objRequest.br_title }));
-  }));
-  return arrLogs.flat()
-    .sort((objA, objB) => new Date(objB.bral_created_at) - new Date(objA.bral_created_at))
-    .slice(0, RECENT_ACTIVITY_COUNT);
-}
-
-function daysUntil(strDate) {
-  const strToday = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
-  return Math.round((new Date(strDate) - new Date(strToday)) / 86400000);
-}
-
-function formatDay(strDate) {
-  return new Date(`${strDate}T00:00:00+08:00`).toLocaleDateString('en-PH', { month: 'short', day: '2-digit', year: 'numeric', timeZone: 'Asia/Manila' });
 }
 
 export default function RequesterDashboard() {
@@ -131,12 +106,11 @@ export default function RequesterDashboard() {
           getSpendingReports(),
         ]);
         const arrRows = extractApiRows(objRequests);
-        const arrRecentLogs = await loadRecentActivity(sortByUpdated(arrRows).slice(0, RECENT_ACTIVITY_COUNT));
+        const arrRecentLogs = await loadRecentActivity(sortByUpdated(arrRows).slice(0, RECENT_ACTIVITY_COUNT), RECENT_ACTIVITY_COUNT);
         if (!blnMounted) return;
         setArrRequests(arrRows);
         setArrHistory(arrUnitHistory);
-        // The current reporting period is the one with the latest due date
-        setObjReport([...arrReports].sort((objA, objB) => String(objB.sr_due_date).localeCompare(String(objA.sr_due_date)))[0] || null);
+        setObjReport(newestReportFirst(arrReports)[0] || null);
         setArrActivity(arrRecentLogs);
       } catch {
         if (blnMounted) setBlnFailed(true);

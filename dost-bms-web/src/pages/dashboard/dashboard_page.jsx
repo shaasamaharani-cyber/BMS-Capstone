@@ -26,6 +26,7 @@ import {
   Title,
   Tooltip,
 } from 'chart.js';
+import PropTypes from 'prop-types';
 import { Badge, Dropdown, Pagination, Table, Tabs, Typography } from '../../components/ui';
 import PageHeader from '../../components/layout/page_header';
 import DashboardFilters from '../../components/shared/dashboard_filters';
@@ -33,6 +34,7 @@ import { getDashboardData } from '../../api';
 import { useAuth } from '../../context/auth_context';
 import { isRequesterRole } from '../../utils/requesting_unit_scope';
 import RequesterDashboard from './requester_dashboard';
+import BudgetOfficerWork from './budget_officer_work';
 import {
   ExecutionAmountCards,
   FinancialAlerts,
@@ -298,7 +300,7 @@ function normalizeDashboardPayload(objRaw)
   };
 }
 
-function OrganisationDashboard()
+function OrganisationDashboard({ blnBudgetOfficer })
 {
   const [strActiveTab,       setStrActiveTab]       = useState('planning');
   const [objDraftFilters,    setObjDraftFilters]    = useState(DEFAULT_FILTERS);
@@ -515,6 +517,8 @@ function OrganisationDashboard()
     <div className="dashboard-page">
       <PageHeader title="Financial Dashboard" />
 
+      {blnBudgetOfficer && <BudgetOfficerWork />}
+
       <Tabs
         tabs={DASHBOARD_TABS}
         activeTab={strActiveTab}
@@ -730,5 +734,11 @@ export default function DashboardPage()
 {
   const { user } = useAuth();
 
-  return isRequesterRole(user) ? <RequesterDashboard /> : <OrganisationDashboard />;
+  if (isRequesterRole(user)) return <RequesterDashboard />;
+  // The Central Office budget officer (technical staff) also gets a My work block; directors and admins come in later slices
+  return <OrganisationDashboard blnBudgetOfficer={String(user?.role?.role_group || '').toLowerCase() === 'reviewer'} />;
 }
+
+OrganisationDashboard.propTypes = {
+  blnBudgetOfficer: PropTypes.bool.isRequired,
+};
