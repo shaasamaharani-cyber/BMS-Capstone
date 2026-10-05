@@ -1,0 +1,198 @@
+/*
+ * System Name: Budget Management System
+ * Module Name: Spending Monitoring
+ *
+ * Purpose of this file:
+ * Layout for the Spending Monitoring page (same card and table look as the requester dashboard).
+ *
+ * Author(s): QUT Group T214
+ *
+ * Copyright (C) 2026
+ * by the Department of Science and Technology - Central Office
+ * All rights reserved.
+ */
+
+.page
+{
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+	padding-bottom: var(--space-10);
+}
+
+.intro
+{
+	margin: 0;
+	color: var(--ink-2);
+}
+
+.card
+{
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: var(--radius-lg);
+	padding: var(--space-5);
+	box-shadow: var(--shadow-1);
+}
+
+.reportHead
+{
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: var(--space-4);
+	margin-bottom: var(--space-4);
+}
+
+.field
+{
+	display: flex;
+	flex-direction: column;
+	min-width: 200px;
+}
+
+.fieldLabel
+{
+	display: block;
+	font-size: var(--font-size-xs);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--ink-3);
+}
+
+.meta
+{
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: var(--space-5);
+	font-size: var(--font-size-sm);
+}
+
+.badges
+{
+	display: inline-flex;
+	gap: var(--space-2);
+}
+
+.muted
+{
+	display: block;
+	font-size: var(--font-size-sm);
+	color: var(--ink-3);
+	font-weight: 400;
+}
+
+.error
+{
+	display: block;
+	font-size: var(--font-size-sm);
+	color: var(--err);
+	margin-top: 2px;
+}
+
+.errorBanner
+{
+	background: var(--err-bg);
+	color: var(--err);
+	border-radius: var(--radius);
+	padding: var(--space-3) var(--space-4);
+}
+
+.counts
+{
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+	gap: var(--space-3);
+	margin-bottom: var(--space-4);
+}
+
+.count
+{
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	background: var(--surface-2);
+	border: 1px solid var(--line);
+	border-radius: var(--radius-lg);
+	padding: var(--space-3);
+}
+
+.countValue
+{
+	font-size: var(--font-size-xl);
+	font-weight: 700;
+	color: var(--ink);
+}
+
+.tableWrap
+{
+	overflow-x: auto;
+}
+
+.table
+{
+	width: 100%;
+	border-collapse: collapse;
+	font-size: var(--font-size-sm);
+}
+
+.table th
+{
+	text-align: left;
+	font-size: var(--font-size-xs);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--ink-3);
+	padding: var(--space-2);
+	border-bottom: 1px solid var(--line-2);
+}
+
+.table td
+{
+	padding: var(--space-2);
+	border-bottom: 1px solid var(--line);
+	vertical-align: top;
+}
+
+.table input
+{
+	min-width: 140px;
+	text-align: right;
+}
+
+.table textarea
+{
+	min-width: 220px;
+}
+
+.num
+{
+	text-align: right !important;
+	white-space: nowrap;
+}
+
+.over
+{
+	color: var(--err);
+	font-weight: 600;
+}
+
+.errorRow td
+{
+	background: var(--err-bg);
+}
+
+.detailRow > td
+{
+	background: var(--surface-2);
+	padding: var(--space-3) var(--space-4);
+}
+
+.actions
+{
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--space-2);
+	margin-top: var(--space-4);
+}

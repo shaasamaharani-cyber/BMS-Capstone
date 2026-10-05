@@ -87,6 +87,11 @@ export {
 } from './dashboard_api';
 
 export {
+  getSpendingReports,
+  saveSpendingReport,
+} from './spending_reports_api';
+
+export {
   fetchAllSchemas,
   fetchSchema,
   createSchema,

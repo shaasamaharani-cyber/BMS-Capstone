@@ -25,6 +25,7 @@ import BudgetRequestDetailPage from '../pages/budget_requests/budget_request_det
 import NewBudgetRequest from '../pages/budget_requests/new_budget_request';
 import UnifiedRequestPage from '../pages/unified_request/unified_request_page';
 import EditBudgetRequest from '../pages/budget_requests/edit_budget_request';
+import SpendingMonitoringPage from '../pages/spending_monitoring/spending_monitoring_page';
 import BudgetReviewPage from '../pages/budget_review/budget_review_page';
 import BudgetReviewDetailPage from '../pages/budget_review/budget_review_detail_page';
 import BudgetConsolidationPage from '../pages/budget_consolidate/budget_consolidation_page';
@@ -66,6 +67,10 @@ export default function AppRouter() {
           {/* Read-only view stays open to reviewers: the consolidation form links to the source request */}
           <Route path="budget-requests/:id" element={
             <PermissionRoute permission={[PERMISSIONS.BUDGET_REQUESTS, PERMISSIONS.BUDGET_REVIEW, PERMISSIONS.BUDGET_CONSOLIDATION]}><BudgetRequestDetailPage /></PermissionRoute>
+          } />
+
+          <Route path="spending-monitoring" element={
+            <PermissionRoute permission={PERMISSIONS.SPENDING_MONITORING}><SpendingMonitoringPage /></PermissionRoute>
           } />
 
           <Route path="budget-review" element={

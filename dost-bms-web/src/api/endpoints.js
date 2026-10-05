@@ -36,6 +36,11 @@ export const ENDPOINTS = {
     INDEX: '/requesting-units',
   },
 
+  SPENDING_REPORTS: {
+    INDEX:  '/spending-reports',
+    UPDATE: (intId) => `/spending-reports/${intId}`,
+  },
+
   USERS: {
     INDEX:      '/users',
     SHOW:       (intId) => `/users/${intId}`,

@@ -3026,5 +3026,265 @@
     }
   ],
   "form_schemas": [],
-  "form_entries": []
+  "form_entries": [],
+  "spending-reports": [
+    {
+      "id": 1,
+      "sr_id": 1,
+      "sr_requesting_unit_id": 1,
+      "sr_fiscal_year_id": 5,
+      "sr_period_label": "Q2 2026 (Apr-Jun)",
+      "sr_due_date": "2026-07-15",
+      "sr_status": "submitted",
+      "sr_submitted_at": "2026-07-10T09:20:00+08:00",
+      "sr_submitted_by": 7,
+      "sr_lines": [
+        {
+          "category_id": 1,
+          "allotment_amount": 112035,
+          "obligation_amount": 56018,
+          "disbursement_amount": 44814,
+          "justification": ""
+        },
+        {
+          "category_id": 2,
+          "allotment_amount": 61110,
+          "obligation_amount": 30555,
+          "disbursement_amount": 24444,
+          "justification": ""
+        },
+        {
+          "category_id": 3,
+          "allotment_amount": 30555,
+          "obligation_amount": 15278,
+          "disbursement_amount": 12222,
+          "justification": ""
+        },
+        {
+          "category_id": 4,
+          "allotment_amount": 20000,
+          "obligation_amount": 10000,
+          "disbursement_amount": 8000,
+          "justification": ""
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "sr_id": 2,
+      "sr_requesting_unit_id": 2,
+      "sr_fiscal_year_id": 5,
+      "sr_period_label": "Q2 2026 (Apr-Jun)",
+      "sr_due_date": "2026-07-15",
+      "sr_status": "submitted",
+      "sr_submitted_at": "2026-07-14T15:05:00+08:00",
+      "sr_submitted_by": 8,
+      "sr_lines": [
+        {
+          "category_id": 2,
+          "allotment_amount": 70000,
+          "obligation_amount": 33600,
+          "disbursement_amount": 28700,
+          "justification": ""
+        },
+        {
+          "category_id": 3,
+          "allotment_amount": 180000,
+          "obligation_amount": 86400,
+          "disbursement_amount": 73800,
+          "justification": ""
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "sr_id": 3,
+      "sr_requesting_unit_id": 7,
+      "sr_fiscal_year_id": 5,
+      "sr_period_label": "Q2 2026 (Apr-Jun)",
+      "sr_due_date": "2026-07-15",
+      "sr_status": "submitted",
+      "sr_submitted_at": "2026-07-22T10:40:00+08:00",
+      "sr_submitted_by": null,
+      "sr_lines": [
+        {
+          "category_id": 2,
+          "allotment_amount": 45000,
+          "obligation_amount": 23400,
+          "disbursement_amount": 20250,
+          "justification": ""
+        },
+        {
+          "category_id": 3,
+          "allotment_amount": 95000,
+          "obligation_amount": 49400,
+          "disbursement_amount": 42750,
+          "justification": ""
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "sr_id": 4,
+      "sr_requesting_unit_id": 18,
+      "sr_fiscal_year_id": 5,
+      "sr_period_label": "Q2 2026 (Apr-Jun)",
+      "sr_due_date": "2026-07-15",
+      "sr_status": "submitted",
+      "sr_submitted_at": "2026-07-15T16:55:00+08:00",
+      "sr_submitted_by": null,
+      "sr_lines": [
+        {
+          "category_id": 1,
+          "allotment_amount": 339150,
+          "obligation_amount": 159401,
+          "disbursement_amount": 132269,
+          "justification": ""
+        },
+        {
+          "category_id": 2,
+          "allotment_amount": 242250,
+          "obligation_amount": 113858,
+          "disbursement_amount": 94478,
+          "justification": ""
+        },
+        {
+          "category_id": 3,
+          "allotment_amount": 226100,
+          "obligation_amount": 106267,
+          "disbursement_amount": 88179,
+          "justification": ""
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "sr_id": 5,
+      "sr_requesting_unit_id": 1,
+      "sr_fiscal_year_id": 5,
+      "sr_period_label": "Q3 2026 (Jul-Sep)",
+      "sr_due_date": "2026-10-15",
+      "sr_status": "submitted",
+      "sr_submitted_at": "2026-10-02T11:10:00+08:00",
+      "sr_submitted_by": 7,
+      "sr_lines": [
+        {
+          "category_id": 1,
+          "allotment_amount": 112035,
+          "obligation_amount": 85147,
+          "disbursement_amount": 70582,
+          "justification": ""
+        },
+        {
+          "category_id": 2,
+          "allotment_amount": 61110,
+          "obligation_amount": 46444,
+          "disbursement_amount": 38499,
+          "justification": ""
+        },
+        {
+          "category_id": 3,
+          "allotment_amount": 30555,
+          "obligation_amount": 23222,
+          "disbursement_amount": 19250,
+          "justification": ""
+        },
+        {
+          "category_id": 4,
+          "allotment_amount": 20000,
+          "obligation_amount": 15200,
+          "disbursement_amount": 12600,
+          "justification": ""
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "sr_id": 6,
+      "sr_requesting_unit_id": 2,
+      "sr_fiscal_year_id": 5,
+      "sr_period_label": "Q3 2026 (Jul-Sep)",
+      "sr_due_date": "2026-10-15",
+      "sr_status": "not_started",
+      "sr_submitted_at": null,
+      "sr_submitted_by": null,
+      "sr_lines": [
+        {
+          "category_id": 2,
+          "allotment_amount": 70000,
+          "obligation_amount": null,
+          "disbursement_amount": null,
+          "justification": ""
+        },
+        {
+          "category_id": 3,
+          "allotment_amount": 180000,
+          "obligation_amount": null,
+          "disbursement_amount": null,
+          "justification": ""
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "sr_id": 7,
+      "sr_requesting_unit_id": 7,
+      "sr_fiscal_year_id": 5,
+      "sr_period_label": "Q3 2026 (Jul-Sep)",
+      "sr_due_date": "2026-10-15",
+      "sr_status": "draft",
+      "sr_submitted_at": null,
+      "sr_submitted_by": null,
+      "sr_lines": [
+        {
+          "category_id": 2,
+          "allotment_amount": 45000,
+          "obligation_amount": 47500,
+          "disbursement_amount": 41000,
+          "justification": ""
+        },
+        {
+          "category_id": 3,
+          "allotment_amount": 95000,
+          "obligation_amount": 70000,
+          "disbursement_amount": 62000,
+          "justification": ""
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "sr_id": 8,
+      "sr_requesting_unit_id": 18,
+      "sr_fiscal_year_id": 5,
+      "sr_period_label": "Q3 2026 (Jul-Sep)",
+      "sr_due_date": "2026-10-15",
+      "sr_status": "not_started",
+      "sr_submitted_at": null,
+      "sr_submitted_by": null,
+      "sr_lines": [
+        {
+          "category_id": 1,
+          "allotment_amount": 339150,
+          "obligation_amount": null,
+          "disbursement_amount": null,
+          "justification": ""
+        },
+        {
+          "category_id": 2,
+          "allotment_amount": 242250,
+          "obligation_amount": null,
+          "disbursement_amount": null,
+          "justification": ""
+        },
+        {
+          "category_id": 3,
+          "allotment_amount": 226100,
+          "obligation_amount": null,
+          "disbursement_amount": null,
+          "justification": ""
+        }
+      ]
+    }
+  ]
 }
