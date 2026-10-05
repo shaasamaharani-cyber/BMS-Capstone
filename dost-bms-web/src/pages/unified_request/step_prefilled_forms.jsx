@@ -20,6 +20,8 @@ import { Button } from '../../components/ui';
 import { FORM_ENGINE, FORM_LEVEL, getFormById } from '../../bp_forms/bp_form_catalog';
 import { buildFormView, FIELD_SOURCE, getFormCompletion } from '../../bp_forms/bp_form_fields';
 import { formatBudgetRequestCurrency } from '../../utils/budget_request_utils';
+import { useHasPermission } from '../../hooks/use_permissions';
+import { PERMISSIONS } from '../../utils/permissions';
 import styles from './unified_request.module.css';
 
 function FieldInput({ objField, strValue, onChange }) {
@@ -49,6 +51,8 @@ const formatLockedValue = (objField) => {
 
 export default function StepPrefilledForms({ arrRequired, objContext, blnSnapshotStale, strSelectedFormId, onSelectForm, onFormValueChange, onRegenerate }) {
   const navigate = useNavigate();
+  // Requesters have no Forms module; agency-level schema forms are completed by Central Office offices
+  const blnCanOpenForms = useHasPermission(PERMISSIONS.FORMS);
   const strActiveId = arrRequired.some((objEntry) => objEntry.formId === strSelectedFormId) ? strSelectedFormId : arrRequired[0]?.formId;
   const objActiveForm = strActiveId ? getFormById(strActiveId) : null;
   const objView = objActiveForm?.engine === FORM_ENGINE.DYNAMIC ? buildFormView(strActiveId, objContext) : null;
@@ -152,15 +156,19 @@ export default function StepPrefilledForms({ arrRequired, objContext, blnSnapsho
             ) : (
               <div className={styles.inlinePanel}>
                 <p>
-                  {objActiveForm.engine === FORM_ENGINE.SCHEMA
-                    ? 'This form already has a layout in the Forms module (schema-driven). Complete it there, then tick the box below.'
-                    : 'The layout for this form is planned for a later sprint. Prepare it offline for now, then tick the box below.'}
+                  {objActiveForm.engine !== FORM_ENGINE.SCHEMA
+                    ? 'The layout for this form is planned for a later sprint. Prepare it offline for now, then tick the box below.'
+                    : blnCanOpenForms
+                      ? 'This form already has a layout in the Forms module (schema-driven). Complete it there, then tick the box below.'
+                      : `${objActiveForm.code} is completed by the ${objActiveForm.completedBy} in the Forms module. You do not need to fill it in.`}
                 </p>
-                {objActiveForm.engine === FORM_ENGINE.SCHEMA && <Button variant="outline" size="sm" onClick={() => navigate('/forms')}>Open the Forms module</Button>}
-                <label className={styles.checkRow}>
-                  <input type="checkbox" checked={Boolean(objUserValues.__done)} onChange={(objEvent) => onFormValueChange(strActiveId, '__done', objEvent.target.checked)} />
-                  <span>I have completed {objActiveForm.code}</span>
-                </label>
+                {objActiveForm.engine === FORM_ENGINE.SCHEMA && blnCanOpenForms && <Button variant="outline" size="sm" onClick={() => navigate('/forms')}>Open the Forms module</Button>}
+                {(objActiveForm.engine !== FORM_ENGINE.SCHEMA || blnCanOpenForms) && (
+                  <label className={styles.checkRow}>
+                    <input type="checkbox" checked={Boolean(objUserValues.__done)} onChange={(objEvent) => onFormValueChange(strActiveId, '__done', objEvent.target.checked)} />
+                    <span>I have completed {objActiveForm.code}</span>
+                  </label>
+                )}
               </div>
             )}
           </section>
