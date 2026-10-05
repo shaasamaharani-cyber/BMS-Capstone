@@ -4,14 +4,15 @@ const TOKEN_PREFIX = 'mock-token-uid-';
 
 const ROLE_PERMISSIONS = {
   admin:     ['route:dashboard', 'route:forms', 'route:settings'],
-  reviewer:  ['route:dashboard', 'route:budget-review', 'route:budget-tracking', 'route:reports', 'route:forms'],
-  requester: ['route:dashboard', 'route:budget-requests'],
-  executive: ['route:dashboard', 'route:budget-consolidation', 'route:budget-tracking', 'route:reports', 'route:forms'],
+  reviewer:  ['route:dashboard', 'route:spending-monitoring', 'route:budget-review', 'route:budget-tracking', 'route:reports', 'route:forms'],
+  requester: ['route:dashboard', 'route:budget-requests', 'route:spending-monitoring'],
+  executive: ['route:dashboard', 'route:spending-monitoring', 'route:budget-consolidation', 'route:budget-tracking', 'route:reports', 'route:forms'],
 };
 
 // Only requesters create and manage budget requests, so full access leaves route:budget-requests out
 const ALL_PERMISSIONS = [
   'route:dashboard',
+  'route:spending-monitoring',
   'route:budget-review',
   'route:budget-consolidation',
   'route:budget-tracking',
@@ -28,7 +29,7 @@ function tokenToId(token) {
   return token?.startsWith(TOKEN_PREFIX) ? token.slice(TOKEN_PREFIX.length) : null;
 }
 
-function permissionsForUser(user) {
+export function permissionsForUser(user) {
   const email = String(user?.usr_email || user?.email || '').toLowerCase().trim();
 
   if (FULL_ACCESS_EMAILS.has(email)) {
