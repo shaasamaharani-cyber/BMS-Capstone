@@ -17,6 +17,10 @@ export function withBudgetRequestRelations(db, request) {
   const planningPeriod = db.rows('planning-periods')
     .find((row) => Number(row.pp_id) === Number(request.br_planning_period_id));
   const formEntries = hydrateAttachedForms(db, request);
+  // Where a consolidated request is now: the approval stage of the consolidated budget that holds it
+  const unifiedItem = db.rows('unified-budget-items')
+    .find((row) => Number(row.ubi_budget_request_id) === Number(request.id) && !row.ubi_deleted_at);
+  const unifiedBudget = unifiedItem ? db.find('unified-budgets', unifiedItem.ubi_unified_budget_id) : null;
 
   return {
     ...request,
@@ -27,6 +31,7 @@ export function withBudgetRequestRelations(db, request) {
     planning_period: planningPeriod
       ? { pp_id: planningPeriod.pp_id, pp_name: planningPeriod.pp_name }
       : null,
+    current_stage: unifiedBudget?.ub_current_stage ?? null,
   };
 }
 
