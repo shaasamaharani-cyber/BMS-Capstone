@@ -43,7 +43,7 @@ const STATUS_STEPS = [
 
 const REPORT_STATUS_LABELS = { not_started: 'Not started', draft: 'Draft saved', submitted: 'Submitted' };
 
-// Where a request is now. Consolidated requests show the approval stage of their consolidated budget.
+// Where a request is now. Consolidated requests show the last approval stage their consolidated budget reached (approved or rejected there).
 const WHERE_NOW = {
   draft: 'Your unit (draft)',
   rejected: 'Your unit (returned)',
@@ -301,7 +301,7 @@ export default function RequesterDashboard() {
                   <td><Link to={`/budget-requests/${objRequest.id}`}>{objRequest.br_title}</Link><span className={styles.muted}>{objRequest.br_reference_no}</span></td>
                   <td>{objRequest.fiscal_year?.fy_year || '-'}</td>
                   <td><Badge status={objRequest.br_status} label={strStatus === 'rejected' ? 'Returned' : undefined} /></td>
-                  <td>{strStatus === 'consolidated' ? `Consolidated budget${objRequest.current_stage ? ` - ${objRequest.current_stage}` : ''}` : (WHERE_NOW[strStatus] || '-')}</td>
+                  <td>{strStatus === 'consolidated' ? `Consolidated budget${objRequest.current_stage ? ` - last stage: ${objRequest.current_stage}` : ''}` : (WHERE_NOW[strStatus] || '-')}</td>
                   <td>{formatTimestamp(objRequest.br_updated_at)}</td>
                 </tr>
               );

@@ -167,16 +167,18 @@ export default function CentralOfficeWork({ strView }) {
           </div>
         )}
         <table className={styles.table}>
-          <thead><tr><th>Consolidated budget</th><th>Fiscal year</th><th>Current stage</th></tr></thead>
+          <thead><tr><th>Consolidated budget</th><th>Fiscal year</th><th>Last stage acted on</th><th aria-label="Tracking" /></tr></thead>
           <tbody>
             {arrBudgets.map((objBudget) => (
               <tr key={objBudget.id}>
                 <td><Link to={`/budget-consolidation/${objBudget.id}`}>{objBudget.title}</Link><span className={styles.muted}>{objBudget.code}</span></td>
                 <td>{objBudget.fiscalYear}</td>
                 <td>{objBudget.stage}</td>
+                {/* Team 27's approval tracking page: the full stage timeline and the external decisions (DBM to President) */}
+                <td><Link to={`/budget-tracking/${objBudget.id}`}>Track</Link></td>
               </tr>
             ))}
-            {!blnLoading && arrBudgets.length === 0 && <tr><td colSpan={3} className={styles.muted}>No consolidated budgets yet.</td></tr>}
+            {!blnLoading && arrBudgets.length === 0 && <tr><td colSpan={4} className={styles.muted}>No consolidated budgets yet.</td></tr>}
           </tbody>
         </table>
       </section>
