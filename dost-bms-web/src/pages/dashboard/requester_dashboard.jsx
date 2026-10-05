@@ -16,18 +16,21 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getBudgetRequests, getDashboardData } from '../../api';
+import { getBudgetRequestActivity, getBudgetRequests, getDashboardData, getSpendingReports } from '../../api';
 import { Badge, Button } from '../../components/ui';
 import PageHeader from '../../components/layout/page_header';
 import { useAuth } from '../../context/auth_context';
 import { getScopedRequestingUnitId } from '../../utils/requesting_unit_scope';
 import { extractApiRows, getBudgetRequestEditPath } from '../../utils/budget_request_utils';
-import { formatCurrency, formatRate, formatTimestamp, getRateClassName } from '../../utils/formatters';
+import { formatCurrency, formatRate, formatTimestamp, getRateClassName, toTitleCase } from '../../utils/formatters';
 import { FiguresAsOf, ProposalTag } from './proposal_sections';
 import styles from './requester_dashboard.module.css';
 
 const UNIFIED_DRAFT_KEY = 'dost-bms.unified-request.draft';
 const RECENT_REQUEST_COUNT = 5;
+const RECENT_ACTIVITY_COUNT = 5;
+// Team assumption (slice 2 plan): a spending report is "due soon" within 14 days of its due date
+const DUE_SOON_DAYS = 14;
 
 // Same colour bands as the existing dashboard (green 90+, amber 75-89, red below 75). DOST has not confirmed its own targets.
 const ATTENTION_BELOW = 90;
@@ -40,11 +43,25 @@ const STATUS_STEPS = [
   { key: 'consolidated', label: 'Consolidated' },
 ];
 
+const REPORT_STATUS_LABELS = { not_started: 'Not started', draft: 'Draft saved', submitted: 'Submitted' };
+
+// Where a request is now. Consolidated requests show the approval stage of their consolidated budget.
+const WHERE_NOW = {
+  draft: 'Your unit (draft)',
+  rejected: 'Your unit (returned)',
+  submitted: 'Central Office review',
+  reviewed: 'Waiting for consolidation',
+};
+
 const RATE_MEANINGS = {
   executionRate: { label: 'Committed', help: 'Obligation as a share of allotment' },
   disbursementRate: { label: 'Paid out of commitments', help: 'Disbursement as a share of obligation' },
   absorptionRate: { label: 'Paid out of released funds', help: 'Disbursement as a share of allotment' },
 };
+
+function sortByUpdated(arrRequests) {
+  return [...arrRequests].sort((objA, objB) => new Date(objB.br_updated_at || 0) - new Date(objA.br_updated_at || 0));
+}
 
 function readLocalDraft() {
   try {
@@ -56,20 +73,38 @@ function readLocalDraft() {
   }
 }
 
-// The newest fiscal year (not in the future) that has spending recorded for this unit
-async function loadUnitExecution(intUnitId) {
+// Every fiscal year (not in the future) with spending recorded for this unit, newest first
+async function loadUnitHistory(intUnitId) {
   const objBase = await getDashboardData({ requesting_unit_id: intUnitId, period: 'annually' });
   const intThisYear = new Date().getFullYear();
   const arrYears = (objBase.filters?.fiscalYears || [])
     .filter((objYear) => Number(objYear.label) <= intThisYear)
     .sort((objA, objB) => Number(objB.label) - Number(objA.label));
 
-  for (const objYear of arrYears) {
-    const objData = await getDashboardData({ requesting_unit_id: intUnitId, fiscal_year_id: objYear.value, period: 'annually' });
-    const objRow = objData.monitoring?.performanceRows?.[0];
-    if (objRow) return { yearLabel: objYear.label, objRow, objMonitoring: objData.monitoring };
-  }
-  return null;
+  const arrData = await Promise.all(arrYears.map((objYear) => getDashboardData({ requesting_unit_id: intUnitId, fiscal_year_id: objYear.value, period: 'annually' })));
+  return arrYears
+    .map((objYear, intIndex) => ({ yearLabel: objYear.label, objRow: arrData[intIndex].monitoring?.performanceRows?.[0], objMonitoring: arrData[intIndex].monitoring }))
+    .filter((objYear) => objYear.objRow);
+}
+
+// Recent actions across the unit's most recently updated requests
+async function loadRecentActivity(arrRequests) {
+  const arrLogs = await Promise.all(arrRequests.map(async (objRequest) => {
+    const objResponse = await getBudgetRequestActivity(objRequest.id);
+    return (objResponse?.data || []).map((objLog) => ({ ...objLog, strTitle: objRequest.br_title }));
+  }));
+  return arrLogs.flat()
+    .sort((objA, objB) => new Date(objB.bral_created_at) - new Date(objA.bral_created_at))
+    .slice(0, RECENT_ACTIVITY_COUNT);
+}
+
+function daysUntil(strDate) {
+  const strToday = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+  return Math.round((new Date(strDate) - new Date(strToday)) / 86400000);
+}
+
+function formatDay(strDate) {
+  return new Date(`${strDate}T00:00:00+08:00`).toLocaleDateString('en-PH', { month: 'short', day: '2-digit', year: 'numeric', timeZone: 'Asia/Manila' });
 }
 
 export default function RequesterDashboard() {
@@ -79,7 +114,9 @@ export default function RequesterDashboard() {
   const strUnitName = user?.requesting_unit?.ru_name || 'your unit';
 
   const [arrRequests, setArrRequests] = useState([]);
-  const [objExecution, setObjExecution] = useState(null);
+  const [arrHistory, setArrHistory] = useState([]);
+  const [objReport, setObjReport] = useState(null);
+  const [arrActivity, setArrActivity] = useState([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnFailed, setBlnFailed] = useState(false);
   const objLocalDraft = useMemo(() => readLocalDraft(), []);
@@ -88,13 +125,19 @@ export default function RequesterDashboard() {
     let blnMounted = true;
     (async () => {
       try {
-        const [objRequests, objUnitExecution] = await Promise.all([
+        const [objRequests, arrUnitHistory, arrReports] = await Promise.all([
           getBudgetRequests({ per_page: 100 }),
-          intUnitId ? loadUnitExecution(intUnitId) : Promise.resolve(null),
+          intUnitId ? loadUnitHistory(intUnitId) : Promise.resolve([]),
+          getSpendingReports(),
         ]);
+        const arrRows = extractApiRows(objRequests);
+        const arrRecentLogs = await loadRecentActivity(sortByUpdated(arrRows).slice(0, RECENT_ACTIVITY_COUNT));
         if (!blnMounted) return;
-        setArrRequests(extractApiRows(objRequests));
-        setObjExecution(objUnitExecution);
+        setArrRequests(arrRows);
+        setArrHistory(arrUnitHistory);
+        // The current reporting period is the one with the latest due date
+        setObjReport([...arrReports].sort((objA, objB) => String(objB.sr_due_date).localeCompare(String(objA.sr_due_date)))[0] || null);
+        setArrActivity(arrRecentLogs);
       } catch {
         if (blnMounted) setBlnFailed(true);
       } finally {
@@ -105,7 +148,10 @@ export default function RequesterDashboard() {
   }, [intUnitId]);
 
   const arrNeedsAction = arrRequests.filter((objRequest) => ['rejected', 'draft'].includes(String(objRequest.br_status).toLowerCase()));
-  const arrRecent = [...arrRequests].sort((objA, objB) => new Date(objB.br_updated_at || 0) - new Date(objA.br_updated_at || 0)).slice(0, RECENT_REQUEST_COUNT);
+  const arrRecent = sortByUpdated(arrRequests).slice(0, RECENT_REQUEST_COUNT);
+  const objExecution = arrHistory[0] || null;
+  const blnReportOpen = objReport && objReport.sr_status !== 'submitted';
+  const intDaysLeft = objReport ? daysUntil(objReport.sr_due_date) : null;
   const countByStatus = (strKey) => arrRequests.filter((objRequest) => String(objRequest.br_status).toLowerCase() === strKey).length;
 
   const arrAttention = objExecution
@@ -122,6 +168,13 @@ export default function RequesterDashboard() {
     }))
     : [];
 
+  const arrAlerts = [
+    ...arrAttention.map((objRate) => ({ strKey: objRate.strKey, node: <><span className={getRateClassName(objRate.numValue)}>{formatRate(objRate.numValue)}</span> - {objRate.label.toLowerCase()} is below {ATTENTION_BELOW}%. {objRate.help}.</> })),
+    ...(objReport?.over_allotment_count > 0 ? [{ strKey: 'over', node: <>{objReport.over_allotment_count} expense class{objReport.over_allotment_count === 1 ? ' is' : 'es are'} over the approved allotment in the {objReport.sr_period_label} spending report{objReport.missing_justification_count > 0 ? ', and a justification is still missing' : ''}.</> }] : []),
+    ...(blnReportOpen && objReport.is_late ? [{ strKey: 'late', node: <>The {objReport.sr_period_label} spending report is late. It was due {formatDay(objReport.sr_due_date)}.</> }] : []),
+    ...(blnReportOpen && !objReport.is_late && intDaysLeft <= DUE_SOON_DAYS ? [{ strKey: 'due', node: <>The {objReport.sr_period_label} spending report is due in {intDaysLeft} day{intDaysLeft === 1 ? '' : 's'} ({formatDay(objReport.sr_due_date)}).</> }] : []),
+  ];
+
   return (
     <div className={`dashboard-page ${styles.page}`}>
       <PageHeader title={`My dashboard - ${strUnitName}`}>
@@ -133,6 +186,16 @@ export default function RequesterDashboard() {
       <section className={`dashboard-panel ${styles.card}`}>
         <h3 className={`dashboard-section__title ${styles.cardTitle}`}>Needs your action</h3>
         {blnLoading && <p className={styles.muted}>Loading...</p>}
+
+        {blnReportOpen && (
+          <div className={styles.actionRow}>
+            <div>
+              <strong>Spending report for {objReport.sr_period_label}</strong>
+              <span className={styles.muted}>{objReport.is_late ? `Late - was due ${formatDay(objReport.sr_due_date)}` : `Due ${formatDay(objReport.sr_due_date)}`}</span>
+            </div>
+            <Button size="sm" onClick={() => navigate('/spending-monitoring')}>Open report</Button>
+          </div>
+        )}
 
         {objLocalDraft && (
           <div className={styles.actionRow}>
@@ -158,39 +221,51 @@ export default function RequesterDashboard() {
           );
         })}
 
-        {!blnLoading && !objLocalDraft && arrNeedsAction.length === 0 && <p className={styles.muted}>Nothing needs your action right now.</p>}
+        {!blnLoading && !blnReportOpen && !objLocalDraft && arrNeedsAction.length === 0 && <p className={styles.muted}>Nothing needs your action right now.</p>}
       </section>
 
       <section className={`dashboard-panel ${styles.card}`}>
-        <h3 className={`dashboard-section__title ${styles.cardTitle}`}>My requests</h3>
-        <div className={styles.pipeline}>
-          {STATUS_STEPS.map((objStep) => (
-            <div key={objStep.key} className={styles.pipelineStep}>
-              <span className={styles.pipelineCount}>{countByStatus(objStep.key)}</span>
-              <span className={styles.pipelineLabel}>{objStep.label}</span>
+        <h3 className={`dashboard-section__title ${styles.cardTitle}`}>Spending Monitoring <ProposalTag section="monitoring" /></h3>
+        {!blnLoading && !objReport && <p className={styles.muted}>No spending report has been set up for your unit yet.</p>}
+        {objReport && (
+          <>
+            <div className={styles.amounts}>
+              <div className={styles.amount}>
+                <span className={styles.amountLabel}>Reporting period</span>
+                <span className={styles.amountValue}>{objReport.sr_period_label}</span>
+              </div>
+              <div className={styles.amount}>
+                <span className={styles.amountLabel}>Status</span>
+                <span className={styles.amountValue}>{REPORT_STATUS_LABELS[objReport.sr_status] || 'Not started'}{objReport.is_late ? ' (late)' : ''}</span>
+              </div>
+              <div className={styles.amount}>
+                <span className={styles.amountLabel}>Due</span>
+                <span className={styles.amountValue}>{formatDay(objReport.sr_due_date)}</span>
+                {blnReportOpen && <span className={styles.muted}>{intDaysLeft >= 0 ? `${intDaysLeft} day${intDaysLeft === 1 ? '' : 's'} left` : `${-intDaysLeft} day${intDaysLeft === -1 ? '' : 's'} late`}</span>}
+              </div>
+              <div className={styles.amount}>
+                <span className={styles.amountLabel}>Classes over allotment</span>
+                <span className={styles.amountValue}>{objReport.sr_status === 'not_started' ? '—' : objReport.over_allotment_count}</span>
+              </div>
             </div>
-          ))}
-        </div>
-
-        <table className={styles.table}>
-          <thead><tr><th>Request</th><th>Fiscal year</th><th>Status</th><th>Last updated</th></tr></thead>
-          <tbody>
-            {arrRecent.map((objRequest) => (
-              <tr key={objRequest.id}>
-                <td><Link to={`/budget-requests/${objRequest.id}`}>{objRequest.br_title}</Link><span className={styles.muted}>{objRequest.br_reference_no}</span></td>
-                <td>{objRequest.fiscal_year?.fy_year || '-'}</td>
-                <td><Badge status={objRequest.br_status} label={String(objRequest.br_status).toLowerCase() === 'rejected' ? 'Returned' : undefined} /></td>
-                <td>{formatTimestamp(objRequest.br_updated_at)}</td>
-              </tr>
-            ))}
-            {!blnLoading && arrRecent.length === 0 && <tr><td colSpan={4} className={styles.muted}>You have not created a request yet.</td></tr>}
-          </tbody>
-        </table>
-        <div className={styles.linkRow}><Link to="/budget-requests">See all my requests</Link></div>
+            <div className={styles.linkRow}><Link to="/spending-monitoring">{blnReportOpen ? 'Fill in the spending report' : 'See the spending report'}</Link></div>
+          </>
+        )}
       </section>
 
       <section className={`dashboard-panel ${styles.card}`}>
-        <h3 className={`dashboard-section__title ${styles.cardTitle}`}>How {strUnitName} is spending {objExecution ? `- FY${objExecution.yearLabel}` : ''} <ProposalTag section="overview" /></h3>
+        <h3 className={`dashboard-section__title ${styles.cardTitle}`}>Alerts <ProposalTag section="alerts" /></h3>
+        {!blnLoading && arrAlerts.length === 0 && <p className={styles.muted}>No alerts for {strUnitName} right now.</p>}
+        {arrAlerts.length > 0 && (
+          <ul className={styles.attentionList}>
+            {arrAlerts.map((objAlert) => <li key={objAlert.strKey}>{objAlert.node}</li>)}
+          </ul>
+        )}
+        <p className={styles.footnote}>Rates below {ATTENTION_BELOW}% use the existing dashboard&apos;s colour bands, and &quot;due soon&quot; means within {DUE_SOON_DAYS} days. DOST has not yet set its own thresholds.</p>
+      </section>
+
+      <section className={`dashboard-panel ${styles.card}`}>
+        <h3 className={`dashboard-section__title ${styles.cardTitle}`}>Financial Overview - how {strUnitName} is spending {objExecution ? `- FY${objExecution.yearLabel}` : ''} <ProposalTag section="overview" /></h3>
         {objExecution && <FiguresAsOf asOf={`FY${objExecution.yearLabel}`} source="BMS budget execution records for your unit (mock database in Phase 1)" />}
         {!blnLoading && !objExecution && <p className={styles.muted}>No spending has been recorded for your unit yet.</p>}
 
@@ -215,17 +290,6 @@ export default function RequesterDashboard() {
               ))}
             </div>
 
-            <h4 className={styles.subTitle}>What needs attention</h4>
-            {arrAttention.length === 0
-              ? <p className={styles.muted}>All three rates are at {ATTENTION_BELOW}% or above.</p>
-              : (
-                <ul className={styles.attentionList}>
-                  {arrAttention.map((objRate) => (
-                    <li key={objRate.strKey}><span className={getRateClassName(objRate.numValue)}>{formatRate(objRate.numValue)}</span> - {objRate.label.toLowerCase()} is below {ATTENTION_BELOW}%. {objRate.help}.</li>
-                  ))}
-                </ul>
-              )}
-
             <h4 className={styles.subTitle}>Where the gaps are, by category</h4>
             <table className={styles.table}>
               <thead><tr><th>Category</th><th className={styles.numeric}>Not yet released</th><th className={styles.numeric}>Released but not committed</th></tr></thead>
@@ -240,6 +304,80 @@ export default function RequesterDashboard() {
               Amounts are in PHP.
             </p>
           </>
+        )}
+      </section>
+
+      <section className={`dashboard-panel ${styles.card}`}>
+        <h3 className={`dashboard-section__title ${styles.cardTitle}`}>My requests <ProposalTag section="calendar" /></h3>
+        <div className={styles.pipeline}>
+          {STATUS_STEPS.map((objStep) => (
+            <div key={objStep.key} className={styles.pipelineStep}>
+              <span className={styles.pipelineCount}>{countByStatus(objStep.key)}</span>
+              <span className={styles.pipelineLabel}>{objStep.label}</span>
+            </div>
+          ))}
+        </div>
+
+        <table className={styles.table}>
+          <thead><tr><th>Request</th><th>Fiscal year</th><th>Status</th><th>Where it is now</th><th>Last updated</th></tr></thead>
+          <tbody>
+            {arrRecent.map((objRequest) => {
+              const strStatus = String(objRequest.br_status).toLowerCase();
+              return (
+                <tr key={objRequest.id}>
+                  <td><Link to={`/budget-requests/${objRequest.id}`}>{objRequest.br_title}</Link><span className={styles.muted}>{objRequest.br_reference_no}</span></td>
+                  <td>{objRequest.fiscal_year?.fy_year || '-'}</td>
+                  <td><Badge status={objRequest.br_status} label={strStatus === 'rejected' ? 'Returned' : undefined} /></td>
+                  <td>{strStatus === 'consolidated' ? `Consolidated budget${objRequest.current_stage ? ` - ${objRequest.current_stage}` : ''}` : (WHERE_NOW[strStatus] || '-')}</td>
+                  <td>{formatTimestamp(objRequest.br_updated_at)}</td>
+                </tr>
+              );
+            })}
+            {!blnLoading && arrRecent.length === 0 && <tr><td colSpan={5} className={styles.muted}>You have not created a request yet.</td></tr>}
+          </tbody>
+        </table>
+        <div className={styles.linkRow}><Link to="/budget-requests">See all my requests</Link></div>
+      </section>
+
+      <section className={`dashboard-panel ${styles.card}`}>
+        <h3 className={`dashboard-section__title ${styles.cardTitle}`}>Past years - {strUnitName} <ProposalTag section="forecast" /></h3>
+        {!blnLoading && arrHistory.length === 0 && <p className={styles.muted}>No spending has been recorded for your unit yet.</p>}
+        {arrHistory.length > 0 && (
+          <table className={styles.table}>
+            <thead><tr><th>Fiscal year</th><th className={styles.numeric}>Allotment</th><th className={styles.numeric}>Obligation</th><th className={styles.numeric}>Disbursement</th><th className={styles.numeric}>Committed</th></tr></thead>
+            <tbody>
+              {arrHistory.map((objYear) => (
+                <tr key={objYear.yearLabel}>
+                  <td>FY{objYear.yearLabel}</td>
+                  <td className={styles.numeric}>{formatCurrency(objYear.objRow.allotment)}</td>
+                  <td className={styles.numeric}>{formatCurrency(objYear.objRow.obligation)}</td>
+                  <td className={styles.numeric}>{formatCurrency(objYear.objRow.disbursement)}</td>
+                  <td className={`${styles.numeric} ${getRateClassName(objYear.objRow.executionRate)}`}>{formatRate(objYear.objRow.executionRate)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <p className={styles.footnote}>History only. Projections and next-cycle suggestions are prepared by Central Office.</p>
+      </section>
+
+      <section className={`dashboard-panel ${styles.card}`}>
+        <h3 className={`dashboard-section__title ${styles.cardTitle}`}>Activity History <ProposalTag section="activity" /></h3>
+        {!blnLoading && arrActivity.length === 0 && <p className={styles.muted}>No actions have been recorded on your requests yet. Submitting or reviewing a request adds an entry here.</p>}
+        {arrActivity.length > 0 && (
+          <table className={styles.table}>
+            <thead><tr><th>When</th><th>Request</th><th>What happened</th><th>By</th></tr></thead>
+            <tbody>
+              {arrActivity.map((objLog) => (
+                <tr key={objLog.bral_id}>
+                  <td>{formatTimestamp(objLog.bral_created_at)}</td>
+                  <td>{objLog.strTitle}</td>
+                  <td>{toTitleCase(objLog.bral_action)}{objLog.bral_comment && <span className={styles.muted}>Remark: {objLog.bral_comment}</span>}</td>
+                  <td>{objLog.bral_actor_name || '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </section>
     </div>
