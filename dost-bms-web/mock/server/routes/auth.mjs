@@ -45,9 +45,16 @@ export async function handleAuth(ctx) {
 
   if (req.method === 'POST' && path === '/auth/login') {
     const users = db.rows('users');
-    const email = String(payload?.email || payload?.usr_email || '').toLowerCase().trim();
-    const user = withUserRelations(db, (email ? users.find((u) => String(u.usr_email || '').toLowerCase() === email) : null)
-      ?? users[0]);
+    // The login box says "Username", so a bare name like tech.staff means tech.staff@dost.gov.ph
+    const typed = String(payload?.email || payload?.usr_email || '').toLowerCase().trim();
+    const email = typed && !typed.includes('@') ? `${typed}@dost.gov.ph` : typed;
+    const found = email ? users.find((u) => String(u.usr_email || '').toLowerCase() === email) : null;
+    // Unknown accounts are refused (DOST Security Standard 4.10, 6.3); never fall back to another user
+    if (!found) {
+      json(res, 401, { message: 'Invalid username and/or password.' });
+      return true;
+    }
+    const user = withUserRelations(db, found);
     const token = `${TOKEN_PREFIX}${user.id}`;
     json(res, 200, { token, user, role: user.role, permissions: permissionsForUser(user) });
     return true;
@@ -62,8 +69,12 @@ export async function handleAuth(ctx) {
     const authHeader = req.headers['authorization'] || '';
     const token = authHeader.replace(/^Bearer\s+/i, '').trim();
     const uid = tokenToId(token);
-    const user = withUserRelations(db, (uid ? db.find('users', uid) : null) ?? db.rows('users')[0]);
-    json(res, 200, { data: user });
+    const found = uid ? db.find('users', uid) : null;
+    if (!found) {
+      json(res, 401, { message: 'Unauthenticated.' });
+      return true;
+    }
+    json(res, 200, { data: withUserRelations(db, found) });
     return true;
   }
 
