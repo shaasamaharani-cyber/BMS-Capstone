@@ -98,7 +98,8 @@ export const toTitleCase = (value) =>
     .replace(/_/g, ' ')
     .split(' ')
     .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    // Small joining words stay lowercase, e.g. "Budget and Finance Division"
+    .map((word, intIndex) => (intIndex > 0 && ['and', 'of'].includes(word) ? word : word.charAt(0).toUpperCase() + word.slice(1)))
     .join(' ');
 
 /**

@@ -4,7 +4,7 @@ const TOKEN_PREFIX = 'mock-token-uid-';
 
 const ROLE_PERMISSIONS = {
   admin:     ['route:dashboard', 'route:forms', 'route:settings'],
-  reviewer:  ['route:dashboard', 'route:spending-monitoring', 'route:budget-review', 'route:budget-tracking', 'route:reports', 'route:forms'],
+  reviewer:  ['route:dashboard', 'route:spending-monitoring', 'route:budget-review', 'route:budget-consolidation', 'route:budget-tracking', 'route:reports', 'route:forms'],
   requester: ['route:dashboard', 'route:budget-requests', 'route:spending-monitoring'],
   executive: ['route:dashboard', 'route:spending-monitoring', 'route:budget-consolidation', 'route:budget-tracking', 'route:reports', 'route:forms'],
 };

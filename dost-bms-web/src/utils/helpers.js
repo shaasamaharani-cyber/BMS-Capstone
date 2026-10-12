@@ -115,7 +115,8 @@ export const getInitials = (user) => {
 export const formatRoleName = (user) => {
   const raw = String(user?.role?.role_name || '').trim();
   if (!raw) return 'Member';
-  return raw.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  // Small joining words stay lowercase, e.g. budget_and_finance_division -> Budget and Finance Division
+  return raw.replace(/_/g, ' ').replace(/\b\w+/g, (word, intOffset) => (intOffset > 0 && ['and', 'of'].includes(word) ? word : word[0].toUpperCase() + word.slice(1)));
 };
 
 /**
