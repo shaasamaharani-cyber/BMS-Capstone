@@ -33,14 +33,18 @@ export default function LoginPage()
   const [strError,    setError]    = useState('');
 
 
-  const handleSubmit = async () =>
+  const handleSubmit = async (objEvent) =>
   {
+    // Read the boxes themselves: browser autofill can show a value without updating React state
+    const objForm = objEvent?.currentTarget ? new FormData(objEvent.currentTarget) : null;
+    const strTypedUsername = String(objForm?.get('username') ?? strUsername);
+    const strTypedPassword = String(objForm?.get('password') ?? strPassword);
     setError('');
     setLoading(true);
 
     try
     {
-      const objResult = await authLogin(strUsername, strPassword);
+      const objResult = await authLogin(strTypedUsername, strTypedPassword);
       const objData = objResult?.data ?? objResult;
 
       localStorage.setItem('token', objData.token);
