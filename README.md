@@ -77,7 +77,7 @@ Test accounts (password `Test12345`):
 | Role | Email |
 |---|---|
 | Requester (per unit) | `requester.ncr@dost.gov.ph`, `requester.co@dost.gov.ph`, `requester.car@dost.gov.ph` |
-| Budget officer | `tech.staff@dost.gov.ph` |
+| Budget and Finance Division (Thao Nguyen) | `tech.staff@dost.gov.ph` |
 | Finance director | `finance.director@dost.gov.ph` |
 | Planning director | `planning.director@dost.gov.ph` |
 | Main administrator | `main.admin@dost.gov.ph` |
