@@ -144,7 +144,7 @@ export default function LoginPage()
                 id="fieldUsername"
                 name="username"
                 type="text"
-                placeholder="e.g. fiscal.admin"
+                placeholder="e.g. tech.staff"
                 value={strUsername}
                 onChange={(e) => setUsername(e.target.value)}
                 required
