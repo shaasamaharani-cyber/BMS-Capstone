@@ -86,6 +86,20 @@ function signedFromAttachedFiles(arrFiles) {
   return objSigned;
 }
 
+// Supporting documents (quotes, plans...; DOST answer 7) travel as attachments named "Supporting - <file name>"
+const SUPPORTING_PREFIX = 'Supporting - ';
+function supportingFromAttachedFiles(arrFiles) {
+  return (arrFiles || [])
+    .filter((objFile) => String(objFile.name || '').startsWith(SUPPORTING_PREFIX))
+    .map((objFile) => ({ id: objFile.id, name: objFile.name.slice(SUPPORTING_PREFIX.length), size: objFile.size, type: objFile.type, lastModified: objFile.lastModified, url: objFile.url }));
+}
+
+// Signed copies and supporting files both count as unsaved changes
+const withSupporting = (objSigned, arrSupporting) => ({
+  ...objSigned,
+  ...Object.fromEntries(arrSupporting.map((objFile) => [`supporting:${objFile.id}`, objFile])),
+});
+
 export default function UnifiedRequestPage() {
   const navigate = useNavigate();
   const { id: strRouteId } = useParams();
@@ -99,6 +113,7 @@ export default function UnifiedRequestPage() {
   const [arrRequestingUnits, setArrRequestingUnits] = useState([]);
   const [arrBudgetCategories, setArrBudgetCategories] = useState([]);
   const [objSigned, setObjSigned] = useState({});
+  const [arrSupporting, setArrSupporting] = useState([]);
   const [strSelectedFormId, setStrSelectedFormId] = useState('');
   const [strComment, setStrComment] = useState('');
   const [blnSubmitting, setBlnSubmitting] = useState(false);
@@ -200,11 +215,13 @@ export default function UnifiedRequestPage() {
           objSnapshot: objStored.snapshot || (objStored.totalsAtGeneration ? { totals: objStored.totalsAtGeneration, generatedAt: null } : null),
         };
         const objLoadedSigned = signedFromAttachedFiles(objData.br_attached_files);
+        const arrLoadedSupporting = supportingFromAttachedFiles(objData.br_attached_files);
 
         refServerItemIds.current = arrItems.map((objItem) => objItem.briId);
         replaceDraft(objLoaded);
         setObjSigned(objLoadedSigned);
-        setStrSavedSnapshot(getDraftSnapshot(objLoaded, objLoadedSigned));
+        setArrSupporting(arrLoadedSupporting);
+        setStrSavedSnapshot(getDraftSnapshot(objLoaded, withSupporting(objLoadedSigned, arrLoadedSupporting)));
         setObjRequestMeta({ referenceNo: objData.br_reference_no || '', status: String(objData.br_status || '').toLowerCase(), reviewComment: objData.br_review_comment || '' });
         setIntRequestId(Number(strRouteId));
         setBlnLoadingDraft(false);
@@ -279,7 +296,7 @@ export default function UnifiedRequestPage() {
     return objResult;
   }, [objTotals.tagTotal, objRequest.fundingSource]);
 
-  const blnDirty = strSavedSnapshot !== null && getDraftSnapshot(objDraft, objSigned) !== strSavedSnapshot;
+  const blnDirty = strSavedSnapshot !== null && getDraftSnapshot(objDraft, withSupporting(objSigned, arrSupporting)) !== strSavedSnapshot;
 
   // Warn before unsaved changes are lost (User Requirement 06; asked by DOST on 30 Sep):
   // closing or reloading the tab, and clicking any link in the app such as the sidebar.
@@ -353,9 +370,19 @@ export default function UnifiedRequestPage() {
     setObjSigned((objPrev) => ({ ...objPrev, [strFormId]: { id: `${strFormId}-${objFile.name}-${objFile.size}`, name: objFile.name, size: objFile.size, type: objFile.type || 'File', lastModified: objFile.lastModified, dataUrl: strDataUrl } }));
   };
 
+  const handleSupportingAdd = async (arrFiles) => {
+    const arrAdded = await Promise.all(arrFiles.map(async (objFile) => ({
+      id: `${objFile.name}-${objFile.size}-${objFile.lastModified}`, name: objFile.name, size: objFile.size, type: objFile.type || 'File', lastModified: objFile.lastModified, dataUrl: await readFileAsDataUrl(objFile),
+    })));
+    setArrSupporting((arrPrev) => [...arrPrev, ...arrAdded.filter((objNew) => !arrPrev.some((objOld) => objOld.id === objNew.id))]);
+  };
+
+  const handleSupportingRemove = (strId) => setArrSupporting((arrPrev) => arrPrev.filter((objFile) => objFile.id !== strId));
+
   const handleStartOver = () => {
     resetDraft();
     setObjSigned({});
+    setArrSupporting([]);
     setStrComment('');
     setStrSavedSnapshot(getDraftSnapshot(createInitialDraft()));
     showToast({ message: 'Started a new request.' });
@@ -367,7 +394,10 @@ export default function UnifiedRequestPage() {
     br_title: objRequest.title.trim(),
     br_description: objRequest.description.trim() || null,
     br_requesting_unit_id: Number(objRequest.unitId),
-    br_attached_files: Object.entries(objSigned).map(([strFormId, objFile]) => ({ ...objFile, name: `Signed - ${getFormById(strFormId)?.code} - ${objFile.name}` })),
+    br_attached_files: [
+      ...Object.entries(objSigned).map(([strFormId, objFile]) => ({ ...objFile, name: `Signed - ${getFormById(strFormId)?.code} - ${objFile.name}` })),
+      ...arrSupporting.map((objFile) => ({ ...objFile, name: `${SUPPORTING_PREFIX}${objFile.name}` })),
+    ],
     // Everything the forms need, so a saved draft reopens exactly where it was and the backend can rebuild the forms
     br_unified_request: {
       request: objRequest,
@@ -433,9 +463,11 @@ export default function UnifiedRequestPage() {
 
     refServerItemIds.current = arrSavedItems.map((objItem) => objItem.briId).filter(Boolean);
     const objSavedSigned = signedFromAttachedFiles(arrSavedFiles);
+    const arrSavedSupporting = supportingFromAttachedFiles(arrSavedFiles);
     updateDraft({ arrLineItems: arrSavedItems });
     setObjSigned(objSavedSigned);
-    setStrSavedSnapshot(getDraftSnapshot({ ...objDraft, arrLineItems: arrSavedItems }, objSavedSigned));
+    setArrSupporting(arrSavedSupporting);
+    setStrSavedSnapshot(getDraftSnapshot({ ...objDraft, arrLineItems: arrSavedItems }, withSupporting(objSavedSigned, arrSavedSupporting)));
     setIntRequestId(intId);
     return intId;
   };
@@ -557,6 +589,9 @@ export default function UnifiedRequestPage() {
               blnSubmitting={blnSubmitting}
               blnSavingDraft={blnSavingDraft}
               onSignedChange={handleSignedChange}
+              arrSupporting={arrSupporting}
+              onSupportingAdd={handleSupportingAdd}
+              onSupportingRemove={handleSupportingRemove}
               onCommentChange={setStrComment}
               onGoToStep={intGoToStep}
               onSubmit={handleSubmit}

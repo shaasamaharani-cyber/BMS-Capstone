@@ -323,7 +323,8 @@ function releaseRemovedBudgetRequests(db, ubId, arrRequestIdsBefore, actorId = n
       const objRequest = db.find('budget-requests', intBrId);
       if (!objRequest || String(objRequest.br_status).toLowerCase() !== 'consolidated') return;
       saveBudgetRequest(db, { br_status: 'reviewed' }, objRequest);
-      logActivity(db, intBrId, 'removed from consolidated budget', 'consolidated', 'reviewed', objActor, null, null);
+      // bral_action is VARCHAR(20) in the team's data dictionary, so the budget goes in the comment
+      logActivity(db, intBrId, 'removed', 'consolidated', 'reviewed', objActor, `Removed from ${db.find('unified-budgets', ubId)?.ub_reference_no ?? 'the consolidated budget'}`, null);
     });
 }
 

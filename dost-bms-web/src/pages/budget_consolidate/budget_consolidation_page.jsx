@@ -34,11 +34,11 @@ import {
   getUnifiedBudgetStatusOptions,
   getUnifiedBudgetFiscalYearOptions,
 } from '../../api/budget_consolidation_api';
-import { getReviewedBudgetRequests } from '../../api/budget_requests_api';
+import { getBudgetRequests, getReviewedBudgetRequests } from '../../api/budget_requests_api';
 import { formatTimestamp, getBadgeStatus } from '../../utils/formatters';
 import { useAuth } from '../../context/auth_context';
 import { getFiscalYear } from '../../utils/helpers';
-import { toReviewedRequests } from '../../utils/budget_request_utils';
+import { extractApiRows, toReviewedRequests } from '../../utils/budget_request_utils';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -196,6 +196,7 @@ export default function BudgetConsolidationPage() {
   const [blnShowConsolidateModal, setBlnShowConsolidateModal] = useState(false);
   const isCreating = false;
   const [arrReviewedRequests, setArrReviewedRequests] = useState([]);
+  const [arrStillPending, setArrStillPending] = useState([]);
   const [blnModalLoading, setBlnModalLoading] = useState(false);
   const [strModalError, setStrModalError] = useState('');
   const [arrFiscalYearOptions, setArrFiscalYearOptions] = useState([]);
@@ -287,9 +288,16 @@ export default function BudgetConsolidationPage() {
       setStrModalError('');
       try {
         // Always fetch from API when modal opens (no hardcoded list).
-        const res = await getReviewedBudgetRequests();
+        const [res, resPending] = await Promise.all([
+          getReviewedBudgetRequests(),
+          getBudgetRequests({ status: 'submitted', per_page: 100 }),
+        ]);
         if (!isMounted) return;
-        setArrReviewedRequests(toReviewedRequests(res));
+        const arrReviewed = toReviewedRequests(res);
+        setArrReviewedRequests(arrReviewed);
+        // As-is step 6 consolidates all requests: name the ones for the same year still waiting for review
+        const setYears = new Set(arrReviewed.map((request) => String(request.fiscal_year?.fy_year ?? '')));
+        setArrStillPending(extractApiRows(resPending).filter((request) => String(request.br_status).toLowerCase() === 'submitted' && setYears.has(String(request.fiscal_year?.fy_year ?? ''))));
       } catch {
         if (!isMounted) return;
         setStrModalError('Failed to load reviewed requests. Please try again.');
@@ -542,6 +550,14 @@ export default function BudgetConsolidationPage() {
               </ul>
             )}
           </div>
+
+          {!blnModalLoading && arrStillPending.length > 0 && (
+            <div className="alert alert-warning py-2 px-3 mt-3 mb-0" role="status">
+              <strong>Still waiting for review:</strong>{' '}
+              {arrStillPending.map((request) => `${request.br_title} (${request.requesting_unit?.ru_name || 'unit'}, FY ${request.fiscal_year?.fy_year})`).join('; ')}.
+              {' '}You can consolidate now and add them later while the budget is a draft or returned.
+            </div>
+          )}
 
           <div className="d-grid gap-2 mt-3">
             <Button fullWidth onClick={handleCreateConsolidation} disabled={isCreating || blnModalLoading}>

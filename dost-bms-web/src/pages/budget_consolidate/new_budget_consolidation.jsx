@@ -152,6 +152,8 @@ const mapRequestsToSections = (requests = []) =>
           category: item.category || 'PS',
           costStructure: normalizeCostStructure(item.costStructure) || DEFAULT_COST_STRUCTURE,
           amount: toAmount(item.amount),
+          // The unit's own figure, kept for the comparison while the division edits
+          originalAmount: toAmount(item.amount),
           justification: item.justification || '',
           requestId: requestCode,
           requestingUnit: request.unit || 'Unknown Unit',

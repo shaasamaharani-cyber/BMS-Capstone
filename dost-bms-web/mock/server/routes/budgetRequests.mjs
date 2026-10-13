@@ -172,6 +172,12 @@ export async function handleBudgetRequests(ctx) {
       json(res, 403, { message: 'Unauthorized. Insufficient permissions.' });
       return true;
     }
+    // Follow the flow (Security Standard 6.17): only a submitted request can be validated or returned
+    const strRequiredStatus = payload.action === 'validate' ? 'reviewed' : 'submitted';
+    if (String(request.br_status).toLowerCase() !== strRequiredStatus) {
+      json(res, 409, { message: `This request is ${request.br_status}; only a ${strRequiredStatus} request can be ${payload.action === 'return' ? 'returned' : 'validated'}.` });
+      return true;
+    }
     const actor = db.find('users', payload.actor_id) ?? null;
     const statusMap = {
       approve: 'reviewed',

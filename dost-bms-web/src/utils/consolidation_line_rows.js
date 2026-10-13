@@ -72,6 +72,7 @@ export function buildConsolidationLineRows(sections, options = {}) {
       const requestId = String(section.requestId || '').trim() || `REQ-${rows.length}`;
       const items = Array.isArray(section.items) ? section.items : [];
       const sectionSubtotal = items.reduce((sum, item) => sum + toAmount(item.amount), 0);
+      const sectionOriginalSubtotal = items.reduce((sum, item) => sum + toAmount(item.originalAmount ?? item.amount), 0);
 
       rows.push({
         rowType: 'request-header',
@@ -82,6 +83,7 @@ export function buildConsolidationLineRows(sections, options = {}) {
         requestTitle: section.requestTitle || 'Untitled Request',
         requestingUnit,
         subtotal: sectionSubtotal,
+        originalSubtotal: sectionOriginalSubtotal,
         hasItems: items.length > 0,
       });
 

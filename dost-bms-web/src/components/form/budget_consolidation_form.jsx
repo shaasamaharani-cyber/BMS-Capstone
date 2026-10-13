@@ -25,6 +25,29 @@ import { COST_STRUCTURE_OPTIONS } from '../../utils/cost_structure';
 import { splitUnifiedWorkflowStepsByLane } from '../../utils/unified_budget_workflow_lanes';
 import BudgetRequestTotalsSummary from '../shared/budget_request_totals_summary';
 
+/**
+ * The unit's own amount next to the division's amount, e.g. "Unit asked ₱1,200,000 · -₱250,000 (-20.8%)".
+ * Shown always while editing (blnAlways), otherwise only when the amounts differ.
+ */
+function renderUnitComparison(original, current, formatCurrency, blnAlways)
+{
+  const dblOriginal = Number(original) || 0;
+  const dblDifference = (Number(current) || 0) - dblOriginal;
+  if (dblDifference === 0 && !blnAlways) return null;
+  const strSign = dblDifference > 0 ? '+' : '-';
+  const strPercent = dblOriginal > 0 ? ` (${strSign}${(Math.abs(dblDifference) / dblOriginal * 100).toFixed(1)}%)` : '';
+  return (
+    <div className="small mt-1">
+      <span className="text-muted">Unit asked {formatCurrency(dblOriginal)}</span>
+      {dblDifference !== 0 ? (
+        <span className={dblDifference < 0 ? 'text-danger' : 'text-success'}>
+          {' · '}{strSign}{formatCurrency(Math.abs(dblDifference))}{strPercent}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 export default function BudgetConsolidationForm({
   mode,
   formData,
@@ -448,13 +471,13 @@ export default function BudgetConsolidationForm({
                 label: 'Amount',
                 render: (_, row) => {
                   if (row.rowType === 'unit-header') return <strong>{formatCurrency(row.subtotal || 0)}</strong>;
-                  if (row.rowType === 'request-header') return <strong>{formatCurrency(row.subtotal || 0)}</strong>;
+                  if (row.rowType === 'request-header') {
+                    return <div><strong>{formatCurrency(row.subtotal || 0)}</strong>{renderUnitComparison(row.originalSubtotal, row.subtotal, formatCurrency, false)}</div>;
+                  }
                   if (row.rowType === 'category') return null;
                   if (row.rowType === 'cost-structure') return null;
-                  // The unit's own figure stays visible when the division changes the amount
-                  const unitAsked = Number(row.originalAmount) !== Number(row.amount)
-                    ? <div className="text-muted small mt-1">Unit asked {formatCurrency(row.originalAmount || 0)}</div>
-                    : null;
+                  // The unit's own figure: always shown while editing, and on view only when it was changed
+                  const unitAsked = renderUnitComparison(row.originalAmount, row.amount, formatCurrency, canEdit);
                   if (!canEdit) return <div><strong className="text-brand">{formatCurrency(row.amount || 0)}</strong>{unitAsked}</div>;
                   const rowErr = errors.lineItemErrorsById?.[row.id]?.amount;
                   return (

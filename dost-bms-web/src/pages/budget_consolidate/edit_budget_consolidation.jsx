@@ -377,6 +377,7 @@ const toApiRows = (payload) => {
             category: item.category || 'PS',
             costStructure: normalizeCostStructure(item.costStructure ?? item.bri_cost_structure) || DEFAULT_COST_STRUCTURE,
             amount: toAmount(item.amount),
+            originalAmount: toAmount(item.amount),
             justification: item.justification || '',
             requestId: requestCode,
             requestingUnit: request.unit || 'Unknown Unit',
