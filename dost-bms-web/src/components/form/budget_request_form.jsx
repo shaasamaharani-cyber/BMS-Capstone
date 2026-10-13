@@ -82,7 +82,7 @@ export default function BudgetRequestForm({
               General Information
             </span>
             <div className="d-flex align-items-center">
-              <Badge status={badgeStatus} />
+              <Badge status={badgeStatus} label={String(badgeStatus).toLowerCase() === 'rejected' ? 'Returned' : undefined} />
               <span className="text-muted small ms-2">Ref: {formData.referenceCode}</span>
               {showCurrentVersion ? (
                 <span className="text-muted small ms-2">Version: {intCurrentVersion}</span>

@@ -183,7 +183,7 @@ export async function handleBudgetRequests(ctx) {
       approve: 'validated',
       validate: 'consolidated',
       reject: 'rejected',
-      return: 'rejected',
+      return: 'returned',
     };
     const toStatus = statusMap[payload.action] || 'reviewed';
     const action = actionMap[payload.action] || 'validated';
