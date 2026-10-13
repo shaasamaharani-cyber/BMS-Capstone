@@ -40,6 +40,7 @@ import {
 } from '../../utils/budget_request_utils';
 import { useAuth } from '../../context/auth_context';
 import { toAmount, toFiscalYear } from '../../utils/helpers';
+import { formatTimestamp } from '../../utils/formatters';
 
 const fmt = (n) => `₱ ${n.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 
@@ -334,7 +335,31 @@ export default function BudgetConsolidationDetailPage() {
       </ul>
 
       {strActiveTab === 'versions' ? (
-        <UnifiedBudgetVersionsTab versions={objRecord?.approvalVersions ?? []} />
+        <>
+          <UnifiedBudgetVersionsTab versions={objRecord?.approvalVersions ?? []} />
+          {/* Who changed which line amount, from what to what (User Requirement 17) */}
+          <div className="card border rounded-3 p-4 mx-4 mb-4">
+            <p className="fw-bold text-uppercase mb-3 section-eyebrow">Line changes</p>
+            {(objRecord?.changeLog ?? []).length === 0 ? (
+              <p className="text-muted small mb-0">No line amounts have been changed in this budget.</p>
+            ) : (
+              <table className="table table-sm mb-0">
+                <thead><tr><th>When</th><th>Line</th><th className="text-end">From</th><th className="text-end">To</th><th>By</th></tr></thead>
+                <tbody>
+                  {objRecord.changeLog.map((objChange) => (
+                    <tr key={objChange.id}>
+                      <td>{formatTimestamp(objChange.ubcl_created_at)}</td>
+                      <td>{objChange.ubcl_line}</td>
+                      <td className="text-end">{fmt(objChange.ubcl_from)}</td>
+                      <td className="text-end">{fmt(objChange.ubcl_to)}</td>
+                      <td>{objChange.ubcl_actor_name || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
       ) : strActiveTab === 'attached-files' ? (
         <BudgetRequestAttachedFormsTab
           canEdit={false}

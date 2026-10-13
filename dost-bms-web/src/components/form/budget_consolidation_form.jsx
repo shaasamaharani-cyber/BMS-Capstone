@@ -48,6 +48,7 @@ export default function BudgetConsolidationForm({
   addedRequestIds,
   budgetCategoryOptions,
   onAddBudgetRequests,
+  onRemoveBudgetRequest,
   onOpenAddBudgetRequests,
 }) {
   const canEdit = mode === 'create' || mode === 'edit';
@@ -57,7 +58,10 @@ export default function BudgetConsolidationForm({
   const [selectedRequestIds, setSelectedRequestIds] = useState([]);
   const [workflowStageDefinitions, setWorkflowStageDefinitions] = useState([]);
   const isDraft = String(formData.status || '').trim().toLowerCase() === 'draft';
-  const canAddBudgetRequests = canEdit && isDraft;
+  // A budget the director returned can change which requests it holds too (as-is step 10 -> step 7)
+  const isReturned = String(formData.status || '').trim().toLowerCase() === 'rejected';
+  const canAddBudgetRequests = canEdit && (isDraft || isReturned);
+  const canRemoveBudgetRequests = canAddBudgetRequests && Boolean(onRemoveBudgetRequest);
 
   // Only show version > 0, and get from currentVersionNumber
   const intCurrentVersion = Number(formData.currentVersionNumber);
@@ -357,6 +361,16 @@ export default function BudgetConsolidationForm({
                               </div>
                             ) : null}
                           </div>
+                          {canRemoveBudgetRequests && sourceRequestId ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onRemoveBudgetRequest(sourceRequestId)}
+                              aria-label={`Remove ${row.requestTitle} from this consolidated budget`}
+                            >
+                              Remove
+                            </Button>
+                          ) : null}
                           <button
                             type="button"
                             className="unit-section-toggle"
@@ -693,6 +707,7 @@ BudgetConsolidationForm.propTypes = {
   ),
   approverPanel: PropTypes.node,
   onAddBudgetRequests: PropTypes.func,
+  onRemoveBudgetRequest: PropTypes.func,
   onOpenAddBudgetRequests: PropTypes.func,
 };
 
