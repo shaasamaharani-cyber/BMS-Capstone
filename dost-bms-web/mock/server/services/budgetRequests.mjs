@@ -32,6 +32,12 @@ export function withBudgetRequestRelations(db, request) {
       ? { pp_id: planningPeriod.pp_id, pp_name: planningPeriod.pp_name }
       : null,
     current_stage: unifiedBudget?.ub_current_stage ?? null,
+    current_budget_status: unifiedBudget?.ub_current_status ?? null,
+    // Finished = approved and no stage is still waiting (the last external stage is done)
+    current_budget_finished: Boolean(unifiedBudget)
+      && String(unifiedBudget.ub_current_status).toLowerCase() === 'approved'
+      && !db.rows('unified-budget-workflow-steps')
+        .some((row) => Number(row.ubws_unified_budget_id) === Number(unifiedBudget.ub_id ?? unifiedBudget.id) && row.ubws_payload?.status === 'current'),
   };
 }
 

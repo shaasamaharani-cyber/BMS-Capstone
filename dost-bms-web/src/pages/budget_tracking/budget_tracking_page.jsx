@@ -119,7 +119,7 @@ const TABLE_COLUMNS = [
   {
     key: 'status',
     label: 'Status',
-    render: (_, row) => <Badge status={getBadgeStatus(row.status)} label={row.status} />,
+    render: (_, row) => <Badge status={getBadgeStatus(row.status)} label={row.statusLabel || row.status} />,
   },
   { key: 'stage', label: 'Current Stage' },
   {
