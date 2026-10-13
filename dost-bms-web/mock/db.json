@@ -702,6 +702,169 @@
       "br_created_at": "2025-10-05T08:00:00.000Z",
       "br_updated_at": "2026-01-18T08:00:00.000Z",
       "br_planning_period_id": 1
+    },
+    {
+      "id": 20,
+      "br_id": 20,
+      "br_reference_no": "BR-2027-005",
+      "br_title": "Sample 1: Highway (workflow test)",
+      "br_description": "Sample request to test the Request Unit lane: resurfacing and safety works on the highway access road to the NCR office.",
+      "br_status": "submitted",
+      "br_requesting_unit_id": 2,
+      "br_fiscal_year_id": 6,
+      "br_total_amount": "1400000.00",
+      "br_current_version_number": 1,
+      "br_created_at": "2026-10-13T01:20:00.000Z",
+      "br_updated_at": "2026-10-13T01:20:00.000Z",
+      "br_planning_period_id": 1,
+      "br_attached_files": [],
+      "br_unified_request": {
+        "request": {
+          "title": "Sample 1: Highway (workflow test)",
+          "unitId": "2",
+          "fiscalYearId": "6",
+          "planningPeriodId": "1",
+          "description": "Sample request to test the Request Unit lane: resurfacing and safety works on the highway access road to the NCR office.",
+          "programPap": "",
+          "location": "Quezon City, Metro Manila",
+          "implementationStart": "2027-01-01",
+          "implementationEnd": "2027-12-31",
+          "fundingSource": "national_government",
+          "objectives": "Resurface 2 km of the access highway and install safety signage so staff and visitors can reach the NCR office safely."
+        },
+        "step": 4,
+        "snapshot": {
+          "totals": {
+            "psTotal": 0,
+            "mooeTotal": 200000,
+            "coTotal": 1200000,
+            "tagTotal": 0,
+            "grandTotal": 1400000
+          },
+          "generatedAt": "2026-10-13T01:34:57.140Z"
+        },
+        "common": {
+          "department": "Department of Science and Technology",
+          "agency": "NCR",
+          "fiscalYear": "2027",
+          "programPap": "Sample 1: Highway (workflow test)",
+          "location": "Quezon City, Metro Manila",
+          "implementationStart": "2027-01-01",
+          "implementationEnd": "2027-12-31",
+          "fundingSource": "national_government",
+          "fundingSourceLabel": "National Government",
+          "projectDescription": "Sample request to test the Request Unit lane: resurfacing and safety works on the highway access road to the NCR office.",
+          "objectives": "Resurface 2 km of the access highway and install safety signage so staff and visitors can reach the NCR office safely."
+        },
+        "answers": {
+          "hasOutyear": "no",
+          "hasFinEx": "no",
+          "isPcb": "no",
+          "hasClimate": "no",
+          "hasNonPermanent": "no",
+          "hasRetirement": "no",
+          "hasEarmarked": "no",
+          "hasOtherReceipts": "no",
+          "hasDonations": "no",
+          "hasProvisions": "no",
+          "hasRdcInputs": "no",
+          "hasCsoInputs": "no",
+          "proposalTier": "tier2"
+        },
+        "requiredForms": [
+          {
+            "formId": "bp-a",
+            "ruleIds": [
+              "BR-00"
+            ],
+            "reasons": [
+              "Core agency form - always required"
+            ]
+          },
+          {
+            "formId": "bp-b",
+            "ruleIds": [
+              "BR-00"
+            ],
+            "reasons": [
+              "Core agency form - always required"
+            ]
+          },
+          {
+            "formId": "bp-100",
+            "ruleIds": [
+              "BR-00"
+            ],
+            "reasons": [
+              "Core agency form - always required"
+            ]
+          },
+          {
+            "formId": "bp-200",
+            "ruleIds": [
+              "BR-00"
+            ],
+            "reasons": [
+              "Core agency form - always required"
+            ]
+          },
+          {
+            "formId": "bp-202",
+            "ruleIds": [
+              "BR-01"
+            ],
+            "reasons": [
+              "Proposal is Tier 2 (new or expanded spending)"
+            ]
+          },
+          {
+            "formId": "bp-201-b",
+            "ruleIds": [
+              "BR-15"
+            ],
+            "reasons": [
+              "Line items include MOOE"
+            ]
+          },
+          {
+            "formId": "bp-201-d",
+            "ruleIds": [
+              "BR-17"
+            ],
+            "reasons": [
+              "Line items include Capital Outlay (CO)"
+            ]
+          }
+        ],
+        "overrides": {},
+        "formValues": {
+          "bp-a": {
+            "performanceMeasure": "Kilometres of access road resurfaced (target: 2 km)",
+            "remarks": "Updated after review"
+          },
+          "bp-202": {
+            "projectType": "New",
+            "rationale": "The access highway is damaged; vehicles and staff are delayed and repairs to vehicles are rising.",
+            "beneficiaries": "NCR office staff, visiting researchers and nearby residents (about 1,200 people a month).",
+            "implementationStrategy": "Procure a contractor through public bidding; resurface in two phases to keep one lane open.",
+            "physicalTargets": "2025: 0 km; 2026: 0 km; FY2027: 2 km; 2028: maintenance; 2029: maintenance"
+          },
+          "bp-201-d": {
+            "actualCo": "175000",
+            "assetDescription": "2 km asphalt resurfacing of the NCR office access highway, including drainage edges."
+          },
+          "bp-201-b": {
+            "actualMooe": "65000"
+          }
+        },
+        "totalsAtGeneration": {
+          "psTotal": 0,
+          "mooeTotal": 200000,
+          "coTotal": 1200000,
+          "tagTotal": 0,
+          "grandTotal": 1400000
+        }
+      }
     }
   ],
   "budget-request-items": [
@@ -1164,6 +1327,28 @@
       "bri_planned_amount": 100000,
       "bri_justification": "Project Investment",
       "bri_sort_order": 4
+    },
+    {
+      "id": 51,
+      "bri_id": 51,
+      "bri_br_id": 20,
+      "bri_sort_order": 1,
+      "bri_category_id": 3,
+      "bri_cost_structure": "Operations",
+      "bri_description": "Highway resurfacing works",
+      "bri_justification": "The 2 km access road has potholes that damage vehicles and delay deliveries.",
+      "bri_planned_amount": 1200000
+    },
+    {
+      "id": 52,
+      "bri_id": 52,
+      "bri_br_id": 20,
+      "bri_sort_order": 2,
+      "bri_category_id": 2,
+      "bri_cost_structure": "Operations",
+      "bri_description": "Road safety signage and markings",
+      "bri_justification": "Warning signs and lane markings are faded; needed for visitor safety.",
+      "bri_planned_amount": 200000
     }
   ],
   "approval-workflow-stages": [
