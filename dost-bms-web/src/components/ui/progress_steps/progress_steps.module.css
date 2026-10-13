@@ -39,10 +39,6 @@
   align-items: center;
 }
 
-.horizontal .stepWrapper:last-child {
-  flex: unset; /* Let the last one just be the size of the circle */
-}
-
 .vertical .stepWrapper {
   flex-direction: row;
   min-height: 60px;
@@ -54,11 +50,10 @@
   position: relative;
 }
 
+/* Equal-width steps with the circle centred over its label; the line runs centre to centre */
 .horizontal .indicatorContainer {
   width: 100%;
-}
-.horizontal .stepWrapper:last-child .indicatorContainer {
-  width: auto;
+  justify-content: center;
 }
 
 .vertical .indicatorContainer {
