@@ -431,10 +431,13 @@ function BudgetTrackingDetailView() {
     () => splitUnifiedWorkflowStepsByLane(workflowSteps, arrWorkflowStageDefinitions),
     [workflowSteps, arrWorkflowStageDefinitions]
   );
+  // External results are recorded by the division (as-is steps 12-16), not by the directors
+  const blnIsDirector = String(user?.role?.role_group || '').toLowerCase() === 'executive';
   const blnShowExternalStageUpdate = useMemo(
-    () => isExternalStageUpdatePanelVisible(objRecord, activeWorkflow, arrWorkflowStageDefinitions)
+    () => !blnIsDirector
+      && isExternalStageUpdatePanelVisible(objRecord, activeWorkflow, arrWorkflowStageDefinitions)
       && externalSteps.length > 0,
-    [objRecord, activeWorkflow, arrWorkflowStageDefinitions, externalSteps.length]
+    [blnIsDirector, objRecord, activeWorkflow, arrWorkflowStageDefinitions, externalSteps.length]
   );
   const blnWorkflowFullyApproved = useMemo(
     () => isUnifiedBudgetWorkflowFullyApproved(activeWorkflow, arrWorkflowStageDefinitions),

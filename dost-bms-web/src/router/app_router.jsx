@@ -83,11 +83,12 @@ export default function AppRouter() {
           <Route path="budget-consolidation" element={
             <PermissionRoute permission={PERMISSIONS.BUDGET_CONSOLIDATION}><BudgetConsolidationPage /></PermissionRoute>
           } />
+          {/* Only the Budget and Finance Division (Budget Review access) prepares consolidated budgets; directors approve or reject */}
           <Route path="budget-consolidation/new" element={
-            <PermissionRoute permission={PERMISSIONS.BUDGET_CONSOLIDATION}><NewBudgetConsolidation /></PermissionRoute>
+            <PermissionRoute permission={PERMISSIONS.BUDGET_REVIEW}><NewBudgetConsolidation /></PermissionRoute>
           } />
           <Route path="budget-consolidation/:id/edit" element={
-            <PermissionRoute permission={PERMISSIONS.BUDGET_CONSOLIDATION}><EditBudgetConsolidation /></PermissionRoute>
+            <PermissionRoute permission={PERMISSIONS.BUDGET_REVIEW}><EditBudgetConsolidation /></PermissionRoute>
           } />
           <Route path="budget-consolidation/:id" element={
             <PermissionRoute permission={PERMISSIONS.BUDGET_CONSOLIDATION}><BudgetConsolidationDetailPage /></PermissionRoute>
