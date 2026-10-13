@@ -8,6 +8,7 @@ import {
   applyRejectToWorkflow,
 } from '../services/unifiedBudgets.mjs';
 import { actorDisplayNameFromUser, resolveRequestActor } from '../services/requestActor.mjs';
+import { permissionsForUser } from './auth.mjs';
 
 export async function handleUnifiedBudgets(ctx) {
   const { db, json, paginate, parts, req, res, url, payload } = ctx;
@@ -40,6 +41,20 @@ export async function handleUnifiedBudgets(ctx) {
     const items = unifiedBudgetRows(db, url.searchParams);
     json(res, 200, paginate(items, url.searchParams));
     return true;
+  }
+
+  // Who may change a consolidated budget (as-is lanes; Security Standards 6.15, 6.17): the division
+  // prepares it and records external results, the directors approve or reject. The login token decides.
+  if (req.method !== 'GET') {
+    const objUser = resolveRequestActor(db, req);
+    const blnDirectorAction = req.method === 'POST' && ['approve', 'reject'].includes(parts[2]);
+    const blnAllowed = blnDirectorAction
+      ? String(objUser?.role?.role_group || '').toLowerCase() === 'executive'
+      : permissionsForUser(objUser).includes('route:budget-review');
+    if (!blnAllowed) {
+      json(res, 403, { message: 'Unauthorized. Insufficient permissions.' });
+      return true;
+    }
   }
 
   if (req.method === 'POST' && parts.length === 1) {

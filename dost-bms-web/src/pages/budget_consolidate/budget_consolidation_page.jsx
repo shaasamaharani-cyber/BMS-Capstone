@@ -395,9 +395,11 @@ export default function BudgetConsolidationPage() {
     <div>
       {/* ── Section 1: Page Header ── */}
       <PageHeader title="Budget Consolidation">
-        <Button onClick={() => setBlnShowConsolidateModal(true)}>
-          🔗 Consolidate Budget
-        </Button>
+        {!canApprove && (
+          <Button onClick={() => setBlnShowConsolidateModal(true)}>
+            🔗 Consolidate Budget
+          </Button>
+        )}
       </PageHeader>
 
       {/* ── Section 2: Summary Metric Cards ── */}
