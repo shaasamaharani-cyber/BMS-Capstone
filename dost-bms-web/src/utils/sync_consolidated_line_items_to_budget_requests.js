@@ -13,10 +13,6 @@
  * All rights reserved.
  */
 
-import { updateBudgetRequestItem } from '../api/budget_request_items_api';
-import { DEFAULT_COST_STRUCTURE, normalizeCostStructure } from './cost_structure';
-
-
 function isSameConsolidatedRowId(left, right) {
   return String(left) === String(right);
 }
@@ -140,54 +136,4 @@ export function remapConsolidatedLineItemsAfterSave(previousSections, serverSect
       }),
     });
   });
-}
-
-
-export function collectLinkedConsolidatedLineItems(consolidatedLineItems = []) {
-  return (Array.isArray(consolidatedLineItems) ? consolidatedLineItems : [])
-    .flatMap((section) => (
-      (Array.isArray(section.items) ? section.items : []).map((item) => ({
-        ...item,
-        sourceRequestId: item.sourceRequestId || section.sourceRequestId,
-        sourceItemId: inferConsolidatedSourceItemId(item),
-      }))
-    ))
-    .filter((item) => item.sourceRequestId && item.sourceItemId);
-}
-
-
-export async function syncConsolidatedLineItemsToBudgetRequests(
-  consolidatedLineItems,
-  categoryCodeToIdMap = new Map()
-) {
-  const linkedItems = collectLinkedConsolidatedLineItems(consolidatedLineItems);
-
-  if (linkedItems.length === 0) {
-    return { syncedCount: 0, failures: [] };
-  }
-
-  const results = await Promise.allSettled(linkedItems.map((item) => {
-    const categoryId = categoryCodeToIdMap.get(String(item.category || '').trim().toUpperCase()) || null;
-    return updateBudgetRequestItem(Number(item.sourceRequestId), Number(item.sourceItemId), {
-      bri_category_id: categoryId,
-      bri_cost_structure: normalizeCostStructure(item.costStructure) || DEFAULT_COST_STRUCTURE,
-      bri_description: String(item.name || '').trim(),
-      bri_planned_amount: item.amount === '' ? null : Number(item.amount),
-      bri_justification: String(item.justification || '').trim() || null,
-    });
-  }));
-
-  const failures = results
-    .map((result, index) => ({ result, item: linkedItems[index] }))
-    .filter(({ result }) => result.status === 'rejected')
-    .map(({ result, item }) => ({
-      sourceRequestId: item.sourceRequestId,
-      sourceItemId: item.sourceItemId,
-      reason: result.reason?.message || String(result.reason || 'Update failed'),
-    }));
-
-  return {
-    syncedCount: results.filter((result) => result.status === 'fulfilled').length,
-    failures,
-  };
 }

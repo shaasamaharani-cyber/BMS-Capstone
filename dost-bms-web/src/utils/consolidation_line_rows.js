@@ -136,6 +136,7 @@ export function buildConsolidationLineRows(sections, options = {}) {
               costStructure: getCostStructure(item.costStructure),
               name: item.name,
               amount: toAmount(item.amount),
+              originalAmount: toAmount(item.originalAmount ?? item.amount),
               justification: item.justification,
             });
           });

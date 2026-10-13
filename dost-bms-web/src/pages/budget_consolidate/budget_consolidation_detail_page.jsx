@@ -279,6 +279,12 @@ export default function BudgetConsolidationDetailPage() {
         <h5 className="mb-0 fw-semibold">View Budget Consolidation Request</h5>
       </div>
 
+      {String(objRecord?.status).toUpperCase() === 'REJECTED' && objRecord?.reviewComment ? (
+        <div className="alert alert-warning mx-4 mt-3 mb-0" role="alert">
+          <strong>Returned by the director:</strong> {objRecord.reviewComment}
+        </div>
+      ) : null}
+
       <ul className="nav nav-underline px-4 border-bottom">
         <li className="nav-item">
           <button

@@ -251,6 +251,7 @@ function buildConsolidatedLineItems(db, ubId) {
       costStructure: item.ubi_cost_structure ?? 'General',
       name: item.ubi_description,
       amount: Number(item.ubi_adjusted_amount ?? item.ubi_original_amount ?? 0),
+      originalAmount: Number(item.ubi_original_amount ?? item.ubi_adjusted_amount ?? 0),
       justification: item.ubi_adjustment_notes ?? '',
     });
   });
@@ -513,6 +514,7 @@ export function withUnifiedBudgetRelations(db, budget) {
     code: budget.ub_reference_no,
     title: budget.ub_title,
     description: budget.ub_description ?? '',
+    reviewComment: budget.ub_review_comment ?? '',
     status: String(status).toUpperCase(),
     stage,
     unit: 'Budget Division',
@@ -551,6 +553,11 @@ function saveUnifiedBudgetItems(db, ubId, sections, now) {
         ? Number(existingRow.ubi_id ?? existingRow.id)
         : db.nextId('unified-budget-items');
       const amount = Number(item.amount ?? 0);
+      // Original = the unit's own figure; the division's change is kept only in the adjusted amount
+      const sourceItem = budgetRequestItemId != null
+        ? db.rows('budget-request-items').find((row) => Number(row.bri_id ?? row.id) === Number(budgetRequestItemId))
+        : null;
+      const originalAmount = sourceItem ? Number(sourceItem.bri_planned_amount ?? 0) : amount;
 
       retainedIds.add(id);
       db.upsert('unified-budget-items', id, {
@@ -565,7 +572,7 @@ function saveUnifiedBudgetItems(db, ubId, sections, now) {
         ubi_cost_structure: item.costStructure ?? null,
         ubi_period_type: 'annual',
         ubi_period_label: String(item.periodLabel ?? ''),
-        ubi_original_amount: amount,
+        ubi_original_amount: originalAmount,
         ubi_adjusted_amount: amount,
         ubi_adjustment_notes: item.justification ?? null,
         ubi_created_at: now,
@@ -829,6 +836,10 @@ export async function saveUnifiedBudget(db, payload, existing = null) {
     ub_current_version_number: payload.ub_current_version_number ?? payload.currentVersion ?? existing?.ub_current_version_number ?? 1,
     ub_current_status: requestedStatus,
     ub_current_stage: requestedStage,
+    // The director's remark on the last approve/reject (as-is step 10: "reject by email for revision")
+    ub_review_comment: payload.reviewComment !== undefined
+      ? (String(payload.reviewComment || '').trim() || null)
+      : (existing?.ub_review_comment ?? null),
     ub_form_entries: payload.ub_form_entries ?? payload.attachedForms ?? existing?.ub_form_entries ?? [],
     ub_form_schema_id: payload.ub_form_schema_id ?? payload.ub_form_entries?.[0]?.schemaId ?? existing?.ub_form_schema_id ?? null,
     ub_form_entry_id: payload.ub_form_entry_id ?? payload.ub_form_entries?.[0]?.entryId ?? existing?.ub_form_entry_id ?? null,

@@ -82,7 +82,7 @@ export async function handleUnifiedBudgets(ctx) {
       stage: 'Secretary',
       approvalWorkflow: updatedSteps,
       approvalVersions: updatedVersions.length ? updatedVersions : undefined,
-      comment: payload?.comment,
+      reviewComment: payload?.comment ?? '',
     }, existing);
     json(res, 200, { data: updated });
     return true;
@@ -109,7 +109,7 @@ export async function handleUnifiedBudgets(ctx) {
       status: 'rejected',
       approvalWorkflow: updatedSteps,
       approvalVersions: updatedVersions.length ? updatedVersions : undefined,
-      comment: payload?.comment,
+      reviewComment: payload?.comment ?? '',
     }, existing);
     json(res, 200, { data: updated });
     return true;

@@ -66,7 +66,6 @@ import {
   ensureBudgetRequestSectionLinks,
   inferConsolidatedSourceItemId,
   remapConsolidatedLineItemsAfterSave,
-  syncConsolidatedLineItemsToBudgetRequests,
 } from '../../utils/sync_consolidated_line_items_to_budget_requests';
 
 import {
@@ -96,6 +95,7 @@ const normalizeConsolidatedSections = (raw, fallbackRequestId = 'BR-UNKNOWN', fa
         category: item.category || 'PS',
         costStructure: normalizeCostStructure(item.costStructure) || DEFAULT_COST_STRUCTURE,
         amount: toAmount(item.amount),
+        originalAmount: toAmount(item.originalAmount ?? item.amount),
         justification: item.justification || '',
         requestId: item.requestId || section.requestId || fallbackRequestId,
         requestingUnit: item.requestingUnit || section.requestingUnit || fallbackUnit,
@@ -174,7 +174,6 @@ const toApiRows = (payload) => {
   const [arrApprovalWorkflow, setArrApprovalWorkflow] = useState([]);
   const [intCurrentVersion, setIntCurrentVersion] = useState(1);
   const [arrApprovalVersions, setArrApprovalVersions] = useState([]);
-  const [objCategoryCodeToIdMap, setObjCategoryCodeToIdMap] = useState(new Map());
   const [objCategoryIdToCodeMap, setObjCategoryIdToCodeMap] = useState(new Map());
   const [arrPlanningPeriods, setArrPlanningPeriods] = useState([]);
   const [strActiveTab, setStrActiveTab] = useState('overview');
@@ -248,17 +247,14 @@ const toApiRows = (payload) => {
       if (!mounted) return;
       const data = res?.data || null;
       const categories = Array.isArray(categoryRes?.data) ? categoryRes.data : [];
-      const nextCodeToId = new Map();
       const nextIdToCode = new Map();
       categories.forEach((cat) => {
         const categoryId = Number(cat?.bcat_id ?? cat?.id);
         const categoryCode = String(cat?.bcat_code || '').trim().toUpperCase();
         if (!Number.isNaN(categoryId) && categoryCode) {
-          nextCodeToId.set(categoryCode, categoryId);
           nextIdToCode.set(categoryId, categoryCode);
         }
       });
-      setObjCategoryCodeToIdMap(nextCodeToId);
       setObjCategoryIdToCodeMap(nextIdToCode);
       const reviewedRows = Array.isArray(reviewedRes?.data) ? reviewedRes.data : [];
       setArrReviewedRequestPool(reviewedRows.map(mapReviewedRequestToUi));
@@ -558,7 +554,6 @@ const toApiRows = (payload) => {
       });
       return [...existing, versionPayload].sort((a, b) => Number(a.version) - Number(b.version));
     })();
-    const expectedLineCount = flattenedRows.filter((row) => row.rowType === 'item').length;
     const lineItemsToSave = arrConsolidatedLineItems;
     const response = await updateUnifiedBudget(objRecord.id, {
       actor_id: user?.id ?? user?.usr_id ?? null,
@@ -604,21 +599,7 @@ const toApiRows = (payload) => {
       setStrPlanningPeriod(String(updated.planningPeriod ?? strPlanningPeriod));
       setStrComment(updated.comment ?? strComment);
       setStrRefCode(updated.code || updated.id || strRefCode);
-      const syncResult = await syncConsolidatedLineItemsToBudgetRequests(
-        lineItemsToSave,
-        objCategoryCodeToIdMap
-      );
-      if (expectedLineCount > 0 && syncResult.syncedCount === 0) {
-        showToast({
-          message: 'Consolidation saved, but could not sync line items to source budget requests.',
-          variant: 'warning',
-        });
-      } else if (syncResult.failures.length > 0) {
-        showToast({
-          message: `Consolidation saved, but ${syncResult.failures.length} line item(s) could not sync to budget requests.`,
-          variant: 'warning',
-        });
-      }
+      // The units' own requests keep their figures; the division's changes live only in this budget
       if (Array.isArray(updated.consolidatedLineItems)) {
         setArrConsolidatedLineItems(normalizeConsolidatedSections(
           remapConsolidatedLineItemsAfterSave(
@@ -879,6 +860,12 @@ const toApiRows = (payload) => {
         </Button>
         <h5 className="mb-0 fw-semibold">Edit Budget Consolidation Request</h5>
       </div>
+
+      {String(strStatus).toUpperCase() === 'REJECTED' && objRecord?.reviewComment ? (
+        <div className="alert alert-warning mx-4 mt-3 mb-0" role="alert">
+          <strong>Returned by the director:</strong> {objRecord.reviewComment}
+        </div>
+      ) : null}
 
       <ul className="nav nav-underline px-4 border-bottom">
         <li className="nav-item">
