@@ -3,6 +3,7 @@ import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { extname, resolve } from 'node:path';
 import { createDocumentDb } from './server/db.mjs';
+import { createVersionSnapshot, getVersionsForRequest } from './server/services/budgetRequestLifecycle.mjs';
 import { json, paginate, readJsonBody } from './server/http.mjs';
 import { handleAuth } from './server/routes/auth.mjs';
 import { handleReferenceData } from './server/routes/referenceData.mjs';
@@ -28,6 +29,15 @@ const db = createDocumentDb({
   seedPath: resolve('mock/db.json'),
   seedScriptPath: 'mock/seed-sqlite.mjs',
 });
+
+// Seeded requests that were already sent for review get their first saved version, like a real
+// submission, so a later resubmission becomes version 2 and the original figures stay on record
+for (const objRequest of db.rows('budget-requests')) {
+  const intRequestId = objRequest.br_id ?? objRequest.id;
+  if (String(objRequest.br_status).toLowerCase() === 'draft' || getVersionsForRequest(db, intRequestId).length > 0) continue;
+  const objSubmitter = db.rows('users').find((objUser) => Number(objUser.usr_requesting_unit_id) === Number(objRequest.br_requesting_unit_id)) ?? null;
+  await createVersionSnapshot(db, objRequest, Number(objRequest.br_current_version_number) || 1, objSubmitter, String(objRequest.br_status).toLowerCase());
+}
 
 const routes = [
   handleAuth,
