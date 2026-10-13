@@ -120,7 +120,7 @@ function buildStepsFromLogs(activityLogs, currentStatus) {
     new Date(lastSubmit.bral_created_at) > new Date(lastReview.bral_created_at);
 
   if (lastReview && !resubmittedAfterReview) {
-    const labelMap = { approved: 'Reviewed', validated: 'Reviewed', rejected: 'Rejected' };
+    const labelMap = { approved: 'Reviewed', validated: 'Reviewed', rejected: 'Rejected', returned: 'Returned' };
     const nodeStatus = lastReview.bral_action === 'rejected' ? 'rejected'
       : lastReview.bral_action === 'returned' ? 'rejected'
         : 'done';

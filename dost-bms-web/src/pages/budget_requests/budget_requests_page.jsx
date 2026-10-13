@@ -302,7 +302,7 @@ export default function BudgetRequestsPage() {
       key: 'status',
       label: 'Status',
       sortable: true,
-      render: (_, row) => <Badge status={row.status} />,
+      render: (_, row) => <Badge status={row.status} label={row.status === 'Rejected' ? 'Returned' : undefined} />,
     },
     {
       key: 'lastUpdated',

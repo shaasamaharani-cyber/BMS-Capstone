@@ -695,6 +695,12 @@ const toApiRows = (payload) => {
     });
   };
 
+  // Take one request out of the budget; on submit the server puts it back to "Reviewed"
+  const handleRemoveBudgetRequest = (sourceRequestId) => {
+    if (!isEditable) return;
+    setArrConsolidatedLineItems((prev) => prev.filter((section) => String(section.sourceRequestId) !== String(sourceRequestId)));
+  };
+
   const refreshReviewedRequests = async () => {
     try {
       const reviewedRes = await getReviewedBudgetRequests();
@@ -974,6 +980,7 @@ const toApiRows = (payload) => {
             ...arrConsolidatedLineItems.map((section) => section.sourceRequestId ?? section.requestId),
           ]}
           onAddBudgetRequests={handleAddBudgetRequests}
+          onRemoveBudgetRequest={handleRemoveBudgetRequest}
           onOpenAddBudgetRequests={refreshReviewedRequests}
           budgetCategoryOptions={budgetCategoryOptions}
           actions={

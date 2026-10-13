@@ -188,7 +188,7 @@ export default function BudgetReviewPage() {
       key: 'status',
       label: 'Status',
       sortable: true,
-      render: (_, row) => <Badge status={getBadgeStatus(row.status)} />,
+      render: (_, row) => <Badge status={getBadgeStatus(row.status)} label={row.status === 'rejected' ? 'Returned' : undefined} />,
     },
     {
       key: 'lastUpdated',

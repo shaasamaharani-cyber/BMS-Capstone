@@ -109,6 +109,7 @@ export default function UnifiedRequestPage() {
   const [blnLoadingDraft, setBlnLoadingDraft] = useState(Boolean(strRouteId));
   const [blnSavingDraft, setBlnSavingDraft] = useState(false);
   const [blnLeaveModalOpen, setBlnLeaveModalOpen] = useState(false);
+  const [strLeaveTo, setStrLeaveTo] = useState('/budget-requests');
   const [strSavedSnapshot, setStrSavedSnapshot] = useState(() => (strRouteId ? null : getDraftSnapshot(createInitialDraft())));
   const refServerItemIds = useRef([]);
   const refLoadedId = useRef(null);
@@ -280,6 +281,32 @@ export default function UnifiedRequestPage() {
 
   const blnDirty = strSavedSnapshot !== null && getDraftSnapshot(objDraft, objSigned) !== strSavedSnapshot;
 
+  // Warn before unsaved changes are lost (User Requirement 06; asked by DOST on 30 Sep):
+  // closing or reloading the tab, and clicking any link in the app such as the sidebar.
+  useEffect(() => {
+    if (!blnDirty) return undefined;
+    const handleBeforeUnload = (objEvent) => {
+      objEvent.preventDefault();
+      objEvent.returnValue = '';
+    };
+    const handleLinkClick = (objEvent) => {
+      const elLink = objEvent.target.closest?.('a[href]');
+      if (!elLink || elLink.target === '_blank' || objEvent.ctrlKey || objEvent.metaKey) return;
+      const objUrl = new URL(elLink.href, window.location.href);
+      if (objUrl.origin !== window.location.origin || objUrl.pathname === window.location.pathname) return;
+      objEvent.preventDefault();
+      objEvent.stopPropagation();
+      setStrLeaveTo(`${objUrl.pathname}${objUrl.search}`);
+      setBlnLeaveModalOpen(true);
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('click', handleLinkClick, true);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('click', handleLinkClick, true);
+    };
+  }, [blnDirty]);
+
   const arrRequestLevel = arrRequired.filter((objEntry) => getFormById(objEntry.formId)?.level === FORM_LEVEL.REQUEST);
   const intCompleteForms = arrRequestLevel.filter((objEntry) => getFormCompletion(objEntry.formId, objContext).complete).length;
   const intGoToStep = (strStepId) => updateDraft({ intStep: Math.max(0, STEP_IDS.indexOf(strStepId)) });
@@ -430,7 +457,7 @@ export default function UnifiedRequestPage() {
         refLoadedId.current = String(intId);
       }
       showToast({ message: 'Draft saved. You can continue later from Budget Requests.' });
-      if (blnLeaveAfter) navigate('/budget-requests');
+      if (blnLeaveAfter) navigate(strLeaveTo);
       else if (blnWasNew) navigate(`/budget-requests/unified/${intId}`, { replace: true });
       return true;
     } catch {
@@ -458,6 +485,7 @@ export default function UnifiedRequestPage() {
   };
 
   const handleBack = () => {
+    setStrLeaveTo('/budget-requests');
     if (blnDirty) setBlnLeaveModalOpen(true);
     else navigate('/budget-requests');
   };
@@ -501,7 +529,8 @@ export default function UnifiedRequestPage() {
         </section>
       )}
 
-      <ProgressSteps steps={arrStepper} size="sm" />
+      {/* Any step can be opened directly; nothing typed is lost (asked by DOST on 30 Sep) */}
+      <ProgressSteps steps={arrStepper} size="sm" onStepClick={(intIndex) => updateDraft({ intStep: intIndex })} />
 
       <div className={styles.layout}>
         <main className={styles.main}>
@@ -564,7 +593,7 @@ export default function UnifiedRequestPage() {
         footer={(
           <>
             <Button variant="ghost" onClick={() => setBlnLeaveModalOpen(false)}>Stay</Button>
-            <Button variant="outline" onClick={() => { setBlnLeaveModalOpen(false); navigate('/budget-requests'); }}>Leave without saving</Button>
+            <Button variant="outline" onClick={() => { setBlnLeaveModalOpen(false); navigate(strLeaveTo); }}>Leave without saving</Button>
             <Button onClick={handleSaveAndLeave}>Save as draft and leave</Button>
           </>
         )}

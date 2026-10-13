@@ -471,6 +471,11 @@ const mapRequestsToSections = (requests = []) =>
     });
   };
 
+  // Take one request out before saving; it stays "Reviewed" and can be added later
+  const handleRemoveBudgetRequest = (sourceRequestId) => {
+    setArrConsolidatedLineItems((prev) => prev.filter((section) => String(section.sourceRequestId) !== String(sourceRequestId)));
+  };
+
   const refreshReviewedRequests = async () => {
     try {
       const reviewed = await getReviewedBudgetRequests();
@@ -637,6 +642,8 @@ const mapRequestsToSections = (requests = []) =>
             .map(ensureBudgetRequestSectionLinks)
         );
       }
+      // The draft now exists: continue on its own edit page so a refresh does not start a blank one
+      navigate(`/budget-consolidation/${saved.id}/edit`, { replace: true });
     }
     showToast({ message: 'Request saved successfully.' });
   };
@@ -911,6 +918,7 @@ const mapRequestsToSections = (requests = []) =>
           reviewedRequests={arrReviewedRequestPool}
           addedRequestIds={arrConsolidatedLineItems.map((section) => section.sourceRequestId ?? section.requestId)}
           onAddBudgetRequests={handleAddBudgetRequests}
+          onRemoveBudgetRequest={handleRemoveBudgetRequest}
           onOpenAddBudgetRequests={refreshReviewedRequests}
           actions={[
             { label: 'Submit for Approval', leftIcon: <BsSend />, onClick: handleSubmitForApproval },

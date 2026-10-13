@@ -53,7 +53,8 @@ function unitIdForName(db, name) {
 
 function nextUnifiedBudgetReference(db, fiscalYear) {
   const current = db.rows('unified-budgets')
-    .map((row) => String(row.ub_reference_no || '').match(/UB-\d{4}-(\d+)$/)?.[1])
+    // Numbering restarts each fiscal year: the first FY2027 budget is UB-2027-001
+    .map((row) => String(row.ub_reference_no || '').match(new RegExp(`^UB-${fiscalYear}-(\\d+)$`))?.[1])
     .map(Number)
     .filter(Number.isFinite);
   return `UB-${fiscalYear}-${String((current.length ? Math.max(...current) : 0) + 1).padStart(3, '0')}`;
@@ -312,6 +313,20 @@ function collectSourceBudgetRequestIdsFromPayload(db, ubId, payload = {}) {
   return [...setIds];
 }
 
+// A request the division took out of this budget goes back to "Reviewed" so it can be consolidated again
+function releaseRemovedBudgetRequests(db, ubId, arrRequestIdsBefore, actorId = null) {
+  const setStillLinked = new Set(budgetRequestIdsForBudget(db, ubId).map(Number));
+  const objActor = actorId != null ? db.find('users', actorId) : null;
+  arrRequestIdsBefore
+    .filter((intBrId) => !setStillLinked.has(Number(intBrId)))
+    .forEach((intBrId) => {
+      const objRequest = db.find('budget-requests', intBrId);
+      if (!objRequest || String(objRequest.br_status).toLowerCase() !== 'consolidated') return;
+      saveBudgetRequest(db, { br_status: 'reviewed' }, objRequest);
+      logActivity(db, intBrId, 'removed from consolidated budget', 'consolidated', 'reviewed', objActor, null, null);
+    });
+}
+
 function markLinkedBudgetRequestsConsolidated(db, ubId, payload, existing, actorId = null) {
   const strPrevious = String(
     existing?.ub_current_status ?? payload.previousStatus ?? ''
@@ -515,6 +530,9 @@ export function withUnifiedBudgetRelations(db, budget) {
     title: budget.ub_title,
     description: budget.ub_description ?? '',
     reviewComment: budget.ub_review_comment ?? '',
+    changeLog: db.rows('unified-budget-change-logs')
+      .filter((row) => Number(row.ubcl_unified_budget_id) === Number(ubId))
+      .sort((a, b) => String(a.ubcl_created_at).localeCompare(String(b.ubcl_created_at))),
     status: String(status).toUpperCase(),
     stage,
     unit: 'Budget Division',
@@ -539,7 +557,7 @@ export function withUnifiedBudgetRelations(db, budget) {
   };
 }
 
-function saveUnifiedBudgetItems(db, ubId, sections, now) {
+function saveUnifiedBudgetItems(db, ubId, sections, now, actor = null) {
   if (!Array.isArray(sections)) return;
 
   const retainedIds = new Set();
@@ -553,6 +571,19 @@ function saveUnifiedBudgetItems(db, ubId, sections, now) {
         ? Number(existingRow.ubi_id ?? existingRow.id)
         : db.nextId('unified-budget-items');
       const amount = Number(item.amount ?? 0);
+      // Record who changed a line amount, from what to what (User Requirement 17, DOST answer 10)
+      if (existingRow && Number(existingRow.ubi_adjusted_amount) !== amount) {
+        const logId = db.nextId('unified-budget-change-logs');
+        db.upsert('unified-budget-change-logs', logId, {
+          id: logId,
+          ubcl_unified_budget_id: Number(ubId),
+          ubcl_line: String(item.name ?? item.description ?? existingRow.ubi_description ?? '').trim(),
+          ubcl_from: Number(existingRow.ubi_adjusted_amount),
+          ubcl_to: amount,
+          ubcl_actor_name: actor?.usr_name ?? null,
+          ubcl_created_at: now,
+        });
+      }
       // Original = the unit's own figure; the division's change is kept only in the adjusted amount
       const sourceItem = budgetRequestItemId != null
         ? db.rows('budget-request-items').find((row) => Number(row.bri_id ?? row.id) === Number(budgetRequestItemId))
@@ -853,7 +884,9 @@ export async function saveUnifiedBudget(db, payload, existing = null) {
   };
 
   db.upsert('unified-budgets', id, saved);
-  saveUnifiedBudgetItems(db, ubId, payload.consolidatedLineItems, now);
+  const arrRequestIdsBefore = existing ? budgetRequestIdsForBudget(db, ubId) : [];
+  saveUnifiedBudgetItems(db, ubId, payload.consolidatedLineItems, now, payload.actor_id != null ? db.find('users', payload.actor_id) : null);
+  releaseRemovedBudgetRequests(db, ubId, arrRequestIdsBefore, payload.actor_id ?? null);
   saveWorkflowSteps(db, ubId, payload.approvalWorkflow);
   await saveApprovalVersionsWithCapture(db, ubId, saved, payload.approvalVersions);
   markLinkedBudgetRequestsConsolidated(
