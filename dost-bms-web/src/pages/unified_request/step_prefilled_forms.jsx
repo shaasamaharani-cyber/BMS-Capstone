@@ -71,6 +71,7 @@ export default function StepPrefilledForms({ arrRequired, objContext, blnSnapsho
       {blnSnapshotStale && (
         <section className={`${styles.banner} ${styles.bannerWarn}`}>
           The line items changed after these forms were generated, so the form totals are out of date.
+          Regenerating also removes the signed copies already uploaded: print the new forms and upload them signed again.
           <Button variant="outline" size="sm" onClick={onRegenerate}>Regenerate forms</Button>
         </section>
       )}
