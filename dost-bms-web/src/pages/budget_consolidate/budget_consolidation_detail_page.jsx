@@ -204,6 +204,9 @@ export default function BudgetConsolidationDetailPage() {
   const canApprove =
     String(user?.role?.role_group || '').toLowerCase() === 'executive' &&
     recordStatus === 'PENDING';
+  // The division edits a draft or a budget the director returned (as-is step 7); directors only approve or reject
+  const canEdit = String(user?.role?.role_group || '').toLowerCase() !== 'executive'
+    && ['DRAFT', 'REJECTED'].includes(recordStatus);
 
   const handleApprove = async () => {
     setBlnIsSubmitting(true);
@@ -369,7 +372,10 @@ export default function BudgetConsolidationDetailPage() {
           totals={totals}
           workflowSteps={displayedWorkflowSteps}
           approverPanel={approverPanel}
-          actions={canApprove ? [] : [{ label: 'Close', variant: 'outline', onClick: () => navigate('/budget-consolidation') }]}
+          actions={canApprove ? [] : [
+            ...(canEdit ? [{ label: 'Edit', onClick: () => navigate(`/budget-consolidation/${id}/edit`) }] : []),
+            { label: 'Close', variant: 'outline', onClick: () => navigate('/budget-consolidation') },
+          ]}
           onFieldChange={() => { }}
           onLineItemChange={() => { }}
           onCommentSend={() => { }}

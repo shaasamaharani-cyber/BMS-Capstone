@@ -66,7 +66,8 @@ const parseBudgetValue = (value) => {
 // ---------------------------------------------------------------------------
 function ActionMenu({ row, navigate, canApprove }) {
   const normalizedStatus = String(row.status || '').trim().toUpperCase();
-  const canEdit = ['DRAFT', 'REJECTED'].includes(normalizedStatus);
+  // Directors (canApprove) approve or reject; only the division edits
+  const canEdit = !canApprove && ['DRAFT', 'REJECTED'].includes(normalizedStatus);
   const showApprove = canApprove && normalizedStatus === 'PENDING';
   const [blnOpen, setBlnOpen] = useState(false);
   const [objMenuStyle, setObjMenuStyle] = useState({});
