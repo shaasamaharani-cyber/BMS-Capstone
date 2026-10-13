@@ -166,6 +166,17 @@ function withoutEmbeddedRelations(record = {}) {
   return cleaned;
 }
 
+// BR-<fiscal year>-<next number in that year>, like the seeded BR-2027-001 (not the calendar year)
+function nextBudgetRequestReference(db, fiscalYearId) {
+  const strYear = db.rows('fiscal-years')
+    .find((row) => Number(row.fy_id) === Number(fiscalYearId))?.fy_year ?? new Date().getFullYear();
+  const arrNumbers = db.rows('budget-requests')
+    .map((row) => String(row.br_reference_no || '').match(new RegExp(`^BR-${strYear}-(\\d+)$`))?.[1])
+    .filter(Boolean)
+    .map(Number);
+  return `BR-${strYear}-${String((arrNumbers.length ? Math.max(...arrNumbers) : 0) + 1).padStart(3, '0')}`;
+}
+
 export function saveBudgetRequest(db, payload, existing = null) {
   const now = new Date().toISOString();
   const id = existing?.id ?? db.nextId('budget-requests');
@@ -188,7 +199,7 @@ export function saveBudgetRequest(db, payload, existing = null) {
     br_id: brId,
     ...storageExisting,
     ...storagePayload,
-    br_reference_no: existing?.br_reference_no ?? `BR-2026-${String(brId).padStart(3, '0')}`,
+    br_reference_no: existing?.br_reference_no ?? nextBudgetRequestReference(db, payload.br_fiscal_year_id),
     br_status: payload.br_status ?? existing?.br_status ?? 'draft',
     br_current_version_number: payload.br_current_version_number ?? existing?.br_current_version_number ?? 1,
     br_total_amount: totalAmount,
