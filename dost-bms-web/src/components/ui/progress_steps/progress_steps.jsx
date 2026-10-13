@@ -19,7 +19,8 @@ import styles from './progress_steps.module.css';
 export default function ProgressSteps({
   steps,
   orientation = 'horizontal',
-  size = 'md'
+  size = 'md',
+  onStepClick,
 }) {
   return (
     <div className={`${styles.container} ${styles[orientation]} ${styles[size]}`}>
@@ -27,7 +28,22 @@ export default function ProgressSteps({
         const isLast = idx === steps.length - 1;
         
         return (
-          <div key={step.id} className={`${styles.stepWrapper} ${styles[step.status]}`}>
+          <div
+            key={step.id}
+            className={`${styles.stepWrapper} ${styles[step.status]}${onStepClick ? ` ${styles.clickable}` : ''}`}
+            {...(onStepClick ? {
+              role: 'button',
+              tabIndex: 0,
+              'aria-current': step.status === 'active' ? 'step' : undefined,
+              onClick: () => onStepClick(idx),
+              onKeyDown: (objEvent) => {
+                if (objEvent.key === 'Enter' || objEvent.key === ' ') {
+                  objEvent.preventDefault();
+                  onStepClick(idx);
+                }
+              },
+            } : {})}
+          >
             <div className={styles.indicatorContainer}>
               <div className={styles.circle}>
                 {step.status === 'completed' ? (
@@ -59,5 +75,6 @@ ProgressSteps.propTypes = {
     status: PropTypes.oneOf(['completed', 'active', 'pending', 'error']).isRequired
   })).isRequired,
   orientation: PropTypes.oneOf(['horizontal', 'vertical']),
-  size: PropTypes.oneOf(['sm', 'md'])
+  size: PropTypes.oneOf(['sm', 'md']),
+  onStepClick: PropTypes.func,
 };
