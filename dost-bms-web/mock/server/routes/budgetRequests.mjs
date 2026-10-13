@@ -47,6 +47,7 @@ function filteredBudgetRequests(db, params, actor = null) {
       items = items.filter((item) => Number(item.br_requesting_unit_id) === intActorUnitId);
     }
   }
+  items = items.filter((item) => canRequesterAccessBudgetRequest(actor, item));
 
   const fiscalYearId = params.get('fiscal_year_id');
   if (fiscalYearId) {

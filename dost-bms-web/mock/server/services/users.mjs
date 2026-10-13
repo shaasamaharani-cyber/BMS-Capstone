@@ -39,8 +39,9 @@ export function requestingUnitIdForUser(user) {
 }
 
 export function canRequesterAccessBudgetRequest(actor, request) {
+  // A draft stays with its unit until submitted (as-is step 2); other roles never see it
   if (!isRequesterUser(actor)) {
-    return true;
+    return String(request?.br_status || '').toLowerCase() !== 'draft';
   }
 
   const intActorUnitId = requestingUnitIdForUser(actor);
