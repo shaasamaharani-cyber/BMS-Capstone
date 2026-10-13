@@ -105,7 +105,7 @@ export default function UnifiedRequestPage() {
 
   // Server-side draft state
   const [intRequestId, setIntRequestId] = useState(strRouteId ? Number(strRouteId) : null);
-  const [objRequestMeta, setObjRequestMeta] = useState({ referenceNo: '', status: '' });
+  const [objRequestMeta, setObjRequestMeta] = useState({ referenceNo: '', status: '', reviewComment: '' });
   const [blnLoadingDraft, setBlnLoadingDraft] = useState(Boolean(strRouteId));
   const [blnSavingDraft, setBlnSavingDraft] = useState(false);
   const [blnLeaveModalOpen, setBlnLeaveModalOpen] = useState(false);
@@ -204,7 +204,7 @@ export default function UnifiedRequestPage() {
         replaceDraft(objLoaded);
         setObjSigned(objLoadedSigned);
         setStrSavedSnapshot(getDraftSnapshot(objLoaded, objLoadedSigned));
-        setObjRequestMeta({ referenceNo: objData.br_reference_no || '', status: String(objData.br_status || '').toLowerCase() });
+        setObjRequestMeta({ referenceNo: objData.br_reference_no || '', status: String(objData.br_status || '').toLowerCase(), reviewComment: objData.br_review_comment || '' });
         setIntRequestId(Number(strRouteId));
         setBlnLoadingDraft(false);
       } catch {
@@ -302,11 +302,24 @@ export default function UnifiedRequestPage() {
     return { objOverrides: objNext };
   });
 
-  const handleFormValueChange = (strFormId, strKey, value) => updateDraft((objPrev) => ({
-    objFormValues: { ...objPrev.objFormValues, [strFormId]: { ...(objPrev.objFormValues[strFormId] || {}), [strKey]: value } },
-  }));
+  const handleFormValueChange = (strFormId, strKey, value) => {
+    updateDraft((objPrev) => ({
+      objFormValues: { ...objPrev.objFormValues, [strFormId]: { ...(objPrev.objFormValues[strFormId] || {}), [strKey]: value } },
+    }));
+    // Editing a form after it was signed makes that signed copy out of date
+    setObjSigned((objPrev) => {
+      if (!objPrev[strFormId]) return objPrev;
+      const objRest = { ...objPrev };
+      delete objRest[strFormId];
+      return objRest;
+    });
+  };
 
-  const handleRegenerate = () => updateDraft({ objSnapshot: { totals: { ...objTotals }, generatedAt: new Date().toISOString() } });
+  const handleRegenerate = () => {
+    updateDraft({ objSnapshot: { totals: { ...objTotals }, generatedAt: new Date().toISOString() } });
+    // A signature approves the figures on the form, so copies signed before the forms changed no longer count
+    setObjSigned({});
+  };
 
   const handleSignedChange = async (strFormId, objFile) => {
     const strDataUrl = await readFileAsDataUrl(objFile);
@@ -481,6 +494,12 @@ export default function UnifiedRequestPage() {
           <Button variant="outline" size="sm" loading={blnSavingDraft} onClick={() => handleSaveDraft(false)}>Save as draft</Button>
         </div>
       </header>
+
+      {objRequestMeta.status === 'rejected' && objRequestMeta.reviewComment && (
+        <section className={`${styles.banner} ${styles.bannerWarn}`}>
+          <strong>Reviewer's remark:</strong> {objRequestMeta.reviewComment}
+        </section>
+      )}
 
       <ProgressSteps steps={arrStepper} size="sm" />
 
