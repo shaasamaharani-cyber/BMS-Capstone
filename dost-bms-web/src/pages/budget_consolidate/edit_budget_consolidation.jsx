@@ -1001,7 +1001,7 @@ const toApiRows = (payload) => {
                     )
                   ),
                 },
-                { label: 'Save Request', variant: 'outline', onClick: () => saveWithStatus(strStatus, 'Changes saved successfully.') },
+                { label: 'Save as draft', variant: 'outline', onClick: () => saveWithStatus(strStatus, 'Changes saved successfully.') },
                 { label: 'Cancel Request', variant: 'danger', leftIcon: <BsXCircle />, onClick: () => saveWithStatus('CANCELLED', 'Request cancelled.') },
               ]
               : [{ label: 'Close', variant: 'outline', onClick: () => navigate('/budget-consolidation') }]
