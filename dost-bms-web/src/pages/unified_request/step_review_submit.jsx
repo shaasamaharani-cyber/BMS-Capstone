@@ -29,7 +29,7 @@ const STATUS_TEXT = {
   none: { text: 'Not used', className: 'statusMuted' },
 };
 
-export default function StepReviewSubmit({ arrIssues, arrTotalsCheck, arrRequired, objSigned, objSummary, strComment, blnSubmitting, blnSavingDraft, onSignedChange, onCommentChange, onGoToStep, onSubmit, onSaveDraft }) {
+export default function StepReviewSubmit({ arrIssues, arrTotalsCheck, arrRequired, objSigned, arrSupporting = [], objSummary, strComment, blnSubmitting, blnSavingDraft, onSignedChange, onSupportingAdd, onSupportingRemove, onCommentChange, onGoToStep, onSubmit, onSaveDraft }) {
   const arrSignable = arrRequired.filter((objEntry) => getFormById(objEntry.formId)?.engine === FORM_ENGINE.DYNAMIC && getFormById(objEntry.formId)?.level === FORM_LEVEL.REQUEST);
   const blnReady = arrIssues.length === 0;
 
@@ -93,6 +93,22 @@ export default function StepReviewSubmit({ arrIssues, arrTotalsCheck, arrRequire
       </section>
 
       <section className={styles.card}>
+        <h3 className={styles.cardTitle}>Supporting documents (optional)</h3>
+        <p className={styles.cardHint}>Quotes, plans or other documents the reviewer may need. The list DOST requires for each budget cycle will be set by an administrator later.</p>
+        {arrSupporting.length === 0 && <p className={styles.emptyCell}>No supporting documents added.</p>}
+        {arrSupporting.map((objFile) => (
+          <div key={objFile.id} className={styles.overrideRow}>
+            <span>{objFile.name}</span>
+            <Button variant="ghost" size="sm" onClick={() => onSupportingRemove(objFile.id)} aria-label={`Remove ${objFile.name}`}>Remove</Button>
+          </div>
+        ))}
+        <label className={styles.uploadButton}>
+          Add documents
+          <input type="file" multiple accept=".pdf,image/png,image/jpeg" hidden onChange={(objEvent) => { const arrPicked = Array.from(objEvent.target.files || []); if (arrPicked.length) onSupportingAdd(arrPicked); objEvent.target.value = ''; }} />
+        </label>
+      </section>
+
+      <section className={styles.card}>
         <h3 className={styles.cardTitle}>Summary</h3>
         <dl className={styles.lockedGrid}>
           <div className={styles.lockedField}><dt>Title</dt><dd>{objSummary.title || '-'}</dd></div>
@@ -123,6 +139,9 @@ StepReviewSubmit.propTypes = {
   blnSubmitting: PropTypes.bool,
   blnSavingDraft: PropTypes.bool,
   onSignedChange: PropTypes.func.isRequired,
+  arrSupporting: PropTypes.array,
+  onSupportingAdd: PropTypes.func.isRequired,
+  onSupportingRemove: PropTypes.func.isRequired,
   onCommentChange: PropTypes.func.isRequired,
   onGoToStep: PropTypes.func.isRequired,
   onSubmit: PropTypes.func.isRequired,
