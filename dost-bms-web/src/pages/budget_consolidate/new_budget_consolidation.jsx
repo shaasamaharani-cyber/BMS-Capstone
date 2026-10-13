@@ -922,7 +922,7 @@ const mapRequestsToSections = (requests = []) =>
           onOpenAddBudgetRequests={refreshReviewedRequests}
           actions={[
             { label: 'Submit for Approval', leftIcon: <BsSend />, onClick: handleSubmitForApproval },
-            { label: 'Save Request', variant: 'outline', onClick: handleSaveDraft },
+            { label: 'Save as draft', variant: 'outline', onClick: handleSaveDraft },
             { label: 'Cancel Request', variant: 'danger', leftIcon: <BsXCircle />, onClick: () => navigate(-1) },
           ]}
           onFieldChange={handleFormFieldChange}
