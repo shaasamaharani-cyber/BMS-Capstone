@@ -14,7 +14,6 @@
  */
 
 import { updateBudgetRequestItem } from '../api/budget_request_items_api';
-import { reviewBudgetRequest } from '../api/budget_requests_api';
 import { DEFAULT_COST_STRUCTURE, normalizeCostStructure } from './cost_structure';
 
 
@@ -143,81 +142,6 @@ export function remapConsolidatedLineItemsAfterSave(previousSections, serverSect
   });
 }
 
-
-function addSourceBudgetRequestId(setIds, value) {
-  const intId = Number(value);
-  if (Number.isFinite(intId) && intId > 0) {
-    setIds.add(intId);
-  }
-}
-
-/**
- * Collects unique source budget request ids from consolidation payload sections.
- *
- * @param {object[]} consolidatedLineItems
- * @param {Array<string|number>} arrBudgetRequestIds
- * @returns {number[]}
- */
-export function collectSourceBudgetRequestIds(consolidatedLineItems = [], arrBudgetRequestIds = [])
-{
-  const setIds = new Set();
-
-  (Array.isArray(arrBudgetRequestIds) ? arrBudgetRequestIds : []).forEach((value) => {
-    addSourceBudgetRequestId(setIds, value);
-  });
-
-  (Array.isArray(consolidatedLineItems) ? consolidatedLineItems : []).forEach((section) => {
-    addSourceBudgetRequestId(setIds, section?.sourceRequestId);
-    (Array.isArray(section?.items) ? section.items : []).forEach((item) => {
-      addSourceBudgetRequestId(setIds, item?.sourceRequestId);
-    });
-  });
-
-  return [...setIds];
-}
-
-/**
- * Marks linked reviewed budget requests as consolidated after unified budget submit.
- *
- * @param {object[]} consolidatedLineItems
- * @param {Array<string|number>} arrBudgetRequestIds
- * @param {{ actorId?: string|number|null }} [objOptions]
- * @returns {Promise<{ updatedCount: number, failures: object[] }>}
- */
-export async function markBudgetRequestsConsolidated(
-  consolidatedLineItems = [],
-  arrBudgetRequestIds = [],
-  objOptions = {}
-)
-{
-  const arrRequestIds = collectSourceBudgetRequestIds(consolidatedLineItems, arrBudgetRequestIds);
-
-  if (arrRequestIds.length === 0) {
-    return { updatedCount: 0, failures: [] };
-  }
-
-  const results = await Promise.allSettled(
-    arrRequestIds.map((intRequestId) =>
-      reviewBudgetRequest(intRequestId, {
-        action: 'validate',
-        actor_id: objOptions.actorId ?? null,
-      })
-    )
-  );
-
-  const failures = results
-    .map((result, intIndex) => ({ result, requestId: arrRequestIds[intIndex] }))
-    .filter(({ result }) => result.status === 'rejected')
-    .map(({ result, requestId }) => ({
-      requestId,
-      reason: result.reason?.message || String(result.reason || 'Update failed'),
-    }));
-
-  return {
-    updatedCount: results.filter((result) => result.status === 'fulfilled').length,
-    failures,
-  };
-}
 
 export function collectLinkedConsolidatedLineItems(consolidatedLineItems = []) {
   return (Array.isArray(consolidatedLineItems) ? consolidatedLineItems : [])

@@ -99,7 +99,7 @@ export default function BudgetRequestDetailPage() {
     const latestWithComment = [...(arrActivityLogs || [])]
       .reverse()
       .find((log) =>
-        ['returned', 'rejected', 'approved', 'consolidated'].includes(String(log?.bral_action || '').toLowerCase())
+        ['returned', 'rejected', 'approved', 'validated', 'consolidated'].includes(String(log?.bral_action || '').toLowerCase())
         && String(log?.bral_comment || '').trim() !== ''
       );
 

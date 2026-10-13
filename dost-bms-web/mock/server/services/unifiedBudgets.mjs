@@ -792,6 +792,19 @@ export async function saveUnifiedBudget(db, payload, existing = null) {
     ?? existing?.ub_reference_no
     ?? nextUnifiedBudgetReference(db, fiscalYear?.fy_year ?? fiscalYearValue);
   const requestedStatus = String(payload.ub_current_status ?? payload.status ?? existing?.ub_current_status ?? 'draft').toLowerCase();
+  // One consolidated budget covers one fiscal year (as-is step 6); refuse requests from another year
+  if (requestedStatus === 'pending') {
+    const strYear = String(fiscalYear?.fy_year ?? fiscalYearValue);
+    const arrOtherYear = collectSourceBudgetRequestIdsFromPayload(db, ubId, payload)
+      .map((intBrId) => db.find('budget-requests', intBrId))
+      .filter((objRequest) => objRequest
+        && String(fiscalYearForBudget(db, { ub_fiscal_year_id: objRequest.br_fiscal_year_id })?.fy_year ?? '') !== strYear);
+    if (arrOtherYear.length > 0) {
+      const objError = new Error(`All requests must be for fiscal year ${strYear}. Different year: ${arrOtherYear.map((r) => r.br_title).join(', ')}.`);
+      objError.status = 422;
+      throw objError;
+    }
+  }
   const requestedStage = payload.ub_current_stage ?? payload.stage ?? existing?.ub_current_stage ?? 'Draft';
   const arrWorkflowForGuard = Array.isArray(payload.approvalWorkflow) && payload.approvalWorkflow.length > 0
     ? payload.approvalWorkflow

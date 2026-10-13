@@ -59,7 +59,6 @@ import {
 import { buildConsolidationLineRows } from '../../utils/consolidation_line_rows';
 import {
   ensureBudgetRequestSectionLinks,
-  markBudgetRequestsConsolidated,
   remapConsolidatedLineItemsAfterSave,
   syncConsolidatedLineItemsToBudgetRequests,
 } from '../../utils/sync_consolidated_line_items_to_budget_requests';
@@ -75,8 +74,6 @@ import { useAuth } from '../../context/auth_context';
 import { toAmount, toFiscalYear, getCurrentTimestamp, readFileAsDataUrl, getNextApprovalVersionNumber } from '../../utils/helpers';
 
 const fmt = (n) => `₱ ${n.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
-
-const getCurrentYear = () => String(new Date().getFullYear());
 
 /**
  * Resolves reviewed requests for a list of IDs without using the paginated
@@ -187,7 +184,8 @@ const mapRequestsToSections = (requests = []) =>
   const [strTitle, setStrTitle] = useState(``);
   const [strUnit, setStrUnit] = useState('');
   const [strDescription, setStrDescription] = useState('');
-  const [strFiscalYear, setStrFiscalYear] = useState(getCurrentYear());
+  // Empty at first so it takes the fiscal year of the requests being consolidated
+  const [strFiscalYear, setStrFiscalYear] = useState('');
   const [strPlanningPeriod, setStrPlanningPeriod] = useState(DEFAULT_PLANNING_PERIOD_ID);
   const [strComment, setStrComment] = useState('');
   const [strCurrentStatus, setStrCurrentStatus] = useState('DRAFT');
@@ -522,24 +520,6 @@ const mapRequestsToSections = (requests = []) =>
     [arrConsolidatedLineItems]
   );
 
-  const markSelectedBudgetRequestsConsolidated = async (sections = arrConsolidatedLineItems) => {
-    const arrLinkedSections = (Array.isArray(sections) ? sections : []).map(ensureBudgetRequestSectionLinks);
-    const markResult = await markBudgetRequestsConsolidated(
-      arrLinkedSections,
-      selectedBudgetRequestIds,
-      { actorId: user?.usr_id ?? user?.id ?? null }
-    );
-
-    const setMarkedIds = new Set(
-      selectedBudgetRequestIds.map((value) => String(value))
-    );
-    setArrReviewedRequestPool((prev) =>
-      prev.filter((request) => !setMarkedIds.has(String(request.id)))
-    );
-
-    return markResult;
-  };
-
   const workflowSteps = useMemo(
     () => {
       const activeVersion = getActiveApprovalVersion(arrApprovalVersions, intCurrentVersion);
@@ -576,6 +556,17 @@ const mapRequestsToSections = (requests = []) =>
       setObjErrors((prev) => ({
         ...prev,
         lineItems: 'At least one reviewed request with line items is required for submission.',
+      }));
+      return false;
+    }
+    // One consolidated budget covers one fiscal year (as-is step 6)
+    const setSelectedIds = new Set(selectedBudgetRequestIds.map(String));
+    const arrOtherYear = arrSourceRequests.filter((request) =>
+      setSelectedIds.has(String(request.id)) && toFiscalYear(request.periodStart, '') !== String(strFiscalYear));
+    if (arrOtherYear.length > 0) {
+      setObjErrors((prev) => ({
+        ...prev,
+        lineItems: `All requests must be for fiscal year ${strFiscalYear}. Different year: ${arrOtherYear.map((request) => request.title).join(', ')}.`,
       }));
       return false;
     }
@@ -736,13 +727,7 @@ const mapRequestsToSections = (requests = []) =>
       : await createUnifiedBudget({ ...payload, consolidatedLineItems: lineItemsToSave });
     const saved = response?.data;
     if (saved?.id) {
-      const markResult = await markSelectedBudgetRequestsConsolidated(lineItemsToSave);
-      if (markResult.failures.length > 0) {
-        showToast({
-          message: `Submitted, but ${markResult.failures.length} source budget request(s) could not be marked consolidated.`,
-          variant: 'warning',
-        });
-      }
+      // The server marks the linked requests consolidated when the budget is submitted
       const syncResult = await syncConsolidatedLineItemsToBudgetRequests(
         lineItemsToSave,
         categoryCodeToIdMap
