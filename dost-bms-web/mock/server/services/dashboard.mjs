@@ -186,12 +186,13 @@ function buildUnifiedCategoryBreakdown(db, objFilters)
     .filter((objItem) => {
       if (intRequestingUnitId && Number(objItem.ubi_requesting_unit_id) !== intRequestingUnitId) return false;
       if (intCategoryId && Number(objItem.ubi_category_id) !== intCategoryId) return false;
-      if (!intFiscalYearId) return true;
-      // match fiscal year via unified budget
       const objUB = db.rows('unified-budgets').find(
         (ub) => Number(ub.ub_id) === Number(objItem.ubi_unified_budget_id)
       );
-      return objUB && Number(objUB.ub_fiscal_year_id) === intFiscalYearId;
+      // Only budgets sent for approval or approved; a draft or returned copy would count the same lines twice
+      if (!objUB || !['pending', 'approved'].includes(String(objUB.ub_current_status).toLowerCase())) return false;
+      if (!intFiscalYearId) return true;
+      return Number(objUB.ub_fiscal_year_id) === intFiscalYearId;
     })
     .forEach((objItem) => {
       const strCode = CAT_CODE[objItem.ubi_category_id];
