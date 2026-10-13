@@ -11,6 +11,7 @@ import {
   nextVersionNumber,
 } from '../services/budgetRequestLifecycle.mjs';
 import { resolveRequestActor } from '../services/requestActor.mjs';
+import { permissionsForUser } from './auth.mjs';
 import {
   canRequesterAccessBudgetRequest,
   isRequesterUser,
@@ -165,6 +166,11 @@ export async function handleBudgetRequests(ctx) {
   }
 
   if (req.method === 'POST' && sub === 'review') {
+    // Only the logged-in user's role decides: validate and return need Budget Review access (Security Standard 6.15)
+    if (!permissionsForUser(resolveRequestActor(db, req)).includes('route:budget-review')) {
+      json(res, 403, { message: 'Unauthorized. Insufficient permissions.' });
+      return true;
+    }
     const actor = db.find('users', payload.actor_id) ?? null;
     const statusMap = {
       approve: 'reviewed',
