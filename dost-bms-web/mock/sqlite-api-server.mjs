@@ -197,7 +197,7 @@ async function handle(req, res) {
 
     return json(res, 404, { message: `Mock endpoint not found: ${req.method} ${path}` });
   } catch (error) {
-    return json(res, 500, { message: error.message || 'Mock server error' });
+    return json(res, error.status || 500, { message: error.message || 'Mock server error' });
   }
 }
 

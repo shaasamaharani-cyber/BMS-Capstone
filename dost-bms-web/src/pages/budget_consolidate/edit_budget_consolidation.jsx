@@ -65,7 +65,6 @@ import { toAmount, toFiscalYear, getCurrentTimestamp, readFileAsDataUrl, getNext
 import {
   ensureBudgetRequestSectionLinks,
   inferConsolidatedSourceItemId,
-  markBudgetRequestsConsolidated,
   remapConsolidatedLineItemsAfterSave,
   syncConsolidatedLineItemsToBudgetRequests,
 } from '../../utils/sync_consolidated_line_items_to_budget_requests';
@@ -649,21 +648,7 @@ const toApiRows = (payload) => {
       }
       setStrStatus(updated.status || resolvedStatus);
       setStrLastUpdated(updated.lastUpdated || getCurrentTimestamp());
-      if (isSubmitOrResubmit) {
-        const markResult = await markBudgetRequestsConsolidated(
-          lineItemsToSave.map(ensureBudgetRequestSectionLinks),
-          selectedBudgetRequestIds.length > 0
-            ? selectedBudgetRequestIds
-            : (objRecord.budgetRequestIds || []),
-          { actorId: user?.usr_id ?? user?.id ?? null }
-        );
-        if (markResult.failures.length > 0) {
-          showToast({
-            message: `Submitted, but ${markResult.failures.length} source budget request(s) could not be marked consolidated.`,
-            variant: 'warning',
-          });
-        }
-      }
+      // The server marks the linked requests consolidated when the budget is submitted
       showToast({ message: successMessage });
     }
   };

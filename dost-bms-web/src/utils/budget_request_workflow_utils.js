@@ -81,7 +81,7 @@ function buildStepsFromLogs(activityLogs, currentStatus) {
 
   const createEntry = sorted.find((l) => l.bral_action === 'created');
   const lastSubmit = lastOf(sorted, 'submitted', 'resubmitted');
-  const lastReview = lastOf(sorted, 'approved', 'rejected', 'returned');
+  const lastReview = lastOf(sorted, 'approved', 'validated', 'rejected', 'returned');
   const consolidateEntry = sorted.find((l) => l.bral_action === 'consolidated');
 
   const steps = [
@@ -120,7 +120,7 @@ function buildStepsFromLogs(activityLogs, currentStatus) {
     new Date(lastSubmit.bral_created_at) > new Date(lastReview.bral_created_at);
 
   if (lastReview && !resubmittedAfterReview) {
-    const labelMap = { approved: 'Reviewed', rejected: 'Rejected' };
+    const labelMap = { approved: 'Reviewed', validated: 'Reviewed', rejected: 'Rejected' };
     const nodeStatus = lastReview.bral_action === 'rejected' ? 'rejected'
       : lastReview.bral_action === 'returned' ? 'rejected'
         : 'done';

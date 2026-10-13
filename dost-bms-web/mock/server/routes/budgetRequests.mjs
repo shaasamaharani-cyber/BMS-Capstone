@@ -173,13 +173,13 @@ export async function handleBudgetRequests(ctx) {
       return: 'rejected',
     };
     const actionMap = {
-      approve: 'approved',
+      approve: 'validated',
       validate: 'consolidated',
       reject: 'rejected',
       return: 'rejected',
     };
     const toStatus = statusMap[payload.action] || 'reviewed';
-    const action = actionMap[payload.action] || 'approved';
+    const action = actionMap[payload.action] || 'validated';
     const latestVersion = getVersionsForRequest(db, id).at(-1);
 
     if (latestVersion) {

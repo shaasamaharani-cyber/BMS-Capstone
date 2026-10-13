@@ -530,6 +530,7 @@ export default function BudgetConsolidationPage() {
                 {arrReviewedRequests.map((request) => (
                   <li key={String(request.id ?? request.br_id)} className="mb-1">
                     {request.title || request.br_title}
+                    {request.fiscal_year?.fy_year ? <span className="text-muted"> (FY {request.fiscal_year.fy_year})</span> : null}
                   </li>
                 ))}
               </ul>

@@ -282,7 +282,7 @@ export default function BudgetReviewDetailPage() {
     const latestWithComment = [...(arrActivityLogs || [])]
       .reverse()
       .find((log) =>
-        ['returned', 'rejected', 'approved', 'consolidated'].includes(String(log?.bral_action || '').toLowerCase())
+        ['returned', 'rejected', 'approved', 'validated', 'consolidated'].includes(String(log?.bral_action || '').toLowerCase())
         && String(log?.bral_comment || '').trim() !== ''
       );
 
@@ -467,7 +467,7 @@ export default function BudgetReviewDetailPage() {
         )}
       >
         <p className="mb-0">
-          Validate <strong>{objBudgetRequest?.br_title}</strong> for consolidation? This will mark the request as reviewed and approved.
+          Validate <strong>{objBudgetRequest?.br_title}</strong> for consolidation? This will mark the request as reviewed and ready for consolidation.
         </p>
         <label className="form-label small fw-semibold mt-3 mb-1">
           Remark
