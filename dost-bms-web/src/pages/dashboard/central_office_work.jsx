@@ -124,6 +124,17 @@ export default function CentralOfficeWork({ strView }) {
     queue: (
       <section className={`dashboard-panel ${styles.card}`}>
         <h3 className={`dashboard-section__title ${styles.cardTitle}`}>Review queue</h3>
+        {/* Consolidated budgets a director returned come back to the division first (as-is step 10) */}
+        {arrBudgets.filter((objBudget) => String(objBudget.status).toUpperCase() === 'REJECTED').map((objBudget) => (
+          <div key={objBudget.id} className={styles.actionRow}>
+            <div>
+              <strong>{objBudget.title}</strong>
+              <span className={styles.muted}>{objBudget.code} - returned by the director</span>
+              {objBudget.reviewComment && <span className={styles.remark}>Director&apos;s remark: {objBudget.reviewComment}</span>}
+            </div>
+            <Link to={`/budget-consolidation/${objBudget.id}/edit`}>Fix and resubmit</Link>
+          </div>
+        ))}
         <table className={styles.table}>
           <thead><tr><th>Request</th><th>Unit</th><th>Waiting since</th><th className={styles.numeric}>Days waiting</th></tr></thead>
           <tbody>

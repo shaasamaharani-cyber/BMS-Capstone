@@ -530,6 +530,11 @@ export function withUnifiedBudgetRelations(db, budget) {
     title: budget.ub_title,
     description: budget.ub_description ?? '',
     reviewComment: budget.ub_review_comment ?? '',
+    // "Approved" only once every external stage is done; before that the directors have approved it
+    statusLabel: String(status).toLowerCase() === 'approved'
+      && workflowSteps(db, ubId).some((step) => EXTERNAL_STEP_TYPES.has(String(step.type || '').toLowerCase()) && step.status !== 'done')
+      ? 'Director approved'
+      : String(status).toUpperCase(),
     changeLog: db.rows('unified-budget-change-logs')
       .filter((row) => Number(row.ubcl_unified_budget_id) === Number(ubId))
       .sort((a, b) => String(a.ubcl_created_at).localeCompare(String(b.ubcl_created_at))),
@@ -1012,7 +1017,11 @@ export function unifiedBudgetSummary(db) {
   const reviewedCount = db.rows('budget-requests')
     .filter((request) => String(request.br_status || '').toLowerCase() === 'reviewed')
     .length;
-  const totals = db.rows('unified-budgets').reduce(
+  // One fiscal year, not every year added together: the newest year with a budget sent or approved
+  const arrCounted = db.rows('unified-budgets')
+    .filter((item) => ['pending', 'approved'].includes(String(item.ub_current_status).toLowerCase()));
+  const intNewestYear = Math.max(0, ...arrCounted.map((item) => Number(fiscalYearForBudget(db, item)?.fy_year) || 0));
+  const totals = arrCounted.filter((item) => Number(fiscalYearForBudget(db, item)?.fy_year) === intNewestYear).reduce(
     (acc, item) => {
       const itemTotals = totalsForItems(db, item.ub_id ?? item.id);
       acc.ps += itemTotals.psTotal;
@@ -1025,6 +1034,7 @@ export function unifiedBudgetSummary(db) {
 
   return {
     totalRequestsToReview: reviewedCount,
+    fiscalYear: intNewestYear || null,
     ps: money(totals.ps),
     mooe: money(totals.mooe),
     co: money(totals.co),

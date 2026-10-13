@@ -221,7 +221,7 @@ export default function BudgetConsolidationForm({
           <div className="d-flex justify-content-between align-items-center mb-3">
             <span className="fw-bold text-uppercase section-eyebrow">General Information</span>
             <div className="d-flex align-items-center">
-              <Badge status={formData.status} />
+              <Badge status={formData.status} label={formData.statusLabel} />
               <span className="text-muted small ms-2">Ref: {formData.referenceCode}</span>
               {showCurrentVersion ? (
                 <span className="text-muted small ms-2">Version: {intCurrentVersion}</span>
@@ -655,6 +655,7 @@ BudgetConsolidationForm.propTypes = {
     planningPeriod: PropTypes.string.isRequired,
     comment: PropTypes.string.isRequired,
     status: PropTypes.string.isRequired,
+    statusLabel: PropTypes.string,
     referenceCode: PropTypes.string.isRequired,
     currentVersionNumber: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   }).isRequired,

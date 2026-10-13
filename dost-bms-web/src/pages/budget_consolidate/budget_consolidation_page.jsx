@@ -159,7 +159,7 @@ const TABLE_COLUMNS = [
   {
     key: 'status',
     label: 'Status',
-    render: (_, row) => <Badge status={getBadgeStatus(row.status)} label={row.status} />,
+    render: (_, row) => <Badge status={getBadgeStatus(row.status)} label={row.statusLabel || row.status} />,
   },
   { key: 'stage', label: 'Stage' },
   { key: 'lastUpdated', label: 'Last Updated', render: (_, row) => formatTimestamp(row.lastUpdated) },
@@ -362,18 +362,21 @@ export default function BudgetConsolidationPage() {
         {
           label: 'Personnel Services (PS)',
           value: objSummaryStats.ps,
+          subtitle: objSummaryStats.fiscalYear ? `FY${objSummaryStats.fiscalYear}, sent or approved` : 'No budget sent yet',
           accentColor: METRIC_ACCENT.ps,
           progress: getProgress(psValue),
         },
         {
           label: 'MOOE',
           value: objSummaryStats.mooe,
+          subtitle: objSummaryStats.fiscalYear ? `FY${objSummaryStats.fiscalYear}, sent or approved` : 'No budget sent yet',
           accentColor: METRIC_ACCENT.mooe,
           progress: getProgress(mooeValue),
         },
         {
           label: 'Capital Outlay (CO)',
           value: objSummaryStats.co,
+          subtitle: objSummaryStats.fiscalYear ? `FY${objSummaryStats.fiscalYear}, sent or approved` : 'No budget sent yet',
           accentColor: METRIC_ACCENT.co,
           progress: getProgress(coValue),
         },

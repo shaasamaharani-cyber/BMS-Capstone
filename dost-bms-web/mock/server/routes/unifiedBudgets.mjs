@@ -94,7 +94,8 @@ export async function handleUnifiedBudgets(ctx) {
     );
     const updated = await saveUnifiedBudget(db, {
       status: 'approved',
-      stage: 'Secretary',
+      // The stage it now waits at (the first external step, e.g. DBM), not a fixed "Secretary"
+      stage: updatedSteps.find((step) => step.status === 'current')?.title ?? updatedSteps.at(-1)?.title ?? 'Secretary',
       approvalWorkflow: updatedSteps,
       approvalVersions: updatedVersions.length ? updatedVersions : undefined,
       reviewComment: payload?.comment ?? '',

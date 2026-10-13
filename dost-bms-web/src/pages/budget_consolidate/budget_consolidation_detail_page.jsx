@@ -383,6 +383,7 @@ export default function BudgetConsolidationDetailPage() {
             ),
             comment: objRecord.comment || '',
             status: objRecord.status || 'DRAFT',
+            statusLabel: objRecord.statusLabel,
             referenceCode: objRecord.code || objRecord.id || '',
             currentVersion: Number(objRecord.currentVersion) > 0 ? Number(objRecord.currentVersion) : 1,
           }}
