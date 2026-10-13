@@ -60,7 +60,6 @@ import { buildConsolidationLineRows } from '../../utils/consolidation_line_rows'
 import {
   ensureBudgetRequestSectionLinks,
   remapConsolidatedLineItemsAfterSave,
-  syncConsolidatedLineItemsToBudgetRequests,
 } from '../../utils/sync_consolidated_line_items_to_budget_requests';
 
 import {
@@ -208,14 +207,6 @@ const mapRequestsToSections = (requests = []) =>
   const budgetCategoryOptions = useMemo(() => {
     const arrCodes = [...new Set(Array.from(objCategoryIdToCodeMap.values()))];
     return arrCodes.map((code) => ({ value: code, label: code }));
-  }, [objCategoryIdToCodeMap]);
-
-  const categoryCodeToIdMap = useMemo(() => {
-    const nextMap = new Map();
-    objCategoryIdToCodeMap.forEach((code, id) => {
-      nextMap.set(String(code).trim().toUpperCase(), Number(id));
-    });
-    return nextMap;
   }, [objCategoryIdToCodeMap]);
 
   const planningPeriodOptions = useMemo(
@@ -619,7 +610,6 @@ const mapRequestsToSections = (requests = []) =>
       })),
       lastUpdated: actionAt,
     };
-    const expectedLineCount = flattenedRows.filter((row) => row.rowType === 'item').length;
     const lineItemsToSave = arrConsolidatedLineItems;
     const response = strSavedUnifiedBudgetId
       ? await updateUnifiedBudget(strSavedUnifiedBudgetId, { ...payload, consolidatedLineItems: lineItemsToSave })
@@ -641,21 +631,6 @@ const mapRequestsToSections = (requests = []) =>
       setStrPlanningPeriod(String(saved.planningPeriod ?? strPlanningPeriod));
       setArrAttachedFiles(Array.isArray(saved.ub_attached_files) ? saved.ub_attached_files : (Array.isArray(saved.attachedFiles) ? saved.attachedFiles : arrAttachedFiles));
       setArrAttachedForms(Array.isArray(saved.ub_form_entries) ? saved.ub_form_entries : (Array.isArray(saved.attachedForms) ? saved.attachedForms : arrAttachedForms));
-      const syncResult = await syncConsolidatedLineItemsToBudgetRequests(
-        lineItemsToSave,
-        categoryCodeToIdMap
-      );
-      if (expectedLineCount > 0 && syncResult.syncedCount === 0) {
-        showToast({
-          message: 'Consolidation saved, but could not sync line items to source budget requests.',
-          variant: 'warning',
-        });
-      } else if (syncResult.failures.length > 0) {
-        showToast({
-          message: `Consolidation saved, but ${syncResult.failures.length} line item(s) could not sync to budget requests.`,
-          variant: 'warning',
-        });
-      }
       if (Array.isArray(saved.consolidatedLineItems)) {
         setArrConsolidatedLineItems(
           remapConsolidatedLineItemsAfterSave(lineItemsToSave, saved.consolidatedLineItems)
@@ -720,29 +695,14 @@ const mapRequestsToSections = (requests = []) =>
       })),
       lastUpdated: actionAt,
     };
-    const expectedLineCount = flattenedRows.filter((row) => row.rowType === 'item').length;
     const lineItemsToSave = arrConsolidatedLineItems;
     const response = strSavedUnifiedBudgetId
       ? await updateUnifiedBudget(strSavedUnifiedBudgetId, { ...payload, consolidatedLineItems: lineItemsToSave })
       : await createUnifiedBudget({ ...payload, consolidatedLineItems: lineItemsToSave });
     const saved = response?.data;
     if (saved?.id) {
-      // The server marks the linked requests consolidated when the budget is submitted
-      const syncResult = await syncConsolidatedLineItemsToBudgetRequests(
-        lineItemsToSave,
-        categoryCodeToIdMap
-      );
-      if (expectedLineCount > 0 && syncResult.syncedCount === 0) {
-        showToast({
-          message: 'Submitted, but could not sync line items to source budget requests.',
-          variant: 'warning',
-        });
-      } else if (syncResult.failures.length > 0) {
-        showToast({
-          message: `Submitted, but ${syncResult.failures.length} line item(s) could not sync to budget requests.`,
-          variant: 'warning',
-        });
-      }
+      // The server marks the linked requests consolidated when the budget is submitted.
+      // The units' own requests keep their figures; the division's changes live only in this budget.
       setStrSavedUnifiedBudgetId(saved.id);
       setStrDraftCode(saved.code || saved.id);
       setStrCurrentStatus(saved.status || 'PENDING');

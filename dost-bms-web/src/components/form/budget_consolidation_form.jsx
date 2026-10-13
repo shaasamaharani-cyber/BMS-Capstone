@@ -437,7 +437,11 @@ export default function BudgetConsolidationForm({
                   if (row.rowType === 'request-header') return <strong>{formatCurrency(row.subtotal || 0)}</strong>;
                   if (row.rowType === 'category') return null;
                   if (row.rowType === 'cost-structure') return null;
-                  if (!canEdit) return <strong className="text-brand">{formatCurrency(row.amount || 0)}</strong>;
+                  // The unit's own figure stays visible when the division changes the amount
+                  const unitAsked = Number(row.originalAmount) !== Number(row.amount)
+                    ? <div className="text-muted small mt-1">Unit asked {formatCurrency(row.originalAmount || 0)}</div>
+                    : null;
+                  if (!canEdit) return <div><strong className="text-brand">{formatCurrency(row.amount || 0)}</strong>{unitAsked}</div>;
                   const rowErr = errors.lineItemErrorsById?.[row.id]?.amount;
                   return (
                     <div>
@@ -450,6 +454,7 @@ export default function BudgetConsolidationForm({
                         onChange={(e) => onLineItemChange(row.id, 'amount', e.target.value)}
                       />
                       {rowErr ? <div className="text-danger small mt-1">{rowErr}</div> : null}
+                      {unitAsked}
                     </div>
                   );
                 },
