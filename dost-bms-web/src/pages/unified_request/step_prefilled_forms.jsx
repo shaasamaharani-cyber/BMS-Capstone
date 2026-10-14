@@ -17,31 +17,36 @@
 import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui';
-import { FORM_ENGINE, FORM_LEVEL, getFormById } from '../../bp_forms/bp_form_catalog';
-import { buildFormView, FIELD_SOURCE, getFormCompletion } from '../../bp_forms/bp_form_fields';
+import { BP_FORM_CATALOG, FORM_ENGINE, FORM_LEVEL, getFormById as findForm } from '../../bp_forms/bp_form_catalog';
+import { buildFormView, FIELD_SOURCE, getFieldValueError, getFormCompletion } from '../../bp_forms/bp_form_fields';
 import { formatBudgetRequestCurrency } from '../../utils/budget_request_utils';
 import { useHasPermission } from '../../hooks/use_permissions';
 import { PERMISSIONS } from '../../utils/permissions';
+import { exportToPdf } from '../../forms/utils/export_pdf';
 import styles from './unified_request.module.css';
 
 function FieldInput({ objField, strValue, onChange }) {
   const strId = `field-${objField.key}`;
+  const error = getFieldValueError(objField, strValue);
+  const props = { id: strId, 'aria-invalid': Boolean(error), 'aria-describedby': error ? `${strId}-error` : undefined, required: Boolean(objField.required) };
+
+  if (objField.type === 'checkbox') return <input {...props} className="form-check-input" type="checkbox" checked={strValue === true} onChange={(event) => onChange(event.target.checked)} />;
 
   if (objField.type === 'textarea') {
-    return <textarea id={strId} className="form-control" rows={3} value={strValue} onChange={(objEvent) => onChange(objEvent.target.value)} />;
+    return <textarea {...props} className="form-control" rows={3} value={strValue} onChange={(objEvent) => onChange(objEvent.target.value)} />;
   }
   if (objField.type === 'select') {
     return (
-      <select id={strId} className="form-select" value={strValue} onChange={(objEvent) => onChange(objEvent.target.value)}>
+      <select {...props} className="form-select" value={strValue} onChange={(objEvent) => onChange(objEvent.target.value)}>
         <option value="">Select</option>
         {objField.options.map((strOption) => <option key={strOption} value={strOption}>{strOption}</option>)}
       </select>
     );
   }
-  return <input id={strId} className="form-control" type={objField.type === 'number' ? 'number' : objField.type === 'date' ? 'date' : 'text'} value={strValue} onChange={(objEvent) => onChange(objEvent.target.value)} />;
+  return <input {...props} className="form-control" step={objField.type === 'number' ? 'any' : undefined} type={objField.type === 'number' ? 'number' : objField.type === 'date' ? 'date' : 'text'} value={strValue} onChange={(objEvent) => onChange(objEvent.target.value)} />;
 }
 
-FieldInput.propTypes = { objField: PropTypes.object.isRequired, strValue: PropTypes.oneOfType([PropTypes.string, PropTypes.number]), onChange: PropTypes.func.isRequired };
+FieldInput.propTypes = { objField: PropTypes.object.isRequired, strValue: PropTypes.oneOfType([PropTypes.string, PropTypes.number, PropTypes.bool]), onChange: PropTypes.func.isRequired };
 
 const formatLockedValue = (objField) => {
   if (objField.value === '' || objField.value === null || objField.value === undefined) return '-';
@@ -49,7 +54,8 @@ const formatLockedValue = (objField) => {
   return String(objField.value);
 };
 
-export default function StepPrefilledForms({ arrRequired, objContext, blnSnapshotStale, strSelectedFormId, onSelectForm, onFormValueChange, onRegenerate }) {
+export default function StepPrefilledForms({ arrCatalog = BP_FORM_CATALOG, arrRequired, objContext, blnSnapshotStale, strSelectedFormId, onSelectForm, onFormValueChange, onRegenerate }) {
+  const getFormById = (strId) => findForm(strId, arrCatalog);
   const navigate = useNavigate();
   // Requesters have no Forms module; agency-level schema forms are completed by Central Office offices
   const blnCanOpenForms = useHasPermission(PERMISSIONS.FORMS);
@@ -100,9 +106,10 @@ export default function StepPrefilledForms({ arrRequired, objContext, blnSnapsho
         </nav>
 
         <div className={styles.formPanel}>
-          <section className={styles.card}>
+          <section id="request-form-print-area" className={`${styles.card} print-area`}>
             <h3 className={styles.cardTitle}>{objActiveForm.code} - {objActiveForm.name}</h3>
             <p className={styles.cardHint}>Completed by: {objActiveForm.completedBy}</p>
+            {objView && <div className="no-print mb-3"><Button type="button" variant="outline" size="sm" onClick={() => exportToPdf('request-form-print-area')} disabled={blnSnapshotStale || !getFormCompletion(strActiveId, objContext).complete}>Print / Save as PDF</Button><p className="small text-muted mt-1 mb-0">Complete the required fields, then print this form for signing.</p></div>}
             {objActiveForm.level === FORM_LEVEL.AGENCY && (
               <div className={styles.autoSummary}>
                 Agency-level form. It is completed by the office above when requests are consolidated, so it does <strong>not</strong> block your submission.
@@ -147,17 +154,22 @@ export default function StepPrefilledForms({ arrRequired, objContext, blnSnapsho
                       {arrUserFields.map((objField) => (
                         <div key={objField.key} className={objField.type === 'textarea' ? styles.spanTwo : ''}>
                           <label htmlFor={`field-${objField.key}`} className={styles.fieldLabel}>{objField.label}{objField.required && <span className={styles.requiredMark}> *</span>}</label>
-                          <FieldInput objField={objField} strValue={objUserValues[objField.key] ?? ''} onChange={(value) => onFormValueChange(strActiveId, objField.key, value)} />
+                          <div className="no-print"><FieldInput objField={objField} strValue={objUserValues[objField.key] ?? ''} onChange={(value) => onFormValueChange(strActiveId, objField.key, value)} /></div>
+                          <div className="print-only" style={{ whiteSpace: 'pre-wrap' }}>{typeof objUserValues[objField.key] === 'boolean' ? objUserValues[objField.key] ? 'Yes' : 'No' : String(objUserValues[objField.key] ?? '') || '-'}</div>
+                          {getFieldValueError(objField, objUserValues[objField.key]) && <p id={`field-${objField.key}-error`} className="no-print text-danger small mt-1 mb-0">{getFieldValueError(objField, objUserValues[objField.key])}</p>}
                         </div>
                       ))}
                     </div>
                   </>
                 )}
+                <div className="print-only mt-4">Signature: ______________________________ &nbsp; Date: __________________</div>
               </>
             ) : (
               <div className={styles.inlinePanel}>
                 <p>
-                  {objActiveForm.engine !== FORM_ENGINE.SCHEMA
+                  {objActiveForm.engine === FORM_ENGINE.MANUAL
+                    ? `Prepare this form offline, then confirm completion below.${objActiveForm.level === FORM_LEVEL.REQUEST ? ' Upload its signed copy in the review step.' : ''}`
+                    : objActiveForm.engine !== FORM_ENGINE.SCHEMA
                     ? 'The layout for this form is planned for a later sprint. Prepare it offline for now, then tick the box below.'
                     : blnCanOpenForms
                       ? 'This form already has a layout in the Forms module (schema-driven). Complete it there, then tick the box below.'
@@ -180,6 +192,7 @@ export default function StepPrefilledForms({ arrRequired, objContext, blnSnapsho
 }
 
 StepPrefilledForms.propTypes = {
+  arrCatalog: PropTypes.array,
   arrRequired: PropTypes.array.isRequired,
   objContext: PropTypes.object.isRequired,
   blnSnapshotStale: PropTypes.bool,

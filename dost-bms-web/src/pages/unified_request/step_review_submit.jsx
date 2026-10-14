@@ -15,7 +15,7 @@
 
 import PropTypes from 'prop-types';
 import { Button } from '../../components/ui';
-import { FORM_ENGINE, FORM_LEVEL, getFormById } from '../../bp_forms/bp_form_catalog';
+import { BP_FORM_CATALOG, FORM_ENGINE, FORM_LEVEL, getFormById as findForm } from '../../bp_forms/bp_form_catalog';
 import { formatBudgetRequestCurrency } from '../../utils/budget_request_utils';
 import styles from './unified_request.module.css';
 
@@ -27,10 +27,13 @@ const STATUS_TEXT = {
   no_form: { text: 'No form covers this', className: 'statusBad' },
   not_generated: { text: 'Not generated yet', className: 'statusOpen' },
   none: { text: 'Not used', className: 'statusMuted' },
+  disabled: { text: 'Disabled for this year', className: 'statusMuted' },
+  not_required: { text: 'Conditions do not require this form', className: 'statusMuted' },
 };
 
-export default function StepReviewSubmit({ arrIssues, arrTotalsCheck, arrRequired, objSigned, arrSupporting = [], arrCycleDocs = [], objSummary, strComment, blnSubmitting, blnSavingDraft, onSignedChange, onSupportingAdd, onSupportingRemove, onCommentChange, onGoToStep, onSubmit, onSaveDraft }) {
-  const arrSignable = arrRequired.filter((objEntry) => getFormById(objEntry.formId)?.engine === FORM_ENGINE.DYNAMIC && getFormById(objEntry.formId)?.level === FORM_LEVEL.REQUEST);
+export default function StepReviewSubmit({ arrCatalog = BP_FORM_CATALOG, arrIssues, arrTotalsCheck, arrRequired, objSigned, arrSupporting = [], arrCycleDocs = [], objSummary, strComment, blnSubmitting, blnSavingDraft, onSignedChange, onSupportingAdd, onSupportingRemove, onCommentChange, onGoToStep, onSubmit, onSaveDraft }) {
+  const getFormById = (strId) => findForm(strId, arrCatalog);
+  const arrSignable = arrRequired.filter((objEntry) => [FORM_ENGINE.DYNAMIC, FORM_ENGINE.MANUAL].includes(getFormById(objEntry.formId)?.engine) && getFormById(objEntry.formId)?.level === FORM_LEVEL.REQUEST);
   const blnReady = arrIssues.length === 0;
 
   return (
@@ -53,7 +56,7 @@ export default function StepReviewSubmit({ arrIssues, arrTotalsCheck, arrRequire
 
       <section className={styles.card}>
         <h3 className={styles.cardTitle}>Totals check - forms against the request</h3>
-        <p className={styles.cardHint}>Every expense class in the line items must appear on a form with the same total. DOST asked that forms and request always agree.</p>
+        <p className={styles.cardHint}>Enabled expense forms must match the request totals. Forms disabled by the administrator for this fiscal year are skipped.</p>
         <div className={styles.tableWrap}>
           <table className={styles.itemTable}>
             <thead><tr><th>Category</th><th>Form</th><th className={styles.numericCell}>Request total</th><th className={styles.numericCell}>On the form</th><th>Result</th></tr></thead>
@@ -75,8 +78,8 @@ export default function StepReviewSubmit({ arrIssues, arrTotalsCheck, arrRequire
 
       <section className={styles.card}>
         <h3 className={styles.cardTitle}>Signed copies</h3>
-        <p className={styles.cardHint}>Print each generated form, have it signed by the institution, then upload the scan. The signed copy is the evidence that the data entered is approved.</p>
-        {arrSignable.length === 0 && <p className={styles.emptyCell}>No generated forms need a signed copy yet.</p>}
+        <p className={styles.cardHint}>Have each generated or manually prepared request form signed by the institution, then upload the scan.</p>
+        {arrSignable.length === 0 && <p className={styles.emptyCell}>No request forms need a signed copy yet.</p>}
         {arrSignable.map((objEntry) => {
           const objForm = getFormById(objEntry.formId);
           const objFile = objSigned[objEntry.formId];
@@ -143,6 +146,7 @@ export default function StepReviewSubmit({ arrIssues, arrTotalsCheck, arrRequire
 }
 
 StepReviewSubmit.propTypes = {
+  arrCatalog: PropTypes.array,
   arrIssues: PropTypes.array.isRequired,
   arrTotalsCheck: PropTypes.array.isRequired,
   arrRequired: PropTypes.array.isRequired,

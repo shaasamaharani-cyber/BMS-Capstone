@@ -3,6 +3,8 @@ import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import PDFDocument from 'pdfkit';
+import { getCycleFormCatalog } from '../../../src/bp_forms/bp_form_catalog.js';
+import { buildFormView } from '../../../src/bp_forms/bp_form_fields.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, '../../..');
@@ -152,6 +154,19 @@ function writeAttachedFiles(doc, files = []) {
   });
 }
 
+function writeCompletedForms(doc, unified) {
+  if (!unified?.requiredForms?.length) return;
+  const catalog = getCycleFormCatalog({ custom_forms: unified.customForms, form_configs: unified.formConfigs });
+  const context = { common: unified.common || {}, totals: unified.totalsAtGeneration || {}, lineItems: [], formValues: unified.formValues || {}, formConfigs: unified.formConfigs || {} };
+  for (const entry of unified.requiredForms) {
+    const form = catalog.find((row) => row.id === entry.formId);
+    const view = buildFormView(entry.formId, context);
+    if (!form || !view) continue;
+    writeSection(doc, `${form.code} - ${form.name}`);
+    for (const field of view.fields) writeKeyValue(doc, field.label, typeof field.value === 'boolean' ? field.value ? 'Yes' : 'No' : field.value);
+  }
+}
+
 export async function generateBudgetRequestVersionPdf({ version, snapshot }) {
   await mkdir(PDF_DIR, { recursive: true });
 
@@ -204,6 +219,7 @@ export async function generateBudgetRequestVersionPdf({ version, snapshot }) {
 
     writeSection(doc, 'Attached Forms Captured With This Version');
     writeAttachedFiles(doc, snapshot?.attachedFiles || []);
+    writeCompletedForms(doc, snapshot?.unifiedRequest);
 
     doc.end();
   });

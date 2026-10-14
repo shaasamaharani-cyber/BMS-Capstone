@@ -363,6 +363,7 @@ export default function BudgetRequestDetailPage() {
         showAttachedFormsSection={false}
       /> : strActiveTab === 'attached-forms' ? (
         <BudgetRequestAttachedFormsTab
+          unifiedRequest={objBudgetRequest?.br_unified_request}
           canEdit={false}
           title="Attached Forms"
           attachmentMode="both"

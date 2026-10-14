@@ -14,9 +14,9 @@
  * All rights reserved.
  */
 
-import { CATEGORY_FORM_MAP, getFormCompletion } from '../bp_forms/bp_form_fields';
-import { FORM_ENGINE, FORM_LEVEL, getFormById } from '../bp_forms/bp_form_catalog';
-import { countUnansweredQuestions } from '../bp_forms/bp_form_rules';
+import { CATEGORY_FORM_MAP, getFormCompletion, getFormDefinition } from '../bp_forms/bp_form_fields.js';
+import { BP_FORM_CATALOG, FORM_ENGINE, FORM_LEVEL, getFormById } from '../bp_forms/bp_form_catalog.js';
+import { countUnansweredQuestions } from '../bp_forms/bp_form_rules.js';
 
 export const STEP_IDS = ['details', 'questions', 'forms', 'fill', 'review'];
 
@@ -26,13 +26,15 @@ const isCompleteLineItem = (objItem) => String(objItem.name || '').trim() !== ''
  * Compare the request totals with the totals captured when the forms were generated (step 4).
  * If someone edits a line item afterwards, the two disagree and the forms must be regenerated.
  */
-export function buildTotalsCheck(objTotals, objSnapshot, arrRequiredFormIds) {
+export function buildTotalsCheck(objTotals, objSnapshot, arrRequiredFormIds, arrEnabledFormIds = BP_FORM_CATALOG.map((objForm) => objForm.id), arrApplicableFormIds) {
   return CATEGORY_FORM_MAP.map((objMap) => {
     const numRequestTotal = objTotals[objMap.totalKey] || 0;
     const blnHasForm = arrRequiredFormIds.includes(objMap.formId);
     const objForm = getFormById(objMap.formId);
 
     if (numRequestTotal === 0) return { ...objMap, requestTotal: 0, formTotal: 0, formCode: objForm?.code, status: 'none' };
+    if (!arrEnabledFormIds.includes(objMap.formId)) return { ...objMap, requestTotal: numRequestTotal, formTotal: null, formCode: objForm?.code, status: 'disabled' };
+    if (!blnHasForm && arrApplicableFormIds && !arrApplicableFormIds.includes(objMap.formId)) return { ...objMap, requestTotal: numRequestTotal, formTotal: null, formCode: objForm?.code, status: 'not_required' };
     if (!blnHasForm) return { ...objMap, requestTotal: numRequestTotal, formTotal: null, formCode: objForm?.code, status: 'no_form' };
     if (!objSnapshot) return { ...objMap, requestTotal: numRequestTotal, formTotal: null, formCode: objForm?.code, status: 'not_generated' };
 
@@ -42,7 +44,7 @@ export function buildTotalsCheck(objTotals, objSnapshot, arrRequiredFormIds) {
 }
 
 /** Returns the list of things still blocking submission: [{ id, step, message }]. An empty list means ready. */
-export function collectSubmissionIssues({ objRequest, arrLineItems, objAnswers, arrRequired, objContext, objSigned, objTotalsCheck, arrCycleDocs = [], arrSupporting = [] }) {
+export function collectSubmissionIssues({ arrCatalog = BP_FORM_CATALOG, objRequest, arrLineItems, objAnswers, arrRequired, objContext, objSigned, objTotalsCheck, arrCycleDocs = [], arrSupporting = [] }) {
   const arrIssues = [];
   const add = (strId, strStep, strMessage) => arrIssues.push({ id: strId, step: strStep, message: strMessage });
 
@@ -63,19 +65,21 @@ export function collectSubmissionIssues({ objRequest, arrLineItems, objAnswers, 
 
   // Step 4 - every request-level form filled in (agency-level forms are completed by other offices at consolidation)
   arrRequired.forEach((objEntry) => {
-    const objForm = getFormById(objEntry.formId);
+    const objForm = getFormById(objEntry.formId, arrCatalog);
     if (objForm?.level === FORM_LEVEL.AGENCY) return;
     const objCompletion = getFormCompletion(objEntry.formId, objContext);
     if (!objCompletion.complete) {
-      add(`form-${objEntry.formId}`, 'fill', `${objForm?.code} is incomplete (${objCompletion.filled} of ${objCompletion.total} required fields).`);
+      add(`form-${objEntry.formId}`, 'fill', `${objForm?.code} is incomplete.${objCompletion.errors?.length ? ` ${objCompletion.errors.map((error) => `${error.label}: ${error.message}`).join(' ')}` : ` ${objCompletion.filled} of ${objCompletion.total} required fields are complete.`}`);
     }
   });
 
-  // Step 5 - signed copies (only for forms generated here) and totals
+  // Step 5 - signed copies for generated and custom manual request forms, and totals
   arrRequired.forEach((objEntry) => {
-    const objForm = getFormById(objEntry.formId);
-    if (objForm?.engine === FORM_ENGINE.DYNAMIC && objForm.level === FORM_LEVEL.REQUEST && !objSigned[objEntry.formId]) {
+    const objForm = getFormById(objEntry.formId, arrCatalog);
+    if ([FORM_ENGINE.DYNAMIC, FORM_ENGINE.MANUAL].includes(objForm?.engine) && objForm.level === FORM_LEVEL.REQUEST && !objSigned[objEntry.formId]) {
       add(`signed-${objEntry.formId}`, 'review', `Upload the signed copy of ${objForm.code}.`);
+    } else if (objForm?.level === FORM_LEVEL.REQUEST && objSigned[objEntry.formId]?.formDefinition && objSigned[objEntry.formId].formDefinition !== JSON.stringify(getFormDefinition(objEntry.formId, objContext))) {
+      add(`signed-${objEntry.formId}`, 'review', `${objForm.code} fields changed. Complete the updated form and replace its signed copy.`);
     }
   });
 

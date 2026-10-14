@@ -87,6 +87,7 @@ function buildVersionSnapshot(db, request, items, versionNumber, submittedBy, su
     },
     totals,
     attachedFiles,
+    unifiedRequest: cloneJson(request.br_unified_request),
   };
 }
 

@@ -14,7 +14,9 @@
  * All rights reserved.
  */
 
-import { getCostStructureAbbreviation } from '../utils/cost_structure';
+import { getCostStructureAbbreviation } from '../utils/cost_structure.js';
+import { BP_FORM_CATALOG } from './bp_form_catalog.js';
+import { DEFAULT_FORM_SCHEMAS } from '../forms/schemas/default_schemas.js';
 
 export const FIELD_SOURCE = {
   CANONICAL: 'canonical',
@@ -133,10 +135,44 @@ const DERIVED_RESOLVERS = {
   mooeTotal: (objTotals) => objTotals.mooeTotal,
   coTotal: (objTotals) => objTotals.coTotal,
   tagTotal: (objTotals) => objTotals.tagTotal,
+  grandTotal: (objTotals) => objTotals.grandTotal,
   finexTotal: () => 0,
-  expenseTotal: (objTotals) => objTotals.psTotal + objTotals.mooeTotal + objTotals.coTotal,
+  expenseTotal: (objTotals) => (Number(objTotals.psTotal) || 0) + (Number(objTotals.mooeTotal) || 0) + (Number(objTotals.coTotal) || 0),
   financingType: (objTotals, objCommon) => ({ foreign_loan: 'Loan', foreign_grant: 'Grant' })[objCommon.fundingSource] || '',
 };
+
+export const DERIVED_FIELD_LABELS = {
+  psTotal: 'PS total', mooeTotal: 'MOOE total', coTotal: 'CO total', tagTotal: 'TAG total',
+  finexTotal: 'FinEx total', expenseTotal: 'Expense total', grandTotal: 'Total request amount', financingType: 'Financing type',
+};
+
+// Schema forms keep their dedicated layout until an admin configures fields for this cycle.
+export function getDefaultFormDefinition(strFormId) {
+  if (FORM_DEFINITIONS[strFormId]) return FORM_DEFINITIONS[strFormId];
+  const form = BP_FORM_CATALOG.find((row) => row.id === strFormId);
+  const schema = DEFAULT_FORM_SCHEMAS.find((row) => row.id === form?.schemaId);
+  if (!schema) return null;
+  const fields = [];
+  const addFields = (rows, prefix = '') => (rows || []).forEach((field) => {
+    if (field.type === 'computed' || field.type === 'label') return;
+    const key = `${prefix}${field.key}`;
+    const canonicalKey = field.key === 'year' ? 'fiscalYear' : field.key;
+    if (!prefix && CANONICAL_FIELD_LABELS[canonicalKey]) fields.push(canonical(key, canonicalKey));
+    else fields.push(user(key, field.label, ['number', 'date', 'textarea', 'select'].includes(field.type) ? field.type : 'text', Boolean(field.required), (field.options || []).map((option) => typeof option === 'string' ? option : String(option.value ?? option.label))));
+  });
+  addFields(schema.headerFields);
+  (schema.sections || []).forEach((section, index) => {
+    addFields(section.table?.columns, `section${index}_`);
+    (section.tabs || []).forEach((tab, tabIndex) => addFields(tab.table?.columns, `section${index}_tab${tabIndex}_`));
+  });
+  return fields.length ? { fields, table: null } : null;
+}
+
+export function getFormDefinition(strFormId, objContext = {}) {
+  const config = objContext.formConfigs?.[strFormId];
+  const base = FORM_DEFINITIONS[strFormId];
+  return config?.fields ? { fields: config.fields, table: base?.table || null } : base || null;
+}
 
 /** Values every form can reuse. Built once from the request header fields the user typed in step 1. */
 export function resolveCommonValues(objRequest, objLookups) {
@@ -198,7 +234,7 @@ function buildDerivedTable(objTable, arrLineItems) {
  * objContext = { common, totals, lineItems, formValues } where formValues holds what the user typed for this form only.
  */
 export function buildFormView(strFormId, objContext) {
-  const objDefinition = FORM_DEFINITIONS[strFormId];
+  const objDefinition = getFormDefinition(strFormId, objContext);
   if (!objDefinition) return null;
 
   const objUserValues = objContext.formValues?.[strFormId] || {};
@@ -217,20 +253,38 @@ export function buildFormView(strFormId, objContext) {
   return { formId: strFormId, fields: arrFields, table: buildDerivedTable(objDefinition.table, objContext.lineItems) };
 }
 
-const isFilled = (value) => value !== undefined && value !== null && String(value).trim() !== '';
+export function getFieldValueError(field, value) {
+  const filled = value !== undefined && value !== null && String(value).trim() !== '';
+  if (field.type === 'checkbox') {
+    if (filled && typeof value !== 'boolean') return 'Choose a valid checkbox value.';
+    return field.required && value !== true ? 'Confirm this field.' : '';
+  }
+  if (!filled) return field.required ? 'This field is required.' : '';
+  if (field.type === 'number' && (!['string', 'number'].includes(typeof value) || !Number.isFinite(Number(value)))) return 'Enter a valid number.';
+  if (field.type === 'select' && !field.options?.includes(value)) return 'Choose an option from the list.';
+  if (field.type === 'date' && (!/^\d{4}-\d{2}-\d{2}$/.test(String(value)) || Number.isNaN(Date.parse(value)) || new Date(value).toISOString().slice(0, 10) !== value)) return 'Enter a valid date.';
+  if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') return 'Enter a valid value.';
+  if (String(value).length > 10000) return 'Use 10,000 characters or fewer.';
+  return '';
+}
 
 /** Completion of a form: how many of its required user fields are filled. Forms outside the dynamic engine use a manual tick. */
 export function getFormCompletion(strFormId, objContext) {
-  const objDefinition = FORM_DEFINITIONS[strFormId];
+  const objDefinition = getFormDefinition(strFormId, objContext);
   const objUserValues = objContext.formValues?.[strFormId] || {};
 
   if (!objDefinition) {
     return { total: 1, filled: objUserValues.__done ? 1 : 0, complete: Boolean(objUserValues.__done), manual: true };
   }
 
-  const arrRequired = objDefinition.fields.filter((objField) => objField.source === FIELD_SOURCE.USER && objField.required);
-  const intFilled = arrRequired.filter((objField) => isFilled(objUserValues[objField.key])).length;
-  return { total: arrRequired.length, filled: intFilled, complete: intFilled === arrRequired.length, manual: false };
+  const arrUserFields = objDefinition.fields.filter((objField) => objField.source === FIELD_SOURCE.USER);
+  const arrRequired = arrUserFields.filter((objField) => objField.required);
+  const errors = arrUserFields.flatMap((field) => {
+    const error = getFieldValueError(field, objUserValues[field.key]);
+    return error ? [{ key: field.key, label: field.label, message: error }] : [];
+  });
+  const intFilled = arrRequired.filter((field) => !getFieldValueError(field, objUserValues[field.key])).length;
+  return { total: arrRequired.length, filled: intFilled, complete: errors.length === 0, manual: false, errors };
 }
 
 /** Which expense-class forms carry which category, used by the totals check in step 5. */
