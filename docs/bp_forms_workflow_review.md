@@ -2,6 +2,8 @@
 
 Branch: `feature/fy2027-bp-forms-audit`, created from freshly fetched `origin/main` (`c6d44ae`). No push or merge is authorised or performed.
 
+This review records the initial feature implementation. The later [correction review](bp_forms_corrections_review.md) supersedes its administrator-editor instructions, Form A performance-field requirement, Form B columns and final test count.
+
 The [compliance audit](bp_forms_compliance_audit.md) contains the per-form findings, official references, implemented-field inventory and DOST questions. This change improves the existing Team 27 workflow; it does not certify the whole BP set as DBM-compliant.
 
 ## Changes and bugs fixed
@@ -38,7 +40,7 @@ Use local mock data only. Do not reset an existing SQLite database containing wo
 
 1. In PowerShell, `cd C:\test111\BMS-Capstone\dost-bms-web`, then `npm.cmd run dev:mock`. Open the Vite URL shown in the terminal. The test-account password is `Test12345` as documented in README.
 2. Sign in as `main.admin@dost.gov.ph` or `tech.admin@dost.gov.ph`. Open Budget Cycles → FY2027. Check the enabled forms and keep a note of the current settings before changing them. Existing explicitly configured lists are preserved; enable the new BP201 working summary if desired.
-3. Edit BP202. Select **Conditionally required**, add a question condition, choose **Which budget tier is this proposal?**, then **Tier 2 - new or expanded proposal**. Save. Edit BP207 and choose the climate question → **Yes**. Save. Confirm all question wording/options match Step 2. Repeat with a temporary custom form, one required text field and an optional dropdown. Use ALL for Tier 2 + climate Yes; later change to ANY. Keep override permission off initially.
+3. Edit BP202. Select **Conditionally required**, then check **Requester answers Tier 2 - new or expanded proposal** under **Which budget tier is this proposal?**. Save. Edit BP207 and check the climate question's **Requester answers Yes** checkbox. Save. Confirm all question wording/options match Step 2. Repeat with a temporary custom form (initially Optional), one required text field and an optional dropdown. Use ALL for Tier 2 + climate Yes; later change to ANY. Keep override permission off initially. See [the correction review](bp_forms_corrections_review.md) for Form A's missing-PDF gate and the corrected Form B columns.
 4. Switch to FY2028. Confirm the temporary FY2027 configuration is absent. Return to FY2027, disable the temporary form and verify it does not become required even when its answers match. Re-enable it for the remaining checks.
 5. Sign in as `requester.co@dost.gov.ph`. Create a request for FY2027. Confirm the institution/unit is locked. Enter a title, funding source and common project information. Leave unavailable official codes/history blank. Add PS **1,000**, MOOE **2,000**, FINEX **300** and CO **400**. The grand total must be **PHP 3,700**.
 6. Set climate expenditure of **400** on the MOOE line and **100** on the CO line. Enter confirmed typology text and adaptation/mitigation for each. The climate subset must be **500**, and the grand total must remain **3,700**. Try a climate amount greater than its item or a PS climate amount: submission must be blocked. Do not enter invented typology codes for real use.
