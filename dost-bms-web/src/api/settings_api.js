@@ -33,4 +33,9 @@ export const getAllFiscalYears = async () => dataOf(await client.get('/fiscal-ye
 export const createFiscalYear = async (intYear) => dataOf(await client.post('/fiscal-years', { fy_year: intYear }));
 export const updateFiscalYear = async (intId, blnActive) => dataOf(await client.put(`/fiscal-years/${intId}`, { fy_is_active: blnActive ? 1 : 0 }));
 
+// One fiscal year's required BP forms and supporting documents (DOST answers 2, 5, 7)
+export const getBudgetCycles = async () => dataOf(await client.get('/budget-cycles'));
+export const getBudgetCycle = async (strYear) => dataOf(await client.get(`/budget-cycles/${strYear}`));
+export const updateBudgetCycle = async (strYear, objCycle) => dataOf(await client.put(`/budget-cycles/${strYear}`, objCycle));
+
 export const getBudgetCategoryList = async () => dataOf(await client.get('/budget-categories'));
