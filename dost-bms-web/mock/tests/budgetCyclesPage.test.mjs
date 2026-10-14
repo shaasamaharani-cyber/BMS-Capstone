@@ -155,7 +155,11 @@ test('Add BP form works without randomUUID, saves to any open year, and keeps cl
     const { AuthProvider } = await vite.ssrLoadModule('/src/context/auth_context.jsx');
     const { getCycleFormCatalog } = await vite.ssrLoadModule('/src/bp_forms/bp_form_catalog.js');
     const { MemoryRouter } = await import('react-router-dom');
-    client.defaults.adapter = async (config) => ({ data: { data: { usr_id: 2, role: { role_group: 'requester', role_name: 'requester' } } }, status: 200, config });
+    const exports = [];
+    client.defaults.adapter = async (config) => {
+      if (config.url === '/bp-form-exports') { exports.push(JSON.parse(config.data)); return { data: { data: { pdfUrl: '/generated/forms/test-draft.pdf' } }, status: 200, config }; }
+      return { data: { data: { usr_id: 2, role: { role_group: 'requester', role_name: 'requester' } } }, status: 200, config };
+    };
     dom.window.localStorage.setItem('token', 'test-token');
     const savedCycle = writes[0].payload;
     const savedConfig = savedCycle.form_configs[custom.id];
@@ -224,7 +228,8 @@ test('Add BP form works without randomUUID, saves to any open year, and keeps cl
     }
     const renderPerformance = (values, key) => React.act(async () => root.render(React.createElement(MemoryRouter, null, React.createElement(AuthProvider, null, React.createElement(PerformanceHarness, { key, initialValues: values })))));
     await renderPerformance({}, 'performance-new');
-    await click(button('Add row'));
+    assert.equal(button('Add row'), undefined, 'The first entry is visible without adding a spreadsheet row');
+    assert.equal(document.querySelectorAll('#request-form-print-area table').length, 0);
     const performanceInput = (label) => `[aria-label="Performance measures and targets, row 1, ${label}"]`;
     await fill(performanceInput('Organisational outcome'), 'Outcome A');
     await fill(performanceInput('Program'), 'Science services');
@@ -237,12 +242,13 @@ test('Add BP form works without randomUUID, saves to any open year, and keeps cl
     await fill('#field-agencyHead', 'Agency name');
     await fill('#field-approvalDate', '2026-10-14');
     assert.equal(performanceValues.performance[0].proposedTier2, '95%');
-    await click(button('Print / Save as PDF'));
+    await click(button('Generate government-style PDF'));
     const printed = document.querySelector('#request-form-print-area');
     assert.match(printed.textContent, /Prepared by — Budget officer/);
     assert.match(printed.textContent, /Approved by — Agency head/);
     assert.match(printed.textContent, /14\/10\/2026/);
-    assert.match(printed.querySelector('.print-only').textContent, /95%/);
+    assert.equal(exports[0].context.formValues['bp-b'].performance[0].proposedTier2, '95%');
+    assert.equal(document.querySelector('a[href="/generated/forms/test-draft.pdf"]').textContent, 'Download draft PDF');
     const performanceSaved = structuredClone(performanceValues);
     await renderPerformance(performanceSaved, 'performance-reopened');
     assert.equal(document.querySelector(performanceInput('2027 NEP targets — Tier 2')).value, '95%');

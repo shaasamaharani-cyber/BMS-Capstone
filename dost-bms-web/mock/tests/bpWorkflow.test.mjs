@@ -156,7 +156,7 @@ test('Form A no longer requires the internal performance measure and retains old
   const previous = { fields: [{ key: 'performanceMeasure', label: 'Associated performance measure', type: 'textarea', source: 'user', required: true }], table: { kind: 'matrix' } };
   const context = { common: {}, totals: {}, lineItems: [], formConfigs: { 'bp-a': { fields: previous.fields } }, formValues: { 'bp-a': { performanceMeasure: 'Previously entered output' } } };
   assert.equal(getFormCompletion('bp-a', { ...context, formValues: {} }).complete, true);
-  const field = buildFormView('bp-a', context).fields[0];
+  const field = buildFormView('bp-a', context).fields.find((field) => field.key === 'performanceMeasure');
   assert.equal(field.required, false);
   assert.match(field.label, /Internal/);
   assert.equal(field.value, 'Previously entered output');
@@ -184,8 +184,8 @@ test('Form B uses indicator units, exact year and tier columns, signatories, and
   const oldKeys = ['outcome', 'program', 'indicator', 'baseline', 'actualTarget', 'actualAccomplishment', 'currentTarget', 'proposedTarget', 'outyearOne', 'outyearTwo'];
   const old = { fields: [{ key: 'performance', label: 'Performance', type: 'table', source: 'user', columns: oldKeys.map((key) => ({ key, label: key, type: key.includes('Target') ? 'number' : 'text' })) }] };
   const upgraded = buildFormView('bp-b', { ...context, formConfigs: { 'bp-b': old } });
-  assert.ok(upgraded.fields[0].columns.some((column) => column.key === 'proposedTier2'));
-  assert.equal(upgraded.fields[0].value[0].proposedTarget, 99);
+  assert.ok(upgraded.fields.find((field) => field.key === 'performance').columns.some((column) => column.key === 'proposedTier2'));
+  assert.equal(upgraded.fields.find((field) => field.key === 'performance').value[0].proposedTarget, 99);
   const frozen = getFormDefinition('bp-b', { formDefinitions: { 'bp-b': old } });
   assert.equal(frozen, old);
   assert.equal(old.fields[0].columns.length, 10);

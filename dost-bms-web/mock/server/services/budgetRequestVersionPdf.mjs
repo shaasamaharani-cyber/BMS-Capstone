@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import PDFDocument from 'pdfkit';
 import { getCycleFormCatalog } from '../../../src/bp_forms/bp_form_catalog.js';
 import { buildFormView } from '../../../src/bp_forms/bp_form_fields.js';
+import { appendOfficialBpForm } from './bpFormPdf.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, '../../..');
@@ -159,11 +160,12 @@ function writeAttachedFiles(doc, files = []) {
 function writeCompletedForms(doc, unified) {
   if (!unified?.requiredForms?.length) return;
   const catalog = unified.formCatalog || getCycleFormCatalog({ custom_forms: unified.customForms, form_configs: unified.formConfigs });
-  const context = { common: unified.common || {}, totals: unified.totalsAtGeneration || {}, lineItems: unified.lineItems || [], formDefinitions: unified.formDefinitions, formValues: unified.formValues || {}, formConfigs: unified.formConfigs || {} };
+  const context = { common: unified.common || {}, answers: unified.answers || {}, totals: unified.totalsAtGeneration || {}, lineItems: unified.lineItems || [], formDefinitions: unified.formDefinitions, formValues: unified.formValues || {}, formConfigs: unified.formConfigs || {} };
   for (const entry of unified.requiredForms) {
     const form = catalog.find((row) => row.id === entry.formId);
     const view = buildFormView(entry.formId, context);
     if (!form || !view) continue;
+    if (view.official && appendOfficialBpForm(doc, entry.formId, context)) continue;
     writeSection(doc, `${form.code} - ${form.name}`);
     doc.font('Helvetica').fontSize(8).text(entry.formId === 'bp-b' ? 'Performance working schedule; targets use indicator units. Layout verification and certification remain required.' : 'Internal working schedule in pesos; not an official DBM template.');
     for (const field of view.fields) {

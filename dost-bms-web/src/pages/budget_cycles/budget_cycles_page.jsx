@@ -128,8 +128,9 @@ export default function BudgetCyclesPage() {
     setObjEditing(objForm || { id: createClientId('custom-'), code: '', name: '', level: FORM_LEVEL.REQUEST, completedBy: 'Proposing office' });
     const objConfig = objCurrent.form_configs?.[objForm?.id];
     const objDefinition = objForm ? getDefaultFormDefinition(objForm.id) : null;
-    setObjFormConfig(structuredClone(objConfig ? { ...objConfig, fields: getFormDefinition(objForm.id, { formConfigs: objCurrent.form_configs }).fields } : {
+    setObjFormConfig(structuredClone(objConfig ? { ...objConfig, sections: getFormDefinition(objForm.id, { formConfigs: objCurrent.form_configs }).sections || objConfig.sections, fields: getFormDefinition(objForm.id, { formConfigs: objCurrent.form_configs }).fields } : {
       level: objForm?.level || FORM_LEVEL.REQUEST,
+      sections: objDefinition?.sections || [],
       fields: (objDefinition?.fields || [{ key: 'details', label: 'Details', source: FIELD_SOURCE.USER, type: 'textarea', required: true }]).map((field) => ({ ...field, type: field.type || 'text', required: Boolean(field.required) })),
       requirement: objForm && !BP_FORM_CATALOG.some((form) => form.id === objForm.id) && objForm.optionalByDefault !== true
         ? { ...getDefaultRequirement(objForm.id), mode: 'always' } : getDefaultRequirement(objForm?.id),
@@ -257,6 +258,7 @@ export default function BudgetCyclesPage() {
           </div>
         </fieldset>
       )}
+      {objSaved?.configuration_versions?.length > 0 && <details className="border rounded p-3 mb-4"><summary className="fw-semibold">Saved configuration history (current revision {objSaved.revision || 0})</summary><p className="small text-muted mt-2">Earlier configurations are retained when this cycle changes. Submitted forms keep their captured definitions.</p>{objSaved.configuration_versions.map((version, index) => <div className="border-top py-2 small" key={`${version.revision}-${index}`}>Revision {version.revision} · {formatTimestamp(version.updated_at)} · {version.updated_by || 'Earlier configuration'} · {version.enabled_form_ids?.length || 0} enabled forms<details className="mt-1"><summary>View saved field configuration</summary>{Object.entries(version.form_configs || {}).map(([id, config]) => <div className="mt-2" key={id}><strong>{arrCatalog.find((form) => form.id === id)?.code || id}</strong><p className="mb-0">{config.completedBy || 'Completing office not recorded'} · {config.requirement?.mode || 'Default'} · {config.fields?.length || 0} fields</p><ul>{(config.fields || []).map((field) => <li key={field.key}>{field.label} ({field.type}{field.required ? ', required' : ', optional'})</li>)}</ul></div>)}</details></div>)}</details>}
       <Modal open={Boolean(objEditing)} size="lg" onClose={() => { if (!blnSaving) setObjEditing(null); }} closeOnBackdrop={!blnSaving} showCloseButton={!blnSaving} title={`${blnEditingExisting ? 'Edit' : 'Add'} BP form`}>
         {objEditing && (
           <form onSubmit={handleApplyForm} className="d-grid gap-3">

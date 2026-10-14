@@ -36,7 +36,7 @@ export function seedDefaultSchemas() {
         // customised layout or changing any saved entry data.
         const saved = existing.find((row) => row.id === schema.id);
         const savedSchema = saved?.schema || saved;
-        if (schema.id === 'bp-form-b' && (savedSchema?.sections?.length || savedSchema?.headerFields?.length)) continue;
+        if (schema.official && (savedSchema?.sections?.length || savedSchema?.headerFields?.length)) continue;
         await updateSchema(schema.id, record);
       }
     }

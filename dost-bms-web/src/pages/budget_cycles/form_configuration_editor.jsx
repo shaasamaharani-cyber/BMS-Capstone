@@ -1,13 +1,8 @@
 import PropTypes from 'prop-types';
-import { Button, Input } from '../../components/ui';
-import { CANONICAL_FIELD_LABELS, DERIVED_FIELD_LABELS, FIELD_SOURCE } from '../../bp_forms/bp_form_fields';
+import { Button } from '../../components/ui';
+import SchemaFieldsEditor from './schema_fields_editor';
 import { QUESTION_CONDITION_OPTIONS, describeCondition } from '../../bp_forms/bp_form_conditions';
-import { FIELD_TYPE_OPTIONS } from '../../bp_forms/bp_form_configuration';
 import { createClientId } from '../../utils/client_id';
-
-function createEditableField() {
-  return { key: `field_${createClientId().replace(/-/g, '')}`, label: '', type: 'text', source: FIELD_SOURCE.USER, required: false };
-}
 
 export default function FormConfigurationEditor({ formId, value, onChange }) {
   const requirement = value.requirement;
@@ -19,12 +14,6 @@ export default function FormConfigurationEditor({ formId, value, onChange }) {
     changeRequirement({ conditions: checked ? [...others, { ...(existing[0] || { id: createClientId('condition-') }), questionId: question.id, field: question.id, operator: 'equals', value: answer.value, enabled: true }] : others });
   };
   const legacyConditions = requirement.conditions.filter((row) => !QUESTION_CONDITION_OPTIONS.some((question) => question.options.some((answer) => isAnswerCondition(row, question, answer))));
-  const updateField = (key, changes) => onChange({ ...value, fields: value.fields.map((field) => field.key === key ? { ...field, ...changes } : field) });
-  const moveField = (index, offset) => {
-    const fields = [...value.fields];
-    [fields[index], fields[index + offset]] = [fields[index + offset], fields[index]];
-    onChange({ ...value, fields });
-  };
 
   return (
     <>
@@ -69,32 +58,10 @@ export default function FormConfigurationEditor({ formId, value, onChange }) {
       <section className="border rounded-3 p-3" aria-labelledby="fields-heading">
         <h6 id="fields-heading" className="fw-bold">Form fields</h6>
         <p className="small text-muted">Add and edit the fields requesters see. Request values and calculated totals are filled automatically. Field order here is the order on the form.</p>
-        {value.fields.map((field, index) => (
-          <div className="border rounded p-3 mb-3" key={field.key} data-field-key={field.key}>
-            <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-              <strong className="small">Field {index + 1}</strong>
-              <div className="d-flex gap-1">
-                <Button type="button" size="sm" variant="ghost" disabled={index === 0} aria-label={`Move field ${index + 1} up`} onClick={() => moveField(index, -1)}>Up</Button>
-                <Button type="button" size="sm" variant="ghost" disabled={index === value.fields.length - 1} aria-label={`Move field ${index + 1} down`} onClick={() => moveField(index, 1)}>Down</Button>
-                <Button type="button" size="sm" variant="ghost" aria-label={`Remove field ${index + 1}`} onClick={() => onChange({ ...value, fields: value.fields.filter((other) => other.key !== field.key) })}>Remove</Button>
-              </div>
-            </div>
-            <div className="row g-2">
-              <div className="col-md-6"><label className="form-label small" htmlFor={`editor-label-${index}`}>Field label</label><Input id={`editor-label-${index}`} maxLength={200} required value={field.label} onChange={(event) => updateField(field.key, { label: event.target.value })} /></div>
-              <div className="col-md-6"><label className="form-label small" htmlFor={`editor-source-${index}`}>Filled by</label><select id={`editor-source-${index}`} className="form-select" value={field.source} onChange={(event) => updateField(field.key, { source: event.target.value, type: event.target.value === FIELD_SOURCE.DERIVED ? 'number' : 'text', canonical: field.canonical || 'department', derived: field.derived || 'expenseTotal', required: false })}><option value={FIELD_SOURCE.USER}>Requester</option><option value={FIELD_SOURCE.CANONICAL}>Information from the request</option><option value={FIELD_SOURCE.DERIVED}>Calculated from the request</option></select></div>
-              {field.source === FIELD_SOURCE.USER ? (
-                <>
-                  <div className="col-md-6"><label className="form-label small" htmlFor={`editor-type-${index}`}>Field type</label><select id={`editor-type-${index}`} className="form-select" value={field.type} onChange={(event) => updateField(field.key, { type: event.target.value, options: field.options || [] })}>{FIELD_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
-                  <div className="col-md-6 d-flex align-items-end"><label className="form-check mb-2"><input id={`editor-required-${index}`} className="form-check-input" type="checkbox" checked={field.required} disabled={formId === 'bp-a' && field.key === 'performanceMeasure'} onChange={(event) => updateField(field.key, { required: event.target.checked })} /><span className="form-check-label">{formId === 'bp-a' && field.key === 'performanceMeasure' ? 'Internal optional field; not an official Form A requirement' : 'Required field'}</span></label></div>
-                  {field.type === 'table' && <div className="col-12"><p className="small text-muted">Row columns (calculated columns retain their configured formula)</p>{(field.columns || []).map((column, columnIndex) => <div className="row g-2 mb-2" key={column.key}><div className="col-8"><Input aria-label={`Column ${columnIndex + 1} label`} value={column.label} onChange={(event) => updateField(field.key, { columns: field.columns.map((item, i) => i === columnIndex ? { ...item, label: event.target.value } : item) })} /></div><div className="col-4"><span className="small text-muted">{column.calculation ? 'Calculated' : column.type}</span></div></div>)}<Button type="button" variant="outline" size="sm" onClick={() => updateField(field.key, { columns: [...(field.columns || []), { key: `column_${createClientId().replace(/-/g, '')}`, label: 'New column', type: 'text', required: false }] })}>Add column</Button></div>}
-                  {field.type === 'select' && <div className="col-12"><label className="form-label small" htmlFor={`editor-options-${index}`}>Dropdown options (one per line)</label><Input id={`editor-options-${index}`} type="textarea" value={(field.options || []).join('\n')} onChange={(event) => updateField(field.key, { options: event.target.value.split('\n') })} /></div>}
-                </>
-              ) : <div className="col-12"><label className="form-label small" htmlFor={`editor-value-${index}`}>Automatic value</label><select id={`editor-value-${index}`} className="form-select" value={field.source === FIELD_SOURCE.CANONICAL ? field.canonical : field.derived} onChange={(event) => updateField(field.key, { [field.source === FIELD_SOURCE.CANONICAL ? 'canonical' : 'derived']: event.target.value })}>{Object.entries(field.source === FIELD_SOURCE.CANONICAL ? CANONICAL_FIELD_LABELS : DERIVED_FIELD_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></div>}
-            </div>
-          </div>
-        ))}
-        {!value.fields.length && <p className="small text-muted">Add at least one field so this form can be filled online.</p>}
-        <Button type="button" size="sm" variant="outline" onClick={() => onChange({ ...value, fields: [...value.fields, createEditableField()] })}>+ Add field</Button>
+        <SchemaFieldsEditor fields={value.fields} sections={value.sections || []} formId={formId} onChange={(fields) => onChange({ ...value, fields })} />
+        <h6 className="mt-4">Sections</h6>
+        {(value.sections || []).map((section, index) => <div className="mb-2" key={section.id}><label className="form-label small" htmlFor={`section-title-${index}`}>Section {section.id}</label><input id={`section-title-${index}`} className="form-control" value={section.title} onChange={(event) => onChange({ ...value, sections: value.sections.map((row, i) => i === index ? { ...row, title: event.target.value } : row) })} /><label className="form-label small mt-1" htmlFor={`section-description-${index}`}>Section guidance</label><textarea id={`section-description-${index}`} className="form-control" rows={2} value={section.description || ''} onChange={(event) => onChange({ ...value, sections: value.sections.map((row, i) => i === index ? { ...row, description: event.target.value } : row) })} /></div>)}
+        <Button type="button" variant="outline" size="sm" onClick={() => onChange({ ...value, sections: [...(value.sections || []), { id: createClientId('section-'), title: 'New section', description: '' }] })}>Add section</Button>
       </section>
     </>
   );

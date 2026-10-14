@@ -3,6 +3,8 @@ import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import PDFDocument from 'pdfkit';
+import { generateBpFormPdf, writeBpTable } from './bpFormPdf.mjs';
+import { randomUUID } from 'node:crypto';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, '../../..');
@@ -100,59 +102,21 @@ function writeTable(doc, tableInfo, rows) {
     return;
   }
 
-  const columns = (tableInfo.table.columns || []).slice(0, 8);
-  if (!columns.length) return;
-
-  const usableWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
-  const actionlessWidth = usableWidth / columns.length;
-  const rowHeight = 18;
-
-  ensureSpace(doc, rowHeight * 2);
-  const headerY = doc.y;
-  let x = doc.page.margins.left;
-
-  doc.font('Helvetica-Bold').fontSize(7);
-  columns.forEach((column) => {
-    doc.rect(x, headerY, actionlessWidth, rowHeight).stroke();
-    doc.text(column.label || column.key, x + 3, headerY + 5, {
-      width: actionlessWidth - 6,
-      height: rowHeight - 4,
-      ellipsis: true,
-    });
-    x += actionlessWidth;
-  });
-  doc.y = headerY + rowHeight;
-
-  doc.font('Helvetica').fontSize(7);
-  (rows || []).forEach((row) => {
-    ensureSpace(doc, rowHeight);
-    const y = doc.y;
-    x = doc.page.margins.left;
-
-    columns.forEach((column) => {
-      const indent = column.indentKey ? Number(row[column.indentKey] || 0) * 7 : 0;
-      const align = column.align === 'right' || ['number', 'computed'].includes(column.type) ? 'right' : 'left';
-      doc.rect(x, y, actionlessWidth, rowHeight).stroke();
-      doc.text(formatValue(row[column.key]), x + 3 + indent, y + 5, {
-        width: Math.max(actionlessWidth - 6 - indent, 12),
-        height: rowHeight - 4,
-        ellipsis: true,
-        align,
-      });
-      x += actionlessWidth;
-    });
-
-    doc.y = y + rowHeight;
-  });
+  writeBpTable(doc, tableInfo, rows);
 }
 
 export async function generateFormEntryPdf({ entry, schemaRecord }) {
-  const schema = normalizeSchemaRecord(schemaRecord);
+  const schema = normalizeSchemaRecord(entry?.schemaSnapshot || schemaRecord);
   if (!entry || !schema) return entry;
+  if (schema.official && schema.definition) {
+    const formId = schema.official.id;
+    const context = { common: { ...entry.header, fiscalYear: entry.header?.fiscalYear || '2027' }, totals: {}, lineItems: [], formValues: { [formId]: { ...entry.header, ...entry.sections } }, formDefinitions: { [formId]: schema.definition }, preservedNativeSections: Object.fromEntries(Object.entries(entry.sections || {}).filter(([key]) => !schema.definition.fields.some((field) => field.key === key))) };
+    return { ...entry, ...await generateBpFormPdf({ formId, context }), pdfGeneratedAt: new Date().toISOString() };
+  }
 
   await mkdir(PDF_DIR, { recursive: true });
 
-  const filename = `${safeFilename(schema.id)}-${safeFilename(entry.id)}.pdf`;
+  const filename = `${safeFilename(schema.id)}-${safeFilename(entry.id)}-${randomUUID()}.pdf`;
   const filePath = resolve(PDF_DIR, filename);
   const publicUrl = `${PUBLIC_PDF_BASE.replace(/\/$/, '')}/generated/forms/${filename}`;
 

@@ -1,12 +1,11 @@
 // Only these arithmetic operations are supported; configuration never executes code.
+import { calculateValue } from './form_schema.js';
 export function calculateTableRows(columns, rows = []) {
   return (Array.isArray(rows) ? rows : []).map((input) => {
     const row = { ...input };
     for (const column of columns) {
       if (!column.calculation) continue;
-      const values = column.operands.map((key) => row[key]);
-      row[column.key] = values.some((value) => value === '' || value == null || !Number.isFinite(Number(value))) ? null
-        : Math.round((column.calculation === 'multiply' ? values.reduce((sum, value) => sum * Number(value), 1) : values.reduce((sum, value) => sum + Number(value), 0)) * 100) / 100;
+      row[column.key] = calculateValue(column, row);
     }
     return row;
   });

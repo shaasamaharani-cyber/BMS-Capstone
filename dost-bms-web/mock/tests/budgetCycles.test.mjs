@@ -77,6 +77,25 @@ test('all forms can be disabled and the empty selection persists', async () => {
   assert.deepEqual((await request('GET', 'budget-cycles/2027')).data.enabled_form_ids, []);
 });
 
+test('configuration revisions retain trusted definitions and reject client attempts to replace history', async () => {
+  const { request, db } = fixture();
+  const first = await request('PUT', 'budget-cycles/2027', { enabled_form_ids: ['bp-a'], configuration_versions: [{ revision: 999 }], revision: 999 });
+  assert.equal(first.status, 200);
+  assert.equal(first.data.revision, 1);
+  assert.deepEqual(first.data.configuration_versions, []);
+  const captured = structuredClone(first.data.form_definitions);
+  const second = await request('PUT', 'budget-cycles/2027', { enabled_form_ids: ['bp-b'], configuration_versions: [], form_definitions: { forged: true } });
+  assert.equal(second.status, 200);
+  assert.equal(second.data.revision, 2);
+  assert.equal(second.data.configuration_versions.length, 1);
+  assert.deepEqual(second.data.configuration_versions[0].definitions, captured);
+  assert.deepEqual(second.data.configuration_versions[0].enabled_form_ids, ['bp-a']);
+  assert.equal(second.data.form_definitions.forged, undefined);
+  await request('PUT', 'budget-cycles/2027', { enabled_form_ids: ['bp-b'] });
+  assert.equal(db.find('budget-cycles', '2027').revision, 2);
+  assert.deepEqual((await request('GET', 'budget-cycles/2027')).data.configuration_versions, second.data.configuration_versions);
+});
+
 test('custom form IDs from another fiscal year cannot be enabled', async () => {
   const { request } = fixture();
   await request('PUT', 'budget-cycles/2027', { custom_forms: [newForm()], enabled_form_ids: ['custom-208'] });
@@ -319,7 +338,7 @@ test('configured fields render requester input and automatic values without chan
   const before = structuredClone(getDefaultFormDefinition('bp-a'));
   buildFormView('bp-a', { ...context, formConfigs: { 'bp-a': config } });
   assert.deepEqual(getDefaultFormDefinition('bp-a'), before);
-  assert.ok(getDefaultFormDefinition('bp-100').fields.some((field) => field.label.includes('Revenue')));
+  assert.equal(getDefaultFormDefinition('bp-100').fields.find((field) => field.key === 'official_revenues').columns.length, 11);
 });
 
 test('completion enforces number, dropdown, date and checkbox fields while accepting zero', () => {

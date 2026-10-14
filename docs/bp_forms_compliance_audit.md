@@ -1,5 +1,7 @@
 # FY2027 BP Forms compliance audit
 
+> Updated implementation: see [the workbook implementation and verification report](bp_forms_excel_implementation.md). The earlier missing-BP-A-PDF gate and implementation counts below describe the historical audit state.
+
 Audit date: 14 October 2026 (Australia/Brisbane). Baseline: `origin/main` at `c6d44ae`. Implementation branch: `feature/fy2027-bp-forms-audit`.
 
 **Status: partial implementation, not full DBM compliance.** BMS is an internal preparation, review and consolidation workflow. Its generated working schedules do not reproduce every official template. Submission to BMS is not submission to DBM. Official layouts, agency certification, reference-code validation and the final DOST allocation of responsibility remain outstanding.

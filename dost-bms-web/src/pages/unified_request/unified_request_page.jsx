@@ -303,8 +303,8 @@ export default function UnifiedRequestPage() {
   const arrCycleDocs = useMemo(() => [...new Map([...arrConfiguredCycleDocs, ...arrRequired.flatMap((entry) => getFormDefinition(entry.formId, { formConfigs: objFormConfigs })?.requiredDocuments || [])].map((document) => [document.name, document])).values()], [arrConfiguredCycleDocs, arrRequired, objFormConfigs]);
 
   const objContext = useMemo(
-    () => ({ common: objCommon, totals: objTotals, lineItems: arrLineItems, formValues: objFormValues, formConfigs: objFormConfigs, enabledFormIds: arrEnabledFormIds }),
-    [objCommon, objTotals, arrLineItems, objFormValues, objFormConfigs, arrEnabledFormIds]
+    () => ({ common: objCommon, answers: objAnswers, totals: objTotals, lineItems: arrLineItems, formValues: objFormValues, formConfigs: objFormConfigs, enabledFormIds: arrEnabledFormIds }),
+    [objCommon, objAnswers, objTotals, arrLineItems, objFormValues, objFormConfigs, arrEnabledFormIds]
   );
 
   // Forms are "generated" the first time the user opens step 4 (and again on request); the totals are captured then

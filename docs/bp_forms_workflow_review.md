@@ -1,5 +1,7 @@
 # FY2027 BP workflow implementation review
 
+> Updated implementation: see [the workbook implementation and verification report](bp_forms_excel_implementation.md). The earlier missing-BP-A-PDF gate and implementation counts below describe the historical audit state.
+
 Branch: `feature/fy2027-bp-forms-audit`, created from freshly fetched `origin/main` (`c6d44ae`). No push or merge is authorised or performed.
 
 This review records the initial feature implementation. The later [correction review](bp_forms_corrections_review.md) supersedes its administrator-editor instructions, Form A performance-field requirement, Form B columns and final test count.

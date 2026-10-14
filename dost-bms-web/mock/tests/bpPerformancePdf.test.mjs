@@ -26,7 +26,7 @@ test('Form B PDF reports retain both NEP tiers, indicator units, signatories and
       const result = spawnSync(extractor, ['-layout', path, '-'], { encoding: 'utf8' });
       assert.equal(result.status, 0, result.stderr);
       const text = result.stdout.replace(/\s+/g, ' ');
-      for (const expected of ['2025 GAA targets', '2025 actual accomplishments', '2026 GAA targets', '2027 NEP targets', 'TierOne92Percent', 'TierTwo95Percent', 'LegacyUnassigned99', 'Budget fixture name', 'Planning fixture name', 'Agency fixture name', '14/10/2026']) assert.ok(text.includes(expected), `${expected} must be in ${path}`);
+      for (const expected of ['2025 GAA targets', '2025-actual-85%', '2026-target-90%', 'TierOne92Percent', 'TierTwo95Percent', 'LegacyUnassigned99', 'Budget fixture name', 'Planning fixture name', 'Agency fixture name', '14/10/2026']) assert.ok(text.includes(expected), `${expected} must be in ${path}`);
       assert.match(result.stdout, /tier unassigned/);
       assert.match(result.stdout, /signature/i);
       if (path === native.pdfPath) assert.match(result.stdout, /PreservedFinancialSample/);

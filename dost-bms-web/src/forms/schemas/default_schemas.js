@@ -14,6 +14,7 @@
  */
 
 import { PERFORMANCE_COLUMNS, PERFORMANCE_SIGNATORIES, performanceYearLabel } from '../../bp_forms/bp_form_b.js';
+import { createOfficialNativeSchema } from '../../bp_forms/official_form_schema.js';
 
 function createEmptyBPFormSchema(code) {
   return {
@@ -805,4 +806,4 @@ export const DEFAULT_FORM_SCHEMAS = [
   BPForm207Schema,
   BPForm300Schema,
   ProgramBudgetMatrixSchema,
-];
+].map((schema) => createOfficialNativeSchema(schema.id) || schema);

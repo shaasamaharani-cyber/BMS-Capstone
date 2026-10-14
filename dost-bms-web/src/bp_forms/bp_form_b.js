@@ -40,5 +40,7 @@ export function performanceYearLabel(label, fiscalYear) {
   const year = Number(fiscalYear);
   return label.replaceAll('{fiscalYear}', year || 'proposed year')
     .replaceAll('{actualYear}', year ? year - 2 : 'actual year')
-    .replaceAll('{currentYear}', year ? year - 1 : 'current year');
+    .replaceAll('{currentYear}', year ? year - 1 : 'current year')
+    .replaceAll('{outyearOne}', year ? year + 1 : 'first outyear')
+    .replaceAll('{outyearTwo}', year ? year + 2 : 'second outyear');
 }

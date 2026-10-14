@@ -52,7 +52,7 @@ export function validateConfiguredSubmission(db, request) {
   if (legacyFinex != null && legacyFinex !== '' && Number(legacyFinex) !== totals.finexTotal) errors.push('The older typed FinEx form amount differs from the line items. Reconcile it explicitly.');
   if (arrRequired.some((entry) => entry.formId === 'bp-207') && !(totals.climateTotal > 0)) errors.push('Link climate expenditure to its underlying MOOE or CO items.');
   if (!['national_government', 'foreign_grant', 'foreign_loan', 'other'].includes(common.fundingSource)) errors.push('Choose the funding source.');
-  const context = { common, totals, lineItems, formValues: unified.formValues || {}, formConfigs: cycle.form_configs, formDefinitions: unified.formDefinitions };
+  const context = { common, answers: unified.answers || {}, totals, lineItems, formValues: unified.formValues || {}, formConfigs: cycle.form_configs, formDefinitions: unified.formDefinitions };
   for (const question of getRequiredQuestions(cycle.enabled_form_ids, cycle.form_configs, catalog)) {
     if (!question.options.some((option) => option.value === getQuestionAnswer(question, { answers: unified.answers, common }))) errors.push(`Answer ${question.label} before submitting.`);
   }

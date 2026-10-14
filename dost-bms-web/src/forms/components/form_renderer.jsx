@@ -17,6 +17,9 @@ import { useState } from 'react';
 import DynamicTable from './dynamic_table';
 import HeaderFields from './header_fields';
 import StructuredField from '../../components/form/structured_field';
+import GuidedFormSections from '../../components/form/guided_form_sections';
+import { isRepeatingField } from '../../bp_forms/form_schema';
+import { buildFormView } from '../../bp_forms/bp_form_fields';
 import styles from './flexible_forms.module.css';
 
 function getSectionKey(sectionId, tabId) {
@@ -130,6 +133,14 @@ export default function FormRenderer({ schema, entry, setEntry }) {
       updatedAt: new Date().toISOString(),
     }));
   }
+
+  const officialView = schema.official && schema.definition ? buildFormView(schema.official.id, { common: { ...entry.header, fiscalYear: entry.header?.fiscalYear || '2027' }, lineItems: [], totals: {}, formDefinitions: { [schema.official.id]: schema.definition }, formValues: { [schema.official.id]: { ...entry.header, ...entry.sections } } }) : null;
+  if (officialView) return <div className={styles.formShell}>
+    <HeaderFields fields={[]} values={{}} onChange={() => {}} entryName={entry.name} onEntryNameChange={updateEntryName} />
+    <p className="small text-muted">Institution working data. Office responsibilities and government PDF verification remain configurable.</p>
+    <GuidedFormSections fields={officialView.fields.filter((field) => !field.preserved)} sections={officialView.sections} values={{ ...entry.header, ...entry.sections }} context={{ common: entry.header }} onChange={(key, value) => isRepeatingField(schema.definition.fields.find((field) => field.key === key)) ? updateSection(key, value) : updateHeader(key, value)} />
+    {Object.entries(entry.sections || {}).filter(([key, rows]) => !schema.definition.fields.some((field) => field.key === key) && rows?.length).map(([key, rows]) => <details key={key} className="border rounded p-3 mt-3"><summary>Internal: preserved legacy section {key}</summary><pre style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(rows, null, 2)}</pre></details>)}
+  </div>;
 
   return (
     <div className={styles.formShell}>

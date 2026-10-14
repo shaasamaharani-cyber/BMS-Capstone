@@ -3,12 +3,13 @@ import StructuredField from './structured_field';
 import FormSignatories from './form_signatories';
 import { getCycleFormCatalog } from '../../bp_forms/bp_form_catalog';
 import { buildFormView } from '../../bp_forms/bp_form_fields';
+import { isRepeatingField } from '../../bp_forms/form_schema';
 
 // Read saved definitions rather than the live fiscal-year cycle, so submitted forms retain their labels and values.
 export default function UnifiedRequestFormsSummary({ unified }) {
   if (!unified?.requiredForms?.length) return null;
   const catalog = unified.formCatalog || getCycleFormCatalog({ custom_forms: unified.customForms, form_configs: unified.formConfigs });
-  const context = { common: unified.common || {}, totals: unified.totalsAtGeneration || { psTotal: 0, mooeTotal: 0, coTotal: 0 }, lineItems: unified.lineItems || [], formDefinitions: unified.formDefinitions, formValues: unified.formValues || {}, formConfigs: unified.formConfigs || {} };
+  const context = { common: unified.common || {}, answers: unified.answers || {}, totals: unified.totalsAtGeneration || { psTotal: 0, mooeTotal: 0, coTotal: 0 }, lineItems: unified.lineItems || [], formDefinitions: unified.formDefinitions, formValues: unified.formValues || {}, formConfigs: unified.formConfigs || {} };
   const forms = unified.requiredForms.flatMap((entry) => {
     const form = catalog.find((row) => row.id === entry.formId);
     const view = buildFormView(entry.formId, context);
@@ -25,7 +26,7 @@ export default function UnifiedRequestFormsSummary({ unified }) {
             {view.fields.map((field) => (
               <div className="col-md-6 mb-3" key={field.key}>
                 <dt>{field.label}</dt>
-                <dd className="mb-0" style={{ whiteSpace: 'pre-wrap' }}>{field.type === 'table' ? <StructuredField field={field} value={field.value} /> : typeof field.value === 'boolean' ? field.value ? 'Yes' : 'No' : String(field.value ?? '') || '-'}</dd>
+                <dd className="mb-0" style={{ whiteSpace: 'pre-wrap' }}>{isRepeatingField(field) ? <StructuredField field={field} value={field.value} context={context} /> : typeof field.value === 'boolean' ? field.value ? 'Yes' : 'No' : field.type === 'attachment' ? field.value?.name || '-' : String(field.value ?? '') || '-'}</dd>
               </div>
             ))}
           </dl>

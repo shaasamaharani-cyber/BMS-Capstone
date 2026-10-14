@@ -1,5 +1,7 @@
 # BP form corrections — 14 October 2026
 
+> Updated implementation: see [the workbook implementation and verification report](bp_forms_excel_implementation.md). The earlier missing-BP-A-PDF gate and implementation counts below describe the historical audit state.
+
 These changes follow the user's correction request on the existing `feature/fy2027-bp-forms-audit` branch. The working tree was clean when this correction task began. Changes remain local and uncommitted; nothing was pushed or merged. Earlier commits and unrelated work are preserved.
 
 ## Administrator checkboxes

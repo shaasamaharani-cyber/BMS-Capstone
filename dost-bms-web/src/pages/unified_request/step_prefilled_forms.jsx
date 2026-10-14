@@ -1,4 +1,4 @@
-import StructuredField from '../../components/form/structured_field';
+import GuidedFormSections from '../../components/form/guided_form_sections';
 import FormSignatories from '../../components/form/form_signatories';
 /**
  * System Name: Budget Management System
@@ -17,39 +17,17 @@ import FormSignatories from '../../components/form/form_signatories';
  */
 
 import PropTypes from 'prop-types';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui';
 import { BP_FORM_CATALOG, FORM_ENGINE, FORM_LEVEL, getFormById as findForm } from '../../bp_forms/bp_form_catalog';
-import { buildFormView, FIELD_SOURCE, getFieldValueError, getFormCompletion } from '../../bp_forms/bp_form_fields';
+import { buildFormView, FIELD_SOURCE, getFormCompletion, getFormContent, getFormDefinition } from '../../bp_forms/bp_form_fields';
+import client from '../../api/client';
 import { formatBudgetRequestCurrency } from '../../utils/budget_request_utils';
 import { useHasPermission } from '../../hooks/use_permissions';
 import { PERMISSIONS } from '../../utils/permissions';
 import { exportToPdf } from '../../forms/utils/export_pdf';
 import styles from './unified_request.module.css';
-
-function FieldInput({ objField, strValue, onChange }) {
-  const strId = `field-${objField.key}`;
-  const error = getFieldValueError(objField, strValue);
-  const props = { id: strId, 'aria-invalid': Boolean(error), 'aria-describedby': error ? `${strId}-error` : undefined, required: Boolean(objField.required) };
-
-  if (objField.type === 'table') return <StructuredField field={objField} value={Array.isArray(strValue) ? strValue : []} onChange={onChange} />;
-  if (objField.type === 'checkbox') return <input {...props} className="form-check-input" type="checkbox" checked={strValue === true} onChange={(event) => onChange(event.target.checked)} />;
-
-  if (objField.type === 'textarea') {
-    return <textarea {...props} className="form-control" rows={3} value={strValue} onChange={(objEvent) => onChange(objEvent.target.value)} />;
-  }
-  if (objField.type === 'select') {
-    return (
-      <select {...props} className="form-select" value={strValue} onChange={(objEvent) => onChange(objEvent.target.value)}>
-        <option value="">Select</option>
-        {objField.options.map((strOption) => <option key={strOption} value={strOption}>{strOption}</option>)}
-      </select>
-    );
-  }
-  return <input {...props} className="form-control" step={objField.type === 'number' ? 'any' : undefined} type={objField.type === 'number' ? 'number' : objField.type === 'date' ? 'date' : 'text'} value={strValue} onChange={(objEvent) => onChange(objEvent.target.value)} />;
-}
-
-FieldInput.propTypes = { objField: PropTypes.object.isRequired, strValue: PropTypes.oneOfType([PropTypes.string, PropTypes.number, PropTypes.bool, PropTypes.array]), onChange: PropTypes.func.isRequired };
 
 const formatLockedValue = (objField) => {
   if (objField.value === '' || objField.value === null || objField.value === undefined) return '-';
@@ -60,11 +38,22 @@ const formatLockedValue = (objField) => {
 export default function StepPrefilledForms({ arrCatalog = BP_FORM_CATALOG, arrRequired, objContext, blnSnapshotStale, strSelectedFormId, onSelectForm, onFormValueChange, onRegenerate }) {
   const getFormById = (strId) => findForm(strId, arrCatalog);
   const navigate = useNavigate();
+  const [exported, setExported] = useState(null);
+  const [exporting, setExporting] = useState(false);
   // Access to the separate Forms module follows permissions; completing offices remain configurable.
   const blnCanOpenForms = useHasPermission(PERMISSIONS.FORMS);
   const strActiveId = arrRequired.some((objEntry) => objEntry.formId === strSelectedFormId) ? strSelectedFormId : arrRequired[0]?.formId;
   const objActiveForm = strActiveId ? getFormById(strActiveId) : null;
   const objView = objActiveForm?.engine === FORM_ENGINE.DYNAMIC ? buildFormView(strActiveId, objContext) : null;
+  const exportOfficial = async () => {
+    const content = getFormContent(strActiveId, objContext);
+    setExporting(true); setExported(null);
+    try {
+      const response = await client.post('/bp-form-exports', { formId: strActiveId, context: objContext, definition: JSON.stringify(getFormDefinition(strActiveId, objContext)) });
+      setExported({ formId: strActiveId, content, url: response.data.data.pdfUrl });
+    } catch (error) { setExported({ error: error.response?.data?.message || error.message }); }
+    finally { setExporting(false); }
+  };
 
   if (arrRequired.length === 0) {
     return <section className={styles.card}><p className={styles.emptyCell}>No forms are required yet. Go back to steps 1 and 2.</p></section>;
@@ -112,7 +101,7 @@ export default function StepPrefilledForms({ arrCatalog = BP_FORM_CATALOG, arrRe
           <section id="request-form-print-area" className={`${styles.card} print-area`}>
             <h3 className={styles.cardTitle}>{objActiveForm.code} - {objActiveForm.name}</h3>
             <p className={styles.cardHint}>{strActiveId === 'bp-b' ? 'Performance working schedule; targets use indicator units. Layout verification and office certification remain required.' : 'Internal working schedule in pesos; this layout is not an official DBM template.'}</p><p className={styles.cardHint}>Completed by: {objActiveForm.completedBy}</p>
-            {objView && <div className="no-print mb-3"><Button type="button" variant="outline" size="sm" onClick={() => exportToPdf('request-form-print-area')} disabled={blnSnapshotStale || !getFormCompletion(strActiveId, objContext).complete}>Print / Save as PDF</Button><p className="small text-muted mt-1 mb-0">Print this working schedule for review. Upload the signed official BP form required by your institution.</p></div>}
+            {objView && <div className="no-print mb-3"><Button type="button" variant="outline" size="sm" onClick={objView.official ? exportOfficial : () => exportToPdf('request-form-print-area')} disabled={blnSnapshotStale || exporting}>{objView.official ? exporting ? 'Generating PDF…' : 'Generate government-style PDF' : 'Print / Save as PDF'}</Button>{exported?.error && <p role="alert" className="text-danger small mt-2">{exported.error}</p>}{exported?.formId === strActiveId && exported?.content === getFormContent(strActiveId, objContext) && <a className="btn btn-sm btn-primary ms-2" href={exported.url} target="_blank" rel="noreferrer">Download draft PDF</a>}<p className="small text-muted mt-1 mb-0">The PDF uses a separate report layout. Review the draft and upload the signed official form required by your institution.</p></div>}
             {objActiveForm.level === FORM_LEVEL.AGENCY && (
               <div className={styles.autoSummary}>
                 Institution-level and consolidated reporting are both required. The completing office and timing for this schedule await DOST confirmation; this schedule does <strong>not</strong> block the requester unless configured as a request form.
@@ -128,43 +117,14 @@ export default function StepPrefilledForms({ arrCatalog = BP_FORM_CATALOG, arrRe
                   {arrLockedFields.map((objField) => (
                     <div key={objField.key} className={styles.lockedField}>
                       <dt>{objField.label}</dt>
-                      <dd>{formatLockedValue(objField)}<span className={styles.chipAuto}>{objField.source === FIELD_SOURCE.DERIVED ? 'Calculated' : 'From request'}</span></dd>
+                      <dd style={{ whiteSpace: objField.preserved ? 'pre-wrap' : undefined }}>{formatLockedValue(objField)}<span className={styles.chipAuto}>{objField.preserved ? 'Preserved' : objField.source === FIELD_SOURCE.DERIVED ? 'Calculated' : 'From request'}</span></dd>
                     </div>
                   ))}
                 </dl>
 
-                {objView.table && (
-                  <div className={styles.tableWrap}>
-                    <table className={styles.itemTable}>
-                      <thead><tr>{objView.table.columns.map((objColumn) => <th key={objColumn.key} className={objColumn.numeric ? styles.numericCell : ''}>{objColumn.label}</th>)}</tr></thead>
-                      <tbody>
-                        {objView.table.rows.map((objRow, intIndex) => (
-                          <tr key={`${objRow.name}-${intIndex}`}>
-                            {objView.table.columns.map((objColumn) => <td key={objColumn.key} className={objColumn.numeric ? styles.numericCell : ''}>{objColumn.numeric ? formatBudgetRequestCurrency(objRow[objColumn.key]) : objRow[objColumn.key]}</td>)}
-                          </tr>
-                        ))}
-                        {objView.table.rows.length === 0 && <tr><td colSpan={objView.table.columns.length} className={styles.emptyCell}>No line items in this category yet.</td></tr>}
-                      </tbody>
-                      <tfoot><tr>{objView.table.columns.map((column, index) => <td key={column.key} className={column.numeric ? styles.numericCell : undefined}>{index === 0 ? 'Total' : column.key === [...objView.table.columns].reverse().find((item) => item.numeric)?.key ? formatBudgetRequestCurrency(objView.table.total) : ''}</td>)}</tr></tfoot>
-                    </table>
-                  </div>
-                )}
+                {objView.table && <section className="mb-4" aria-label="Calculated expenditure from line items"><h4 className={styles.subTitle}>Calculated expenditure</h4><div className="row g-3">{objView.table.rows.map((row, index) => <div className="col-12 col-lg-6" key={index}><div className="border rounded p-3 h-100"><strong>{row.name}</strong><dl className="row small mt-2 mb-0">{objView.table.columns.filter((column) => column.numeric).map((column) => <div className="col-6" key={column.key}><dt>{column.label}</dt><dd>{formatBudgetRequestCurrency(row[column.key])}</dd></div>)}</dl></div></div>)}</div><p className="fw-semibold mt-3">Total: {formatBudgetRequestCurrency(objView.table.total)}</p></section>}
 
-                {arrUserFields.length > 0 && (
-                  <>
-                    <h4 className={styles.subTitle}>Only this form needs</h4>
-                    <div className={styles.fieldGrid}>
-                      {arrUserFields.map((objField) => (
-                        <div key={objField.key} className={['textarea', 'table'].includes(objField.type) ? styles.spanTwo : ''}>
-                          <label htmlFor={`field-${objField.key}`} className={styles.fieldLabel}>{objField.label}{objField.required && <span className={styles.requiredMark}> *</span>}</label>
-                          <div className={objField.type === 'table' ? '' : 'no-print'}><FieldInput objField={objField} strValue={objUserValues[objField.key] ?? ''} onChange={(value) => onFormValueChange(strActiveId, objField.key, value)} /></div>
-                          <div className={objField.type === 'table' ? 'd-none' : 'print-only'} style={{ whiteSpace: 'pre-wrap' }}>{typeof objUserValues[objField.key] === 'boolean' ? objUserValues[objField.key] ? 'Yes' : 'No' : String(objUserValues[objField.key] ?? '') || '-'}</div>
-                          {getFieldValueError(objField, objUserValues[objField.key]) && <p id={`field-${objField.key}-error`} className="no-print text-danger small mt-1 mb-0">{getFieldValueError(objField, objUserValues[objField.key])}</p>}
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
+                <GuidedFormSections fields={arrUserFields} sections={objView.sections} values={objUserValues} context={objContext} onChange={(key, value) => onFormValueChange(strActiveId, key, value)} />
                 {objView.signatories ? <FormSignatories signatories={objView.signatories} values={objUserValues} /> : <div className="print-only mt-4">Signature: ______________________________ &nbsp; Date: __________________</div>}
               </>
             ) : (
