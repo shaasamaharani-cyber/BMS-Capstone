@@ -57,9 +57,12 @@ export function withUserRelations(db, user) {
 
   const role = roleForUser(db, user);
   const unit = requestingUnitForUser(db, user);
+  // Never send a stored password back to the browser
+  const objSafeUser = { ...user };
+  delete objSafeUser.usr_password;
 
   return {
-    ...user,
+    ...objSafeUser,
     usr_role_id: user.usr_role_id ?? role?.role_id ?? null,
     usr_requesting_unit_id: user.usr_requesting_unit_id ?? null,
     role,

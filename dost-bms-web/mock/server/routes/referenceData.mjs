@@ -33,6 +33,12 @@ export async function handleReferenceData(ctx) {
     return true;
   }
 
+  // Role list for the Users & Roles page (names only, no permissions)
+  if (path === '/roles') {
+    json(res, 200, resourceList(db, 'roles', url.searchParams));
+    return true;
+  }
+
   if (path === '/requesting-units') {
     json(res, 200, resourceList(db, 'requesting-units', url.searchParams, 'ru_is_active'));
     return true;
