@@ -20,7 +20,7 @@ const getCostStructure = (value) =>
   normalizeCostStructure(value) || DEFAULT_COST_STRUCTURE;
 
 /** Default category iteration order for consolidation tables */
-export const CONSOLIDATION_CATEGORY_ORDER = ['PS', 'MOOE', 'CO', 'TAG'];
+export const CONSOLIDATION_CATEGORY_ORDER = ['PS', 'MOOE', 'FINEX', 'CO', 'TAG'];
 
 /**
  * @param {Array<{
@@ -140,6 +140,9 @@ export function buildConsolidationLineRows(sections, options = {}) {
               amount: toAmount(item.amount),
               originalAmount: toAmount(item.originalAmount ?? item.amount),
               justification: item.justification,
+              climateAmount: item.climateAmount ?? 0,
+              climateTypology: item.climateTypology || '',
+              climateType: item.climateType || '',
             });
           });
         });

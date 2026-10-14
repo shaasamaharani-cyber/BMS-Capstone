@@ -42,6 +42,7 @@ export async function handleForms(ctx) {
       id,
       createdAt: payload.createdAt || now,
       updatedAt: payload.updatedAt || now,
+      ...(resource === 'form_entries' ? { schemaSnapshot: db.find('form_schemas', payload.schemaId) } : {}),
     };
     const record = resource === 'form_entries'
       ? await generateFormEntryPdf({
@@ -75,6 +76,7 @@ export async function handleForms(ctx) {
       ...payload,
       id,
       updatedAt: payload.updatedAt || new Date().toISOString(),
+      ...(resource === 'form_entries' ? { schemaSnapshot: existing.schemaSnapshot || db.find('form_schemas', existing.schemaId) } : {}),
     };
     const record = resource === 'form_entries'
       ? await generateFormEntryPdf({

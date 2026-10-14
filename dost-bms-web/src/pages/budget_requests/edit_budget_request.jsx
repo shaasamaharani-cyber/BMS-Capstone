@@ -235,6 +235,9 @@ export default function EditBudgetRequest() {
     costStructure: normalizeCostStructure(objItem?.bri_cost_structure) || DEFAULT_COST_STRUCTURE,
     amount: objItem?.bri_planned_amount ?? '',
     justification: objItem?.bri_justification || '',
+    climateAmount: objItem?.bri_climate_amount ?? 0,
+    climateTypology: objItem?.bri_climate_typology || '',
+    climateType: objItem?.bri_climate_type || '',
     sortOrder: objItem?.bri_sort_order ?? 0,
   }), [categoryIdToCode]);
 
@@ -383,7 +386,7 @@ export default function EditBudgetRequest() {
     return () => { isMounted = false; };
   }, [strFormSchemaId]);
 
-  const { psTotal, mooeTotal, coTotal, tagTotal, grandTotal } = useMemo(
+  const { psTotal, mooeTotal, finexTotal, coTotal, tagTotal, climateTotal, grandTotal } = useMemo(
     () => computeBudgetLineItemTotals(arrLineItems),
     [arrLineItems]
   );
@@ -757,7 +760,7 @@ export default function EditBudgetRequest() {
         onAttachForm={handleAttachForm}
         onDetachForm={handleDetachForm}
         lineItems={arrLineItems}
-        totals={{ psTotal, mooeTotal, coTotal, tagTotal, grandTotal }}
+        totals={{ psTotal, mooeTotal, finexTotal, coTotal, tagTotal, climateTotal, grandTotal }}
         workflowSteps={workflowSteps}
         sidebarTopContent={reviewCommentBanner}
         actions={

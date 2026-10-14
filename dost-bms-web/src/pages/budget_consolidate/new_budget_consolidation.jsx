@@ -1,3 +1,4 @@
+import { computeBudgetLineItemTotals as computeFinancialTotals } from '../../utils/budget_financials';
 /**
  * System Name: Budget Management System
  * Module Name: Core Module
@@ -260,6 +261,9 @@ const mapRequestsToSections = (requests = []) =>
       costStructure: normalizeCostStructure(item?.costStructure ?? item?.bri_cost_structure) || DEFAULT_COST_STRUCTURE,
       amount: toAmount(item?.amount ?? item?.bri_planned_amount),
       justification: item?.justification ?? item?.bri_justification ?? '',
+      climateAmount: item?.climateAmount ?? item?.bri_climate_amount ?? 0,
+      climateTypology: item?.climateTypology || item?.bri_climate_typology || '',
+      climateType: item?.climateType || item?.bri_climate_type || '',
     };
   }, [objCategoryIdToCodeMap]);
 
@@ -493,17 +497,8 @@ const mapRequestsToSections = (requests = []) =>
     [arrConsolidatedLineItems]
   );
 
-  const { psTotal, mooeTotal, coTotal, tagTotal, grandTotal } = useMemo(() => {
-    const totals = { psTotal: 0, mooeTotal: 0, coTotal: 0, tagTotal: 0, grandTotal: 0 };
-    flattenedRows.forEach((row) => {
-      if (row.rowType !== 'item') return;
-      if (row.category === 'PS') totals.psTotal += row.amount;
-      if (row.category === 'MOOE') totals.mooeTotal += row.amount;
-      if (row.category === 'CO') totals.coTotal += row.amount;
-      if (row.category === 'TAG') totals.tagTotal += row.amount;
-    });
-    totals.grandTotal = totals.psTotal + totals.mooeTotal + totals.coTotal + totals.tagTotal;
-    return totals;
+  const { psTotal, mooeTotal, finexTotal, coTotal, tagTotal, climateTotal, grandTotal } = useMemo(() => {
+    return computeFinancialTotals(flattenedRows.filter((row) => row.rowType === 'item'));
   }, [flattenedRows]);
 
   const selectedBudgetRequestIds = useMemo(
@@ -605,7 +600,7 @@ const mapRequestsToSections = (requests = []) =>
       approvalWorkflow: nextWorkflow,
       currentVersion: draftVersion,
       approvalVersions: nextApprovalVersions,
-      totals: { psTotal, mooeTotal, coTotal, tagTotal, grandTotal },
+      totals: { psTotal, mooeTotal, finexTotal, coTotal, tagTotal, climateTotal, grandTotal },
       ub_attached_files: arrAttachedFiles.map((file) => ({
         id: file.id,
         name: file.name,
@@ -692,7 +687,7 @@ const mapRequestsToSections = (requests = []) =>
       approvalWorkflow: nextWorkflow,
       currentVersion: nextVersion,
       approvalVersions: nextApprovalVersions,
-      totals: { psTotal, mooeTotal, coTotal, tagTotal, grandTotal },
+      totals: { psTotal, mooeTotal, finexTotal, coTotal, tagTotal, climateTotal, grandTotal },
       ub_attached_files: arrAttachedFiles.map((file) => ({
         id: file.id,
         name: file.name,
@@ -915,7 +910,7 @@ const mapRequestsToSections = (requests = []) =>
           lineItemsError={objErrors.lineItems}
           lineItemsFetchError={objError}
           lineItemsLoading={blnLoading}
-          totals={{ psTotal, mooeTotal, coTotal, tagTotal, grandTotal }}
+          totals={{ psTotal, mooeTotal, finexTotal, coTotal, tagTotal, climateTotal, grandTotal }}
           workflowSteps={workflowSteps}
           reviewedRequests={arrReviewedRequestPool}
           addedRequestIds={arrConsolidatedLineItems.map((section) => section.sourceRequestId ?? section.requestId)}

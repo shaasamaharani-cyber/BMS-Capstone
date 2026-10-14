@@ -34,7 +34,7 @@ export function validateCustomForms(value) {
     }
     ids.add(id);
     codes.add(code.toLowerCase());
-    forms.push({ id, code, name, completedBy, level: form.level, engine: FORM_ENGINE.MANUAL, automation: AUTOMATION_LEVEL.MANUAL });
+    forms.push({ id, code, name, completedBy, level: form.level, engine: FORM_ENGINE.MANUAL, automation: AUTOMATION_LEVEL.MANUAL, ...(form.optionalByDefault === true ? { optionalByDefault: true } : {}) });
   }
   return { forms };
 }

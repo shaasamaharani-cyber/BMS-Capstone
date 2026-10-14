@@ -153,7 +153,7 @@ function buildPlanningCategoryBreakdown(arrRequests, objItemsByRequestId, objFil
   const strBudgetStatus = String(objFilters.budgetStatus || 'all').toLowerCase();
   const intCategoryId   = objFilters.categoryId ? Number(objFilters.categoryId) : null;
   const intDivisor      = getPeriodDivisor(objFilters.period);
-  const objAccumulator  = { PS: 0, MOOE: 0, CO: 0, TAG: 0 };
+  const objAccumulator  = { PS: 0, MOOE: 0, FINEX: 0, CO: 0, TAG: 0 };
 
   arrRequests.forEach((objRequest) => {
     const strStatus = String(objRequest.br_status || '').toLowerCase();
@@ -178,9 +178,9 @@ function buildUnifiedCategoryBreakdown(db, objFilters)
   const intRequestingUnitId = objFilters.requestingUnitId ? Number(objFilters.requestingUnitId) : null;
   const intCategoryId       = objFilters.categoryId       ? Number(objFilters.categoryId)       : null;
   const intDivisor          = getPeriodDivisor(objFilters.period);
-  const objAccumulator      = { PS: 0, MOOE: 0, CO: 0, TAG: 0 };
+  const objAccumulator      = { PS: 0, MOOE: 0, FINEX: 0, CO: 0, TAG: 0 };
 
-  const CAT_CODE = { 1: 'PS', 2: 'MOOE', 3: 'CO', 4: 'TAG' };
+  const CAT_CODE = Object.fromEntries(db.rows('budget-categories').map((row) => [row.bcat_id ?? row.id, row.bcat_code]));
 
   db.rows('unified-budget-items')
     .filter((objItem) => {
@@ -277,12 +277,12 @@ function buildMonitoringTrend(db, intDivisor)
  * releasedVariance  = appropriation − allotment
  * executionVariance = allotment − obligation
  */
-function buildVarianceByCategory(arrAppropriations, arrExecutions, intDivisor)
+function buildVarianceByCategory(db, arrAppropriations, arrExecutions, intDivisor)
 {
-  const CAT_CODE = { 1: 'PS', 2: 'MOOE', 3: 'CO', 4: 'TAG' };
-  const objApprop = { PS: 0, MOOE: 0, CO: 0, TAG: 0 };
-  const objAllot  = { PS: 0, MOOE: 0, CO: 0, TAG: 0 };
-  const objOblig  = { PS: 0, MOOE: 0, CO: 0, TAG: 0 };
+  const CAT_CODE = Object.fromEntries(db.rows('budget-categories').map((row) => [row.bcat_id ?? row.id, row.bcat_code]));
+  const objApprop = { PS: 0, MOOE: 0, FINEX: 0, CO: 0, TAG: 0 };
+  const objAllot  = { PS: 0, MOOE: 0, FINEX: 0, CO: 0, TAG: 0 };
+  const objOblig  = { PS: 0, MOOE: 0, FINEX: 0, CO: 0, TAG: 0 };
 
   arrAppropriations.forEach((objRow) => {
     const strCode = CAT_CODE[objRow.appr_category_id];
@@ -298,7 +298,7 @@ function buildVarianceByCategory(arrAppropriations, arrExecutions, intDivisor)
     }
   });
 
-  return ['PS', 'MOOE', 'CO', 'TAG'].map((strCode) => ({
+  return ['PS', 'MOOE', 'FINEX', 'CO', 'TAG'].map((strCode) => ({
     category:          strCode,
     releasedVariance:  r2((objApprop[strCode] - objAllot[strCode]) / intDivisor),
     executionVariance: r2((objAllot[strCode]  - objOblig[strCode]) / intDivisor),
@@ -387,7 +387,7 @@ export function buildDashboardData(db, objFilters)
   // Monitoring
   const arrAppropriations = getFilteredAppropriations(db, objFilters);
   const arrExecutions     = getFilteredExecutions(db, objFilters);
-  const arrVarianceRows   = buildVarianceByCategory(arrAppropriations, arrExecutions, intDivisor);
+  const arrVarianceRows   = buildVarianceByCategory(db, arrAppropriations, arrExecutions, intDivisor);
 
   return {
     filters: {
@@ -413,7 +413,7 @@ export function buildDashboardData(db, objFilters)
     planning: {
       statusSummary: buildStatusSummary(arrRequests),
       budgetByCategory: {
-        labels: ['PS', 'MOOE', 'CO', 'TAG'],
+        labels: ['PS', 'MOOE', 'FINEX', 'CO', 'TAG'],
         datasets: [
           {
             key:   'budget_requests',
@@ -421,6 +421,7 @@ export function buildDashboardData(db, objFilters)
             data:  [
               objPlanningBreakdown.PS,
               objPlanningBreakdown.MOOE,
+              objPlanningBreakdown.FINEX,
               objPlanningBreakdown.CO,
               objPlanningBreakdown.TAG,
             ],
@@ -431,6 +432,7 @@ export function buildDashboardData(db, objFilters)
             data:  [
               objUnifiedBreakdown.PS,
               objUnifiedBreakdown.MOOE,
+              objUnifiedBreakdown.FINEX,
               objUnifiedBreakdown.CO,
               objUnifiedBreakdown.TAG,
             ],
@@ -441,7 +443,8 @@ export function buildDashboardData(db, objFilters)
         PS:   objCategoryNameById[1] || 'Personnel Services',
         MOOE: objCategoryNameById[2] || 'Maintenance and Other Operating Expenses',
         CO:   objCategoryNameById[3] || 'Capital Outlay',
-        TAG:  objCategoryNameById[4] || 'Project Tagging',
+        FINEX: 'Financial Expenses',
+        TAG: 'Legacy TAG (unclassified)',
       },
     },
 

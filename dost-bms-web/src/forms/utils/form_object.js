@@ -51,6 +51,7 @@ export function toSchemaRecord(schema) {
     name: schema.name,
     version: schema.version ?? '',
     schema: {
+      ...(schema.official ? { official: schema.official, definition: schema.definition } : {}),
       headerFields: schema.headerFields ?? [],
       sections: schema.sections ?? [],
       footer: schema.footer ?? {},

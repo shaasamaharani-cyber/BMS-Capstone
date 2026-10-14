@@ -3,7 +3,7 @@
  * Module Name: None
  *
  * Purpose of this file:
- * Resolve the authenticated user performing an API action from Bearer token or payload.
+ * Resolve the authenticated user performing an API action from the Bearer token. Client-supplied actor IDs are ignored.
  *
  * Author: None
  *
@@ -30,14 +30,7 @@ function tokenToUserId(strToken) {
  * @param {object} [payload]
  * @returns {object|null}
  */
-export function resolveRequestActor(db, req, payload = {}) {
-  if (payload?.actor_id != null) {
-    const objUser = db.find('users', payload.actor_id);
-    if (objUser) {
-      return withUserRelations(db, objUser);
-    }
-  }
-
+export function resolveRequestActor(db, req) {
   const strAuthHeader = String(req?.headers?.authorization || '');
   const strToken = strAuthHeader.replace(/^Bearer\s+/i, '').trim();
   const strUserId = tokenToUserId(strToken);

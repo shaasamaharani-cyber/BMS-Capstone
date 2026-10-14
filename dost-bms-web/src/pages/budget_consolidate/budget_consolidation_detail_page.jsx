@@ -1,3 +1,4 @@
+import { computeBudgetLineItemTotals as computeFinancialTotals } from '../../utils/budget_financials';
 /**
  * System Name: Budget Management System
  * Module Name: Core Module
@@ -125,16 +126,7 @@ export default function BudgetConsolidationDetailPage() {
   );
 
   const totals = useMemo(() => {
-    const result = { psTotal: 0, mooeTotal: 0, coTotal: 0, tagTotal: 0, grandTotal: 0 };
-    flattenedRows.forEach((row) => {
-      if (row.rowType !== 'item') return;
-      if (row.category === 'PS') result.psTotal += row.amount;
-      if (row.category === 'MOOE') result.mooeTotal += row.amount;
-      if (row.category === 'CO') result.coTotal += row.amount;
-      if (row.category === 'TAG') result.tagTotal += row.amount;
-    });
-    result.grandTotal = result.psTotal + result.mooeTotal + result.coTotal + result.tagTotal;
-    return result;
+    return computeFinancialTotals(flattenedRows.filter((row) => row.rowType === 'item'));
   }, [flattenedRows]);
 
   const workflowSteps = useMemo(

@@ -14,7 +14,9 @@
     "mock:reset": "npm run mock:seed",
     "mock:sync": "node --no-warnings mock/sync-sqlite-resource.mjs",
     "mock:api": "node --no-warnings mock/sqlite-api-server.mjs",
-    "mock:json": "json-server --watch mock/db.json --port 4001"
+    "mock:json": "json-server --watch mock/db.json --port 4001",
+    "test": "node --test mock/tests/*.test.mjs",
+    "test:bp-forms": "node --test mock/tests/bpWorkflow.test.mjs mock/tests/budgetCycles.test.mjs mock/tests/budgetCyclesPage.test.mjs"
   },
   "dependencies": {
     "axios": "^1.15.2",

@@ -153,7 +153,7 @@ function buildBudgetByCategoryFromTotals(objSubmitted, objApproved, arrLabels)
 {
   const objSub = pickCategoryTotals(objSubmitted);
   const objApr = pickCategoryTotals(objApproved);
-  const arrNormLabels = (arrLabels && arrLabels.length) ? arrLabels : ['PS', 'MOOE', 'CO', 'TAG'];
+  const arrNormLabels = (arrLabels && arrLabels.length) ? arrLabels : ['PS', 'MOOE', 'FINEX', 'CO', 'TAG'];
   const arrKeys = arrNormLabels.map((lbl) => String(lbl).toLowerCase());
 
   return {
@@ -235,13 +235,14 @@ function normalizeDashboardPayload(objRaw)
         { status: 'consolidated', label: 'Consolidated', value: Number(objStatusSummary.consolidated || 0),                          color: 'consolidated' },
       ],
       budgetByCategory: {
-        labels: ['PS', 'MOOE', 'CO', 'TAG'],
+        labels: ['PS', 'MOOE', 'FINEX', 'CO', 'TAG'],
         datasets: [
           {
             label: 'Budget Requests',
             data: [
               Number(objSubmittedLegacy.ps   || 0),
               Number(objSubmittedLegacy.mooe || 0),
+              Number(objSubmittedLegacy.finex || 0),
               Number(objSubmittedLegacy.co   || 0),
               Number(objSubmittedLegacy.tag  || 0),
             ],
@@ -251,6 +252,7 @@ function normalizeDashboardPayload(objRaw)
             data: [
               Number(objApprovedLegacy.ps   || 0),
               Number(objApprovedLegacy.mooe || 0),
+              Number(objApprovedLegacy.finex || 0),
               Number(objApprovedLegacy.co   || 0),
               Number(objApprovedLegacy.tag  || 0),
             ],
@@ -273,22 +275,10 @@ function normalizeDashboardPayload(objRaw)
         disbursement:  Number(objRow.disbursement  || 0),
       })),
       releasedVariance: {
-        labels: ['PS', 'MOOE', 'CO', 'TAG'],
-        values: [
-          Number(objRaw?.monitoring?.releasedVariance || 0) * 0.26,
-          Number(objRaw?.monitoring?.releasedVariance || 0) * 0.34,
-          Number(objRaw?.monitoring?.releasedVariance || 0) * 0.21,
-          Number(objRaw?.monitoring?.releasedVariance || 0) * 0.19,
-        ],
+        labels: [], values: [],
       },
       executionVariance: {
-        labels: ['PS', 'MOOE', 'CO', 'TAG'],
-        values: [
-          Number(objRaw?.monitoring?.executionVariance || 0) * 0.25,
-          Number(objRaw?.monitoring?.executionVariance || 0) * 0.35,
-          Number(objRaw?.monitoring?.executionVariance || 0) * 0.22,
-          Number(objRaw?.monitoring?.executionVariance || 0) * 0.18,
-        ],
+        labels: [], values: [],
       },
       performanceRows: arrUnitPerformance.map((objRow) => ({
         requestingUnit:  objRow.requestingUnit,

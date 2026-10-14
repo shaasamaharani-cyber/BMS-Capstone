@@ -71,7 +71,9 @@ function writeTotals(doc, totals = {}) {
   writeKeyValue(doc, 'PS', formatMoney(totals.psTotal));
   writeKeyValue(doc, 'MOOE', formatMoney(totals.mooeTotal));
   writeKeyValue(doc, 'CO', formatMoney(totals.coTotal));
-  writeKeyValue(doc, 'TAG', formatMoney(totals.tagTotal));
+  writeKeyValue(doc, 'FinEx', formatMoney(totals.finexTotal ?? 0));
+  writeKeyValue(doc, 'Legacy TAG (unclassified)', formatMoney(totals.tagTotal));
+  writeKeyValue(doc, 'Climate expenditure (included)', formatMoney(totals.climateTotal ?? 0));
   writeKeyValue(doc, 'Grand Total', formatMoney(totals.grandTotal));
 }
 

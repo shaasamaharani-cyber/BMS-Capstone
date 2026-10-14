@@ -15,7 +15,7 @@
 
 import PropTypes from 'prop-types';
 import { Dropdown } from '../../components/ui';
-import { PROPOSAL_QUESTIONS } from '../../bp_forms/bp_form_rules';
+import { PROPOSAL_QUESTIONS, YES_NO_OPTIONS } from '../../bp_forms/proposal_questions';
 import styles from './unified_request.module.css';
 
 const GROUP_ORDER = ['Project', 'People', 'Agency finance', 'Consultations'];
@@ -23,9 +23,9 @@ const GROUP_ORDER = ['Project', 'People', 'Agency finance', 'Consultations'];
 function YesNoToggle({ strValue, onChange, strName }) {
   return (
     <div className={styles.segmented} role="radiogroup" aria-label={strName}>
-      {['yes', 'no'].map((strOption) => (
+      {YES_NO_OPTIONS.map(({ value: strOption, label }) => (
         <button key={strOption} type="button" role="radio" aria-checked={strValue === strOption} className={`${styles.segment} ${strValue === strOption ? styles.segmentOn : ''}`} onClick={() => onChange(strOption)}>
-          {strOption === 'yes' ? 'Yes' : 'No'}
+          {label}
         </button>
       ))}
     </div>
@@ -34,7 +34,7 @@ function YesNoToggle({ strValue, onChange, strName }) {
 
 YesNoToggle.propTypes = { strValue: PropTypes.string, onChange: PropTypes.func.isRequired, strName: PropTypes.string.isRequired };
 
-export default function StepProposalQuestions({ objAnswers, objHints, intRequiredCount, onAnswerChange }) {
+export default function StepProposalQuestions({ objAnswers, objHints, intRequiredCount, onAnswerChange, objCommon = {} }) {
   return (
     <>
       <section className={styles.banner}>
@@ -55,7 +55,7 @@ export default function StepProposalQuestions({ objAnswers, objHints, intRequire
                 <YesNoToggle strValue={objAnswers[objQuestion.key]} onChange={(strValue) => onAnswerChange(objQuestion.key, strValue)} strName={objQuestion.label} />
               ) : (
                 <div className={styles.questionSelect}>
-                  <Dropdown options={objQuestion.options} value={objAnswers[objQuestion.key]} onChange={(strValue) => onAnswerChange(objQuestion.key, strValue)} placeholder="Select" />
+                  <Dropdown options={objQuestion.options} value={objQuestion.source === 'common' ? objCommon[objQuestion.key] : objAnswers[objQuestion.key]} onChange={(strValue) => onAnswerChange(objQuestion.key, strValue)} placeholder="Select" />
                 </div>
               )}
             </div>
@@ -69,6 +69,7 @@ export default function StepProposalQuestions({ objAnswers, objHints, intRequire
 StepProposalQuestions.propTypes = {
   objAnswers: PropTypes.object.isRequired,
   objHints: PropTypes.object.isRequired,
+  objCommon: PropTypes.object,
   intRequiredCount: PropTypes.number.isRequired,
   onAnswerChange: PropTypes.func.isRequired,
 };

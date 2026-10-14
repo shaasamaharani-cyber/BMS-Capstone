@@ -19,7 +19,8 @@ export const FALLBACK_BUDGET_CATEGORIES = [
   { bcat_code: 'PS', bcat_id: 1 },
   { bcat_code: 'MOOE', bcat_id: 2 },
   { bcat_code: 'CO', bcat_id: 3 },
-  { bcat_code: 'TAG', bcat_id: 4 },
+  { bcat_code: 'TAG', bcat_id: 4 }, // Legacy data only; never reinterpret ID 4.
+  { bcat_code: 'FINEX', bcat_id: 5 },
 ];
 
 const CURRENT_CALENDAR_YEAR = new Date().getFullYear();
@@ -54,31 +55,14 @@ export function toWorkflowDateLabel(timestamp) {
   });
 }
 
-export function computeBudgetLineItemTotals(lineItems) {
-  const totals = {
-    psTotal: 0,
-    mooeTotal: 0,
-    coTotal: 0,
-    tagTotal: 0,
-    grandTotal: 0,
-  };
-  (lineItems || []).forEach((item) => {
-    const amt = Number(item.amount) || 0;
-    if (item.category === 'PS') totals.psTotal += amt;
-    if (item.category === 'MOOE') totals.mooeTotal += amt;
-    if (item.category === 'CO') totals.coTotal += amt;
-    if (item.category === 'TAG') totals.tagTotal += amt;
-  });
-  totals.grandTotal = totals.psTotal + totals.mooeTotal + totals.coTotal + totals.tagTotal;
-  return totals;
-}
+export { computeBudgetLineItemTotals } from './budget_financials.js';
 
 export function buildBudgetCategoryDropdownOptions(budgetCategories) {
   const arrSource =
     Array.isArray(budgetCategories) && budgetCategories.length > 0
       ? budgetCategories
       : FALLBACK_BUDGET_CATEGORIES;
-  return arrSource.map((cat) => ({
+  return arrSource.filter((cat) => cat.bcat_code !== 'TAG').map((cat) => ({
     value: String(cat.bcat_code),
     label: String(cat.bcat_code),
   }));

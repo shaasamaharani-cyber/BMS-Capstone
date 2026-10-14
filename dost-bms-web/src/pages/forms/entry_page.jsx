@@ -44,7 +44,7 @@ export default function EntryPage() {
         : createBlankEntry(normalizedSchema);
 
       if (!mounted) return;
-      setObjSchema(normalizedSchema);
+      setObjSchema(nextEntry.schemaSnapshot ? normalizeSchemaRecord(nextEntry.schemaSnapshot) : normalizedSchema);
       setObjEntry(nextEntry);
       setBlnLoading(false);
     }
@@ -89,9 +89,7 @@ export default function EntryPage() {
       <div className={`${styles.toolbar} mb-3 no-print`}>
         <div className="d-flex gap-2">
           <Link to="/forms" className="btn btn-outline-secondary">Back</Link>
-          <button type="button" className="btn btn-outline-primary" onClick={() => exportToPdf('form-print-area')}>
-            Print / PDF
-          </button>
+          {objSchema.official ? objEntry.pdfUrl && objEntry.pdfGeneratedAt >= objEntry.updatedAt ? <a className="btn btn-outline-primary" href={objEntry.pdfUrl} target="_blank" rel="noreferrer">Download government-style draft PDF</a> : <span className="small text-muted align-self-center">Save to generate the draft PDF.</span> : <button type="button" className="btn btn-outline-primary" onClick={() => exportToPdf('form-print-area')}>Print / PDF</button>}
         </div>
         <button type="button" className="btn btn-primary" onClick={() => handleSave()}>
           Save
