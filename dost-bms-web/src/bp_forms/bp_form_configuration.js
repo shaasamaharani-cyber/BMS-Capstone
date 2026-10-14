@@ -1,7 +1,7 @@
 import { CANONICAL_FIELD_LABELS, DERIVED_FIELD_LABELS, FIELD_SOURCE } from './bp_form_fields.js';
 import { CONDITION_OPTIONS, NUMBER_OPERATORS, VALUE_OPERATORS } from './bp_form_conditions.js';
 
-export const FIELD_TYPE_OPTIONS = [{ value: 'text', label: 'Text' }, { value: 'textarea', label: 'Long text' }, { value: 'number', label: 'Number' }, { value: 'date', label: 'Date' }, { value: 'select', label: 'Dropdown' }, { value: 'checkbox', label: 'Checkbox' }];
+export const FIELD_TYPE_OPTIONS = [{ value: 'text', label: 'Text' }, { value: 'textarea', label: 'Long text' }, { value: 'number', label: 'Number' }, { value: 'date', label: 'Date' }, { value: 'select', label: 'Dropdown' }, { value: 'checkbox', label: 'Checkbox' }, { value: 'table', label: 'Multiple rows' }];
 const reservedKeys = new Set(['__proto__', 'constructor', 'prototype', '__done']);
 
 // Shared validation prevents an invalid editor configuration reaching the requester renderer.
@@ -24,6 +24,22 @@ export function validateFormConfig(value) {
     } else if (field.source === FIELD_SOURCE.DERIVED) {
       if (!Object.hasOwn(DERIVED_FIELD_LABELS, field.derived)) return { error: `Choose a calculated value for ${label}.` };
       next.derived = field.derived;
+    } else if (type === 'table') {
+      if (!Array.isArray(field.columns) || !field.columns.length || field.columns.length > 40 || field.columns.some((column) => !['text', 'number', 'date', 'select'].includes(column.type))) return { error: `Add 1 to 40 supported columns for ${label}.` };
+      const result = validateFormConfig({ level: 'request', fields: field.columns.map((column) => ({ ...column, source: FIELD_SOURCE.USER })), requirement: { mode: 'optional', match: 'any', conditions: [] } });
+      if (result.error) return result;
+      const available = new Set();
+      next.columns = [];
+      for (const [index, column] of field.columns.entries()) {
+        const normalized = result.config.fields[index];
+        if (column.calculation) {
+          if (!['sum', 'multiply'].includes(column.calculation) || column.type !== 'number' || !Array.isArray(column.operands) || !column.operands.length || column.operands.some((key) => !available.has(key))) return { error: `Choose valid earlier columns for the calculation in ${column.label}.` };
+          normalized.calculation = column.calculation;
+          normalized.operands = [...column.operands];
+        }
+        next.columns.push(normalized);
+        available.add(column.key);
+      }
     } else if (type === 'select') {
       if (!Array.isArray(field.options) || !field.options.length || field.options.length > 100 || field.options.some((option) => typeof option !== 'string' || !option.trim() || option.length > 200)) return { error: `Add dropdown options for ${label} (one per line).` };
       next.options = field.options.map((option) => option.trim());
@@ -38,16 +54,16 @@ export function validateFormConfig(value) {
   const conditions = [];
   const ids = new Set();
   for (const row of requirement.conditions) {
-    const option = CONDITION_OPTIONS.find((item) => item.field === row?.field);
+    const option = CONDITION_OPTIONS.find((item) => item.field === (row?.questionId || row?.field));
     if (!row || !/^[a-zA-Z0-9-]{1,80}$/.test(row.id) || ids.has(row.id) || !option) return { error: 'Each condition needs a unique identifier and a valid request value.' };
     const operators = option.numeric ? NUMBER_OPERATORS : VALUE_OPERATORS;
     if (!operators.some((operator) => operator.value === row.operator)) return { error: `Choose a valid comparison for ${option.label}.` };
     if (option.numeric ? (!['string', 'number'].includes(typeof row.value) || String(row.value).trim() === '' || !Number.isFinite(Number(row.value)) || Number(row.value) < 0) : !option.options.some((item) => item.value === row.value)) return { error: `Enter a valid value for ${option.label}.` };
-    conditions.push({ id: row.id, field: row.field, operator: row.operator, value: option.numeric ? Number(row.value) : row.value, enabled: row.enabled !== false });
+    conditions.push({ id: row.id, field: option.field, ...(row.questionId ? { questionId: option.field } : {}), operator: row.operator, value: option.numeric ? Number(row.value) : row.value, enabled: row.enabled !== false });
     ids.add(row.id);
   }
   if (requirement.mode === 'conditional' && !conditions.length) return { error: 'Add at least one condition, or choose a different requirement mode.' };
-  return { config: { level: value.level, fields, requirement: { mode: requirement.mode, enabled: requirement.enabled !== false, match: requirement.match, conditions } } };
+  return { config: { level: value.level, fields, requirement: { mode: requirement.mode, enabled: requirement.enabled !== false, allowOverride: requirement.allowOverride === true, match: requirement.match, conditions } } };
 }
 
 export function validateFormConfigs(value, arrFormIds) {

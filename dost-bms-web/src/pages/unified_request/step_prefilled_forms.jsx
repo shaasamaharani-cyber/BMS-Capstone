@@ -1,3 +1,4 @@
+import StructuredField from '../../components/form/structured_field';
 /**
  * System Name: Budget Management System
  * Module Name: Core Module
@@ -30,6 +31,7 @@ function FieldInput({ objField, strValue, onChange }) {
   const error = getFieldValueError(objField, strValue);
   const props = { id: strId, 'aria-invalid': Boolean(error), 'aria-describedby': error ? `${strId}-error` : undefined, required: Boolean(objField.required) };
 
+  if (objField.type === 'table') return <StructuredField field={objField} value={Array.isArray(strValue) ? strValue : []} onChange={onChange} />;
   if (objField.type === 'checkbox') return <input {...props} className="form-check-input" type="checkbox" checked={strValue === true} onChange={(event) => onChange(event.target.checked)} />;
 
   if (objField.type === 'textarea') {
@@ -46,7 +48,7 @@ function FieldInput({ objField, strValue, onChange }) {
   return <input {...props} className="form-control" step={objField.type === 'number' ? 'any' : undefined} type={objField.type === 'number' ? 'number' : objField.type === 'date' ? 'date' : 'text'} value={strValue} onChange={(objEvent) => onChange(objEvent.target.value)} />;
 }
 
-FieldInput.propTypes = { objField: PropTypes.object.isRequired, strValue: PropTypes.oneOfType([PropTypes.string, PropTypes.number, PropTypes.bool]), onChange: PropTypes.func.isRequired };
+FieldInput.propTypes = { objField: PropTypes.object.isRequired, strValue: PropTypes.oneOfType([PropTypes.string, PropTypes.number, PropTypes.bool, PropTypes.array]), onChange: PropTypes.func.isRequired };
 
 const formatLockedValue = (objField) => {
   if (objField.value === '' || objField.value === null || objField.value === undefined) return '-';
@@ -108,11 +110,11 @@ export default function StepPrefilledForms({ arrCatalog = BP_FORM_CATALOG, arrRe
         <div className={styles.formPanel}>
           <section id="request-form-print-area" className={`${styles.card} print-area`}>
             <h3 className={styles.cardTitle}>{objActiveForm.code} - {objActiveForm.name}</h3>
-            <p className={styles.cardHint}>Completed by: {objActiveForm.completedBy}</p>
-            {objView && <div className="no-print mb-3"><Button type="button" variant="outline" size="sm" onClick={() => exportToPdf('request-form-print-area')} disabled={blnSnapshotStale || !getFormCompletion(strActiveId, objContext).complete}>Print / Save as PDF</Button><p className="small text-muted mt-1 mb-0">Complete the required fields, then print this form for signing.</p></div>}
+            <p className={styles.cardHint}>Internal working schedule in pesos; this layout is not an official DBM template.</p><p className={styles.cardHint}>Completed by: {objActiveForm.completedBy}</p>
+            {objView && <div className="no-print mb-3"><Button type="button" variant="outline" size="sm" onClick={() => exportToPdf('request-form-print-area')} disabled={blnSnapshotStale || !getFormCompletion(strActiveId, objContext).complete}>Print / Save as PDF</Button><p className="small text-muted mt-1 mb-0">Print this working schedule for review. Upload the signed official BP form required by your institution.</p></div>}
             {objActiveForm.level === FORM_LEVEL.AGENCY && (
               <div className={styles.autoSummary}>
-                Agency-level form. It is completed by the office above when requests are consolidated, so it does <strong>not</strong> block your submission.
+                Institution-level and consolidated reporting are both required. The completing office and timing for this schedule await DOST confirmation; this schedule does <strong>not</strong> block the requester unless configured as a request form.
               </div>
             )}
 
@@ -142,7 +144,7 @@ export default function StepPrefilledForms({ arrCatalog = BP_FORM_CATALOG, arrRe
                         ))}
                         {objView.table.rows.length === 0 && <tr><td colSpan={objView.table.columns.length} className={styles.emptyCell}>No line items in this category yet.</td></tr>}
                       </tbody>
-                      <tfoot><tr><td colSpan={objView.table.columns.length - 1}>Total</td><td className={styles.numericCell}>{formatBudgetRequestCurrency(objView.table.total)}</td></tr></tfoot>
+                      <tfoot><tr>{objView.table.columns.map((column, index) => <td key={column.key} className={column.numeric ? styles.numericCell : undefined}>{index === 0 ? 'Total' : column.key === [...objView.table.columns].reverse().find((item) => item.numeric)?.key ? formatBudgetRequestCurrency(objView.table.total) : ''}</td>)}</tr></tfoot>
                     </table>
                   </div>
                 )}
@@ -152,10 +154,10 @@ export default function StepPrefilledForms({ arrCatalog = BP_FORM_CATALOG, arrRe
                     <h4 className={styles.subTitle}>Only this form needs</h4>
                     <div className={styles.fieldGrid}>
                       {arrUserFields.map((objField) => (
-                        <div key={objField.key} className={objField.type === 'textarea' ? styles.spanTwo : ''}>
+                        <div key={objField.key} className={['textarea', 'table'].includes(objField.type) ? styles.spanTwo : ''}>
                           <label htmlFor={`field-${objField.key}`} className={styles.fieldLabel}>{objField.label}{objField.required && <span className={styles.requiredMark}> *</span>}</label>
-                          <div className="no-print"><FieldInput objField={objField} strValue={objUserValues[objField.key] ?? ''} onChange={(value) => onFormValueChange(strActiveId, objField.key, value)} /></div>
-                          <div className="print-only" style={{ whiteSpace: 'pre-wrap' }}>{typeof objUserValues[objField.key] === 'boolean' ? objUserValues[objField.key] ? 'Yes' : 'No' : String(objUserValues[objField.key] ?? '') || '-'}</div>
+                          <div className={objField.type === 'table' ? '' : 'no-print'}><FieldInput objField={objField} strValue={objUserValues[objField.key] ?? ''} onChange={(value) => onFormValueChange(strActiveId, objField.key, value)} /></div>
+                          <div className={objField.type === 'table' ? 'd-none' : 'print-only'} style={{ whiteSpace: 'pre-wrap' }}>{typeof objUserValues[objField.key] === 'boolean' ? objUserValues[objField.key] ? 'Yes' : 'No' : String(objUserValues[objField.key] ?? '') || '-'}</div>
                           {getFieldValueError(objField, objUserValues[objField.key]) && <p id={`field-${objField.key}-error`} className="no-print text-danger small mt-1 mb-0">{getFieldValueError(objField, objUserValues[objField.key])}</p>}
                         </div>
                       ))}

@@ -73,18 +73,18 @@ export default function StepRequiredForms({ arrCatalog = BP_FORM_CATALOG, arrReq
                     <td>
                       <strong>{objForm.code}</strong>
                       <div className={styles.subText}>{objForm.name}</div>
-                      {objForm.level === FORM_LEVEL.AGENCY && <span className={styles.chipMuted}>Agency-level form</span>}
+                      {objForm.level === FORM_LEVEL.AGENCY && <span className={styles.chipMuted}>Institution / consolidated schedule</span>}
                     </td>
                     <td>
                       {objEntry.reasons.map((strReasonText) => <div key={strReasonText}>{strReasonText}</div>)}
                       <div className={styles.ruleIds}>{objEntry.ruleIds.map((strRuleId) => <span key={strRuleId} className={styles.chipRule}>{strRuleId}</span>)}</div>
                     </td>
-                    <td>{objForm.completedBy}</td>
+                    <td>{objForm.completedBy}<div className={styles.subText}>Office assignment subject to DOST confirmation</div></td>
                     <td><span className={styles.chipAuto}>{AUTOMATION_LABELS[objForm.automation]}</span></td>
                     <td>
                       {objEntry.origin === 'override'
                         ? <Button variant="ghost" size="sm" onClick={() => onUndoOverride(objEntry.formId)}>Undo add</Button>
-                        : <Button variant="ghost" size="sm" onClick={() => setStrRemovingId(objEntry.formId)}>Remove</Button>}
+                        : objEntry.canRemove !== false ? <Button variant="ghost" size="sm" onClick={() => setStrRemovingId(objEntry.formId)}>Remove</Button> : <span className={styles.subText}>Required by administrator</span>}
                     </td>
                   </tr>
                 );
@@ -121,12 +121,13 @@ export default function StepRequiredForms({ arrCatalog = BP_FORM_CATALOG, arrReq
         </div>
       </section>
 
+      {arrAddable.length > 0 && <section className={styles.card}><details><summary className={styles.cardTitle}>Not required with the current proposal answers ({arrAddable.length})</summary><p className={styles.cardHint}>These enabled forms are optional or their conditions do not currently match. Any saved answers remain in the draft.</p>{arrAddable.map((form) => <div key={form.id} className={styles.overrideRow}><span>{form.code} - {form.name}</span><span className={styles.subText}>{form.completedBy}</span></div>)}</details></section>}
       {arrRemoved.length > 0 && (
         <section className={styles.card}>
-          <h3 className={styles.cardTitle}>Removed by you</h3>
+          <h3 className={styles.cardTitle}>Recorded removal requests</h3>
           {arrRemoved.map(([strFormId, objOverride]) => (
             <div key={strFormId} className={styles.overrideRow}>
-              <span><strong>{getFormById(strFormId)?.code}</strong> - {objOverride.reason}</span>
+              <span><strong>{getFormById(strFormId)?.code}</strong> - {objOverride.reason}{arrRequiredIds.includes(strFormId) && <span className={styles.subText}>Removal is not permitted; this form remains required.</span>}</span>
               <Button variant="ghost" size="sm" onClick={() => onUndoOverride(strFormId)}>Restore</Button>
             </div>
           ))}

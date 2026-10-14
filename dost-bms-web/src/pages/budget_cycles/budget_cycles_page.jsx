@@ -26,7 +26,7 @@ import { createClientId } from '../../utils/client_id';
 
 const FORM_GROUPS = [
   { level: FORM_LEVEL.REQUEST, title: 'Request-level forms', hint: 'Completed for each unit in the request wizard.' },
-  { level: FORM_LEVEL.AGENCY, title: 'Agency-level forms', hint: 'Completed once for DOST by other offices at consolidation.' },
+  { level: FORM_LEVEL.AGENCY, title: 'Institution / consolidation schedules', hint: 'Preserve individual institution reporting and Central Office consolidation. Office assignments require DOST confirmation.' },
 ];
 
 export default function BudgetCyclesPage() {
