@@ -14,6 +14,7 @@
  */
 
 import { useState } from 'react';
+import UnifiedRequestFormsSummary from './unified_request_forms_summary';
 import { formatTimestamp } from '../../utils/formatters';
 import { formatCurrency } from '../../utils/formatters';
 import { formatAttachmentFileSize } from '../../utils/attachments';
@@ -106,6 +107,7 @@ function VersionCard({ version }) {
       {expanded && hasDetail && (
         <div className="card-footer bg-white border-top p-0">
           <div className="px-3 py-2">
+            <UnifiedRequestFormsSummary unified={snap.unifiedRequest || version.brv_raw_data?.request?.br_unified_request} />
             <SnapshotSectionTitle>PDF Snapshot</SnapshotSectionTitle>
             {hasPdfSnapshot ? (
               <div className="border rounded-2 px-3 py-2 mb-3 d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2">

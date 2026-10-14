@@ -24,6 +24,7 @@ export const FORM_ENGINE = {
   DYNAMIC: 'dynamic',
   SCHEMA: 'schema',
   PENDING: 'pending',
+  MANUAL: 'manual',
 };
 
 export const AUTOMATION_LEVEL = {
@@ -63,6 +64,13 @@ export const BP_FORM_CATALOG = [
   { id: 'bp-300', code: 'BP Form 300', name: 'Proposed New, Amended or Deleted Provisions', level: FORM_LEVEL.AGENCY, engine: FORM_ENGINE.SCHEMA, schemaId: 'bp-form-300', automation: AUTOMATION_LEVEL.MANUAL, completedBy: 'Budget Office / Planning Office' },
 ];
 
-export function getFormById(strFormId) {
-  return BP_FORM_CATALOG.find((objForm) => objForm.id === strFormId) || null;
+export function getCycleFormCatalog(objCycle) {
+  return [...BP_FORM_CATALOG, ...(objCycle?.custom_forms || [])].map((form) => {
+    const config = objCycle?.form_configs?.[form.id];
+    return config ? { ...form, level: config.level || form.level, engine: config.fields?.length ? FORM_ENGINE.DYNAMIC : form.engine, automation: config.fields?.some((field) => field.source !== 'user') ? AUTOMATION_LEVEL.AUTO_PLUS : AUTOMATION_LEVEL.MANUAL } : form;
+  });
+}
+
+export function getFormById(strFormId, arrCatalog = BP_FORM_CATALOG) {
+  return arrCatalog.find((objForm) => objForm.id === strFormId) || null;
 }

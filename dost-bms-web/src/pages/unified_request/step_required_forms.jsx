@@ -17,17 +17,18 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { Button, Dropdown } from '../../components/ui';
-import { AUTOMATION_LABELS, BP_FORM_CATALOG, FORM_LEVEL, getFormById } from '../../bp_forms/bp_form_catalog';
+import { AUTOMATION_LABELS, BP_FORM_CATALOG, FORM_LEVEL, getFormById as findForm } from '../../bp_forms/bp_form_catalog';
 import styles from './unified_request.module.css';
 
-export default function StepRequiredForms({ arrRequired, arrNotInCycle, objOverrides, arrEnabledFormIds, strFiscalYearLabel, onOverride, onUndoOverride }) {
+export default function StepRequiredForms({ arrCatalog = BP_FORM_CATALOG, arrRequired, arrNotInCycle, objOverrides, arrEnabledFormIds, strFiscalYearLabel, onOverride, onUndoOverride }) {
+  const getFormById = (strId) => findForm(strId, arrCatalog);
   const [strRemovingId, setStrRemovingId] = useState('');
   const [strReason, setStrReason] = useState('');
   const [strAddId, setStrAddId] = useState('');
   const [strAddReason, setStrAddReason] = useState('');
 
   const arrRequiredIds = arrRequired.map((objEntry) => objEntry.formId);
-  const arrAddable = BP_FORM_CATALOG.filter((objForm) => arrEnabledFormIds.includes(objForm.id) && !arrRequiredIds.includes(objForm.id));
+  const arrAddable = arrCatalog.filter((objForm) => arrEnabledFormIds.includes(objForm.id) && !arrRequiredIds.includes(objForm.id));
   const arrRemoved = Object.entries(objOverrides).filter(([, objOverride]) => objOverride.action === 'remove');
 
   const handleConfirmRemove = () => {
@@ -47,7 +48,7 @@ export default function StepRequiredForms({ arrRequired, arrNotInCycle, objOverr
   return (
     <>
       <section className={styles.banner}>
-        The system selected <strong>{arrRequired.length} forms</strong> from your answers - you do not have to search a list.
+        The system selected <strong>{arrRequired.length} forms</strong> from your answers and this fiscal year's budget cycle.
         Rule IDs (BR-xx) come from the team&apos;s business rules register and are <strong>proposed rules awaiting DOST confirmation</strong>.
       </section>
 
@@ -144,6 +145,7 @@ export default function StepRequiredForms({ arrRequired, arrNotInCycle, objOverr
 }
 
 StepRequiredForms.propTypes = {
+  arrCatalog: PropTypes.array,
   arrRequired: PropTypes.array.isRequired,
   arrNotInCycle: PropTypes.array.isRequired,
   objOverrides: PropTypes.object.isRequired,

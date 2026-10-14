@@ -17,6 +17,7 @@ import {
   requestingUnitIdForUser,
 } from '../services/users.mjs';
 import { sortItems } from '../utils.mjs';
+import { validateConfiguredSubmission } from '../services/requestFormConfiguration.mjs';
 
 function filteredBudgetRequests(db, params, actor = null) {
   let items = db.rows('budget-requests').map((row) => withBudgetRequestRelations(db, row));
@@ -154,11 +155,16 @@ export async function handleBudgetRequests(ctx) {
   }
 
   if (req.method === 'POST' && sub === 'submit') {
+    const validation = validateConfiguredSubmission(db, request);
+    if (validation.errors.length) {
+      json(res, 422, { message: validation.errors.join(' '), errors: { forms: validation.errors } });
+      return true;
+    }
     const actor = db.find('users', payload.actor_id) ?? null;
     const fromStatus = request.br_status;
     const isResubmit = fromStatus === 'rejected';
     const versionNum = nextVersionNumber(db, id);
-    const updated = saveBudgetRequest(db, { br_status: 'submitted', br_current_version_number: versionNum }, request);
+    const updated = saveBudgetRequest(db, { br_status: 'submitted', br_current_version_number: versionNum, ...(request.br_unified_request || Object.keys(validation.unified.formConfigs).length ? { br_unified_request: validation.unified } : {}) }, request);
     const version = await createVersionSnapshot(db, updated, versionNum, actor, 'submitted');
     logActivity(db, id, isResubmit ? 'resubmitted' : 'submitted', fromStatus, 'submitted', actor, payload.comment ?? null, version.id);
     json(res, 200, { data: updated });

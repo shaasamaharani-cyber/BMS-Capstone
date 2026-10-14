@@ -8,6 +8,7 @@
     "dev:mock": "concurrently -k -n sqlite-api,vite -c cyan,green \"npm run mock:api\" \"npm run dev -- --mode mock\"",
     "build": "vite build",
     "lint": "eslint .",
+    "test:budget-cycles": "node --test mock/tests/budgetCycles.test.mjs mock/tests/budgetCyclesPage.test.mjs",
     "preview": "vite preview",
     "mock:seed": "node --no-warnings mock/seed-sqlite.mjs",
     "mock:reset": "npm run mock:seed",
@@ -41,6 +42,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "jsdom": "^29.1.1",
     "json-server": "^1.0.0-beta.15",
     "vite": "^8.0.4"
   }

@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
+import { captureRequestFormConfiguration } from './requestFormConfiguration.mjs';
 
 const GENERATED_ATTACHMENTS_DIR = resolve('mock/generated/attachments');
 const PUBLIC_FILE_BASE = process.env.MOCK_PUBLIC_BASE_URL
@@ -109,6 +110,8 @@ function saveAttachedFiles(payloadFiles, existingFiles = [], requestId = '') {
       size: Number(file.size) || Buffer.byteLength(match[2], 'base64'),
       type,
       lastModified: file.lastModified || null,
+      ...(file.formId ? { formId: String(file.formId) } : {}),
+      ...(file.formDefinition ? { formDefinition: String(file.formDefinition) } : {}),
       url: publicGeneratedUrl(`/generated/attachments/${filename}`),
     };
   });
@@ -194,6 +197,9 @@ export function saveBudgetRequest(db, payload, existing = null) {
 
   const storagePayload = withoutEmbeddedRelations(payload);
   const storageExisting = withoutEmbeddedRelations(existing);
+  if (payload.br_unified_request && typeof payload.br_unified_request === 'object') {
+    storagePayload.br_unified_request = captureRequestFormConfiguration(db, payload.br_unified_request, payload.br_fiscal_year_id ?? existing?.br_fiscal_year_id);
+  }
   storagePayload.br_attached_files = saveAttachedFiles(
     payload.br_attached_files,
     existing?.br_attached_files,

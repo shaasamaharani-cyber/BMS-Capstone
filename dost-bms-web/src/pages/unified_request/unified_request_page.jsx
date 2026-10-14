@@ -48,11 +48,12 @@ import {
   fetchPlanningPeriodsForPage,
   fetchRequestingUnitsForBudgetPage,
 } from '../../utils/budget_request_utils';
-import { BP_FORM_CATALOG, FORM_LEVEL, getFormById } from '../../bp_forms/bp_form_catalog';
+import { BP_FORM_CATALOG, FORM_LEVEL, getCycleFormCatalog, getFormById as findForm } from '../../bp_forms/bp_form_catalog';
 import { getBudgetCycle } from '../../api/settings_api';
 import { evaluateRequiredForms, countUnansweredQuestions } from '../../bp_forms/bp_form_rules';
-import { getFormCompletion, resolveCommonValues } from '../../bp_forms/bp_form_fields';
+import { getFormCompletion, getFormDefinition, resolveCommonValues } from '../../bp_forms/bp_form_fields';
 import { buildTotalsCheck, collectSubmissionIssues, STEP_IDS } from '../../utils/unified_request_checks';
+import { signedFromAttachedFiles } from '../../utils/unified_request_form_attachments';
 import { createEmptyLineItem, createInitialDraft, getDraftSnapshot, useUnifiedRequestDraft } from './use_unified_request_draft';
 import StepRequestDetails from './step_request_details';
 import StepProposalQuestions from './step_proposal_questions';
@@ -63,7 +64,6 @@ import styles from './unified_request.module.css';
 
 const CATEGORY_KEYS = ['psTotal', 'mooeTotal', 'coTotal', 'tagTotal'];
 const EDITABLE_STATUSES = ['draft', 'rejected'];
-const SIGNED_NAME_PATTERN = /^Signed - (.+?) - (.+)$/;
 
 const STEP_TITLES = [
   { id: 'details', label: 'Request details', description: 'Enter once' },
@@ -75,17 +75,6 @@ const STEP_TITLES = [
 
 // A line item is only stored once it has a name and an amount; empty rows stay on screen only
 const isPersistableItem = (objItem) => String(objItem.name || '').trim() !== '' && objItem.amount !== '';
-
-// Signed copies travel as request attachments named "Signed - <form code> - <file name>"
-function signedFromAttachedFiles(arrFiles) {
-  const objSigned = {};
-  (arrFiles || []).forEach((objFile) => {
-    const arrMatch = String(objFile.name || '').match(SIGNED_NAME_PATTERN);
-    const objForm = arrMatch ? BP_FORM_CATALOG.find((objCandidate) => objCandidate.code === arrMatch[1]) : null;
-    if (objForm) objSigned[objForm.id] = { id: objFile.id, name: arrMatch[2], size: objFile.size, type: objFile.type, lastModified: objFile.lastModified, url: objFile.url };
-  });
-  return objSigned;
-}
 
 // Supporting documents (quotes, plans...; DOST answer 7) travel as attachments named "Supporting - <file name>",
 // or "Supporting [<document>] - <file name>" when the file is for a document the budget cycle lists
@@ -222,9 +211,12 @@ export default function UnifiedRequestPage() {
           objAnswers: objStored.answers || {},
           objOverrides: objStored.overrides || {},
           objFormValues: objStored.formValues || {},
+          arrCustomForms: objStored.customForms || [],
+          objStoredFormConfigs: objStored.formConfigs || {},
+          strCustomFormsYear: String(objStored.common?.fiscalYearLabel || objData.fiscal_year?.fy_year || ''),
           objSnapshot: objStored.snapshot || (objStored.totalsAtGeneration ? { totals: objStored.totalsAtGeneration, generatedAt: null } : null),
         };
-        const objLoadedSigned = signedFromAttachedFiles(objData.br_attached_files);
+        const objLoadedSigned = signedFromAttachedFiles(objData.br_attached_files, getCycleFormCatalog({ custom_forms: objLoaded.arrCustomForms, form_configs: objLoaded.objStoredFormConfigs }), objLoaded.objStoredFormConfigs);
         const arrLoadedSupporting = supportingFromAttachedFiles(objData.br_attached_files);
 
         refServerItemIds.current = arrItems.map((objItem) => objItem.briId);
@@ -270,23 +262,39 @@ export default function UnifiedRequestPage() {
 
   // The year's budget cycle (set by the administrator): which forms apply and which documents to attach
   const [objCycle, setObjCycle] = useState(null);
+  const [strCycleError, setStrCycleError] = useState('');
+  const [blnCycleLoading, setBlnCycleLoading] = useState(false);
   useEffect(() => {
     let blnCurrent = true;
+    setStrCycleError('');
+    setBlnCycleLoading(Boolean(strFiscalYearLabel));
     if (!strFiscalYearLabel) { setObjCycle(null); return undefined; }
-    getBudgetCycle(strFiscalYearLabel).then((objLoaded) => { if (blnCurrent) setObjCycle(objLoaded); }).catch(() => { if (blnCurrent) setObjCycle(null); });
+    getBudgetCycle(strFiscalYearLabel)
+      .then((objLoaded) => { if (blnCurrent) setObjCycle(objLoaded); })
+      .catch(() => { if (blnCurrent) { setObjCycle(null); setStrCycleError('Cannot load the BP forms for this fiscal year. Reload the page before submitting.'); } })
+      .finally(() => { if (blnCurrent) setBlnCycleLoading(false); });
     return () => { blnCurrent = false; };
   }, [strFiscalYearLabel]);
-  const arrCycleDocs = useMemo(() => objCycle?.supporting_documents || [], [objCycle]);
-  const arrEnabledFormIds = useMemo(() => objCycle?.enabled_form_ids || BP_FORM_CATALOG.map((objForm) => objForm.id), [objCycle]);
+  const objCurrentCycle = objCycle?.fy_year === strFiscalYearLabel ? objCycle : null;
+  const arrCatalog = useMemo(() => {
+    const arrCurrent = getCycleFormCatalog(objCurrentCycle);
+    const arrStored = objDraft.strCustomFormsYear === strFiscalYearLabel ? objDraft.arrCustomForms || [] : [];
+    return [...arrCurrent, ...arrStored.filter((objForm) => !arrCurrent.some((objOther) => objOther.id === objForm.id))];
+  }, [objCurrentCycle, objDraft.arrCustomForms, objDraft.strCustomFormsYear, strFiscalYearLabel]);
+  const getFormById = (strId) => findForm(strId, arrCatalog);
+  const arrCustomForms = useMemo(() => arrCatalog.filter((objForm) => !BP_FORM_CATALOG.some((objBuiltIn) => objBuiltIn.id === objForm.id)), [arrCatalog]);
+  const arrCycleDocs = useMemo(() => objCurrentCycle?.supporting_documents || [], [objCurrentCycle]);
+  const arrEnabledFormIds = useMemo(() => objCurrentCycle?.enabled_form_ids || BP_FORM_CATALOG.map((objForm) => objForm.id), [objCurrentCycle]);
+  const objFormConfigs = useMemo(() => objCurrentCycle?.form_configs || (objDraft.strCustomFormsYear === strFiscalYearLabel ? objDraft.objStoredFormConfigs || {} : {}), [objCurrentCycle, objDraft.strCustomFormsYear, objDraft.objStoredFormConfigs, strFiscalYearLabel]);
 
-  const { arrRequired, arrNotInCycle } = useMemo(
-    () => evaluateRequiredForms(objAnswers, objTotals, objCommon, arrEnabledFormIds, objOverrides),
-    [objAnswers, objTotals, objCommon, arrEnabledFormIds, objOverrides]
+  const { arrRequired, arrNotInCycle, arrApplicableFormIds } = useMemo(
+    () => evaluateRequiredForms(objAnswers, objTotals, objCommon, arrEnabledFormIds, objOverrides, arrCustomForms, objFormConfigs),
+    [objAnswers, objTotals, objCommon, arrEnabledFormIds, objOverrides, arrCustomForms, objFormConfigs]
   );
 
   const objContext = useMemo(
-    () => ({ common: objCommon, totals: objTotals, lineItems: arrLineItems, formValues: objFormValues }),
-    [objCommon, objTotals, arrLineItems, objFormValues]
+    () => ({ common: objCommon, totals: objTotals, lineItems: arrLineItems, formValues: objFormValues, formConfigs: objFormConfigs }),
+    [objCommon, objTotals, arrLineItems, objFormValues, objFormConfigs]
   );
 
   // Forms are "generated" the first time the user opens step 4 (and again on request); the totals are captured then
@@ -299,13 +307,16 @@ export default function UnifiedRequestPage() {
   }, [intStep, objSnapshot, objTotals, updateDraft, blnLoadingDraft]);
 
   const arrTotalsCheck = useMemo(
-    () => buildTotalsCheck(objTotals, objSnapshot, arrRequired.map((objEntry) => objEntry.formId)),
-    [objTotals, objSnapshot, arrRequired]
+    () => buildTotalsCheck(objTotals, objSnapshot, arrRequired.map((objEntry) => objEntry.formId), arrEnabledFormIds, arrApplicableFormIds),
+    [objTotals, objSnapshot, arrRequired, arrEnabledFormIds, arrApplicableFormIds]
   );
 
   const arrIssues = useMemo(
-    () => collectSubmissionIssues({ objRequest, arrLineItems, objAnswers, arrRequired, objContext, objSigned, objTotalsCheck: arrTotalsCheck, arrCycleDocs, arrSupporting }),
-    [objRequest, arrLineItems, objAnswers, arrRequired, objContext, objSigned, arrTotalsCheck, arrCycleDocs, arrSupporting]
+    () => [
+      ...collectSubmissionIssues({ arrCatalog, objRequest, arrLineItems, objAnswers, arrRequired, objContext, objSigned, objTotalsCheck: arrTotalsCheck, arrCycleDocs, arrSupporting }),
+      ...(strFiscalYearLabel && (blnCycleLoading || !objCurrentCycle) ? [{ id: 'cycle', step: 'forms', message: strCycleError || 'Loading the BP forms for this fiscal year. Please wait.' }] : []),
+    ],
+    [arrCatalog, objRequest, arrLineItems, objAnswers, arrRequired, objContext, objSigned, arrTotalsCheck, arrCycleDocs, arrSupporting, strFiscalYearLabel, blnCycleLoading, objCurrentCycle, strCycleError]
   );
 
   const objHints = useMemo(() => {
@@ -386,7 +397,7 @@ export default function UnifiedRequestPage() {
 
   const handleSignedChange = async (strFormId, objFile) => {
     const strDataUrl = await readFileAsDataUrl(objFile);
-    setObjSigned((objPrev) => ({ ...objPrev, [strFormId]: { id: `${strFormId}-${objFile.name}-${objFile.size}`, name: objFile.name, size: objFile.size, type: objFile.type || 'File', lastModified: objFile.lastModified, dataUrl: strDataUrl } }));
+    setObjSigned((objPrev) => ({ ...objPrev, [strFormId]: { id: `${strFormId}-${objFile.name}-${objFile.size}`, name: objFile.name, size: objFile.size, type: objFile.type || 'File', lastModified: objFile.lastModified, dataUrl: strDataUrl, formDefinition: JSON.stringify(getFormDefinition(strFormId, objContext)) } }));
   };
 
   // strDocName = one of the budget cycle's listed documents (one file each, replaced on a new upload); empty = other documents
@@ -418,7 +429,7 @@ export default function UnifiedRequestPage() {
     br_description: objRequest.description.trim() || null,
     br_requesting_unit_id: Number(objRequest.unitId),
     br_attached_files: [
-      ...Object.entries(objSigned).map(([strFormId, objFile]) => ({ ...objFile, name: `Signed - ${getFormById(strFormId)?.code} - ${objFile.name}` })),
+      ...Object.entries(objSigned).filter(([strFormId]) => arrRequired.some((objEntry) => objEntry.formId === strFormId)).map(([strFormId, objFile]) => ({ ...objFile, formId: strFormId, name: `Signed - ${getFormById(strFormId)?.code} - ${objFile.name}` })),
       ...arrSupporting.map((objFile) => ({ ...objFile, name: supportingFileName(objFile) })),
     ],
     // Everything the forms need, so a saved draft reopens exactly where it was and the backend can rebuild the forms
@@ -431,6 +442,10 @@ export default function UnifiedRequestPage() {
       requiredForms: arrRequired.map((objEntry) => ({ formId: objEntry.formId, ruleIds: objEntry.ruleIds, reasons: objEntry.reasons })),
       overrides: objOverrides,
       formValues: objFormValues,
+      customForms: arrCustomForms,
+      formConfigs: objFormConfigs,
+      enabledFormIds: arrEnabledFormIds,
+      cycleDocuments: arrCycleDocs,
       totalsAtGeneration: objSnapshot?.totals || null,
     },
   });
@@ -485,7 +500,7 @@ export default function UnifiedRequestPage() {
     }
 
     refServerItemIds.current = arrSavedItems.map((objItem) => objItem.briId).filter(Boolean);
-    const objSavedSigned = signedFromAttachedFiles(arrSavedFiles);
+    const objSavedSigned = signedFromAttachedFiles(arrSavedFiles, arrCatalog, objFormConfigs);
     const arrSavedSupporting = supportingFromAttachedFiles(arrSavedFiles);
     updateDraft({ arrLineItems: arrSavedItems });
     setObjSigned(objSavedSigned);
@@ -515,8 +530,8 @@ export default function UnifiedRequestPage() {
       if (blnLeaveAfter) navigate(strLeaveTo);
       else if (blnWasNew) navigate(`/budget-requests/unified/${intId}`, { replace: true });
       return true;
-    } catch {
-      showToast({ message: 'Cannot perform transaction. Error encountered.', variant: 'danger' });
+    } catch (objError) {
+      showToast({ message: objError?.message || 'Cannot perform transaction. Error encountered.', variant: 'danger' });
       return false;
     } finally {
       setBlnSavingDraft(false);
@@ -532,8 +547,8 @@ export default function UnifiedRequestPage() {
       detachLocal();
       showToast({ message: 'Budget request submitted for review.' });
       navigate('/budget-requests');
-    } catch {
-      showToast({ message: 'Cannot perform transaction. Error encountered.', variant: 'danger' });
+    } catch (objError) {
+      showToast({ message: objError?.message || 'Cannot perform transaction. Error encountered.', variant: 'danger' });
     } finally {
       setBlnSubmitting(false);
     }
@@ -596,13 +611,14 @@ export default function UnifiedRequestPage() {
             <StepProposalQuestions objAnswers={objAnswers} objHints={objHints} intRequiredCount={arrRequired.length} onAnswerChange={handleAnswerChange} />
           )}
           {strStepId === 'forms' && (
-            <StepRequiredForms arrRequired={arrRequired} arrNotInCycle={arrNotInCycle} objOverrides={objOverrides} arrEnabledFormIds={arrEnabledFormIds} strFiscalYearLabel={strFiscalYearLabel} onOverride={handleOverride} onUndoOverride={handleUndoOverride} />
+            <StepRequiredForms arrCatalog={arrCatalog} arrRequired={arrRequired} arrNotInCycle={arrNotInCycle.filter((objEntry) => getFormById(objEntry.formId))} objOverrides={objOverrides} arrEnabledFormIds={arrEnabledFormIds} strFiscalYearLabel={strFiscalYearLabel} onOverride={handleOverride} onUndoOverride={handleUndoOverride} />
           )}
           {strStepId === 'fill' && (
-            <StepPrefilledForms arrRequired={arrRequired} objContext={objContext} blnSnapshotStale={blnSnapshotStale} strSelectedFormId={strSelectedFormId} onSelectForm={setStrSelectedFormId} onFormValueChange={handleFormValueChange} onRegenerate={handleRegenerate} />
+            <StepPrefilledForms arrCatalog={arrCatalog} arrRequired={arrRequired} objContext={objContext} blnSnapshotStale={blnSnapshotStale} strSelectedFormId={strSelectedFormId} onSelectForm={setStrSelectedFormId} onFormValueChange={handleFormValueChange} onRegenerate={handleRegenerate} />
           )}
           {strStepId === 'review' && (
             <StepReviewSubmit
+              arrCatalog={arrCatalog}
               arrIssues={arrIssues}
               arrTotalsCheck={arrTotalsCheck}
               arrRequired={arrRequired}

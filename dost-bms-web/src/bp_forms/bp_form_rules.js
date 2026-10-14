@@ -14,6 +14,8 @@
  * All rights reserved.
  */
 
+import { describeCondition, matchesCondition, matchesRequirement } from './bp_form_conditions.js';
+
 export const FUNDING_SOURCE_OPTIONS = [
   { value: 'national_government', label: 'National Government' },
   { value: 'foreign_grant', label: 'Foreign Grant' },
@@ -43,34 +45,35 @@ export const PROPOSAL_QUESTIONS = [
   { key: 'hasCsoInputs', group: 'Consultations', label: 'Are there Civil Society Organisation (CSO) inputs?', type: 'yesno' },
 ];
 
-const isYes = (objAnswers, strKey) => objAnswers?.[strKey] === 'yes';
-const isForeignFunded = (objCommon) => ['foreign_grant', 'foreign_loan'].includes(objCommon?.fundingSource);
+const condition = (field, value = 'yes', operator = 'equals') => ({ field, value, operator });
 
 // Rule ids follow the team's business rules register (BR-01 to BR-17). BR-00 covers the core agency forms.
 export const BP_FORM_RULES = [
-  { id: 'BR-00', formId: 'bp-a', reason: 'Core agency form - always required', when: () => true },
-  { id: 'BR-00', formId: 'bp-b', reason: 'Core agency form - always required', when: () => true },
-  { id: 'BR-00', formId: 'bp-100', reason: 'Core agency form - always required', when: () => true },
-  { id: 'BR-00', formId: 'bp-200', reason: 'Core agency form - always required', when: () => true },
-  { id: 'BR-01', formId: 'bp-202', reason: 'Proposal is Tier 2 (new or expanded spending)', when: (objAnswers) => objAnswers?.proposalTier === 'tier2' },
-  { id: 'BR-02', formId: 'bp-203', reason: 'Funding source is foreign (grant or loan)', when: (objAnswers, objTotals, objCommon) => isForeignFunded(objCommon) },
-  { id: 'BR-03', formId: 'bp-204', reason: 'Proposal needs non-permanent positions', when: (objAnswers) => isYes(objAnswers, 'hasNonPermanent') },
-  { id: 'BR-04', formId: 'bp-205', reason: 'Agency has FY2027 retirement requirements', when: (objAnswers) => isYes(objAnswers, 'hasRetirement') },
-  { id: 'BR-05', formId: 'bp-206', reason: 'Part of an approved convergence program', when: (objAnswers) => isYes(objAnswers, 'isPcb') },
-  { id: 'BR-06', formId: 'bp-207', reason: 'Climate change expenditure declared', when: (objAnswers) => isYes(objAnswers, 'hasClimate') },
-  { id: 'BR-06', formId: 'bp-207', reason: 'Project tagging (TAG) amount entered in the line items', when: (objAnswers, objTotals) => Number(objTotals?.tagTotal) > 0 },
-  { id: 'BR-07', formId: 'bp-201-e', reason: 'Proposal has outyear funding requirements', when: (objAnswers) => isYes(objAnswers, 'hasOutyear') },
-  { id: 'BR-08', formId: 'bp-c', reason: 'RDC inputs or recommendations exist', when: (objAnswers) => isYes(objAnswers, 'hasRdcInputs') },
-  { id: 'BR-09', formId: 'bp-d', reason: 'CSO inputs exist', when: (objAnswers) => isYes(objAnswers, 'hasCsoInputs') },
-  { id: 'BR-10', formId: 'bp-300', reason: 'Agency proposes new, amended or deleted provisions', when: (objAnswers) => isYes(objAnswers, 'hasProvisions') },
-  { id: 'BR-11', formId: 'bp-100-a', reason: 'Agency has earmarked revenues', when: (objAnswers) => isYes(objAnswers, 'hasEarmarked') },
-  { id: 'BR-12', formId: 'bp-100-b', reason: 'Agency has other receipts or expenditures', when: (objAnswers) => isYes(objAnswers, 'hasOtherReceipts') },
-  { id: 'BR-13', formId: 'bp-100-c', reason: 'Agency receives donations or grants', when: (objAnswers) => isYes(objAnswers, 'hasDonations') },
-  { id: 'BR-14', formId: 'bp-201-a', reason: 'Line items include Personnel Services (PS)', when: (objAnswers, objTotals) => Number(objTotals?.psTotal) > 0 },
-  { id: 'BR-15', formId: 'bp-201-b', reason: 'Line items include MOOE', when: (objAnswers, objTotals) => Number(objTotals?.mooeTotal) > 0 },
-  { id: 'BR-16', formId: 'bp-201-c', reason: 'Proposal includes financial expenses (FinEx)', when: (objAnswers) => isYes(objAnswers, 'hasFinEx') },
-  { id: 'BR-17', formId: 'bp-201-d', reason: 'Line items include Capital Outlay (CO)', when: (objAnswers, objTotals) => Number(objTotals?.coTotal) > 0 },
+  ...['bp-a', 'bp-b', 'bp-100', 'bp-200'].map((formId) => ({ id: 'BR-00', formId, reason: 'Core agency form - always required' })),
+  { id: 'BR-01', formId: 'bp-202', reason: 'Proposal is Tier 2 (new or expanded spending)', condition: condition('proposalTier', 'tier2') },
+  { id: 'BR-02', formId: 'bp-203', reason: 'Funding source is foreign (grant or loan)', condition: condition('fundingSource', 'foreign') },
+  { id: 'BR-03', formId: 'bp-204', reason: 'Proposal needs non-permanent positions', condition: condition('hasNonPermanent') },
+  { id: 'BR-04', formId: 'bp-205', reason: 'Agency has retirement requirements', condition: condition('hasRetirement') },
+  { id: 'BR-05', formId: 'bp-206', reason: 'Part of an approved convergence program', condition: condition('isPcb') },
+  { id: 'BR-06', formId: 'bp-207', reason: 'Climate change expenditure declared', condition: condition('hasClimate') },
+  { id: 'BR-06', formId: 'bp-207', reason: 'Project tagging (TAG) amount entered in the line items', condition: condition('tagTotal', 0, 'gt') },
+  { id: 'BR-07', formId: 'bp-201-e', reason: 'Proposal has outyear funding requirements', condition: condition('hasOutyear') },
+  { id: 'BR-08', formId: 'bp-c', reason: 'RDC inputs or recommendations exist', condition: condition('hasRdcInputs') },
+  { id: 'BR-09', formId: 'bp-d', reason: 'CSO inputs exist', condition: condition('hasCsoInputs') },
+  { id: 'BR-10', formId: 'bp-300', reason: 'Agency proposes new, amended or deleted provisions', condition: condition('hasProvisions') },
+  { id: 'BR-11', formId: 'bp-100-a', reason: 'Agency has earmarked revenues', condition: condition('hasEarmarked') },
+  { id: 'BR-12', formId: 'bp-100-b', reason: 'Agency has other receipts or expenditures', condition: condition('hasOtherReceipts') },
+  { id: 'BR-13', formId: 'bp-100-c', reason: 'Agency receives donations or grants', condition: condition('hasDonations') },
+  { id: 'BR-14', formId: 'bp-201-a', reason: 'Line items include Personnel Services (PS)', condition: condition('psTotal', 0, 'gt') },
+  { id: 'BR-15', formId: 'bp-201-b', reason: 'Line items include MOOE', condition: condition('mooeTotal', 0, 'gt') },
+  { id: 'BR-16', formId: 'bp-201-c', reason: 'Proposal includes financial expenses (FinEx)', condition: condition('hasFinEx') },
+  { id: 'BR-17', formId: 'bp-201-d', reason: 'Line items include Capital Outlay (CO)', condition: condition('coTotal', 0, 'gt') },
 ];
+
+export function getDefaultRequirement(strFormId) {
+  const rules = BP_FORM_RULES.filter((rule) => rule.formId === strFormId);
+  return { mode: rules.length ? 'default' : 'always', enabled: true, match: 'any', conditions: rules.filter((rule) => rule.condition).map((rule, index) => ({ ...rule.condition, id: `default-${index}`, enabled: true })) };
+}
 
 export function countUnansweredQuestions(objAnswers) {
   return PROPOSAL_QUESTIONS.filter((objQuestion) => !objAnswers?.[objQuestion.key]).length;
@@ -80,17 +83,35 @@ export function countUnansweredQuestions(objAnswers) {
  * Evaluate the rules and return one entry per required form: { formId, ruleIds, reasons, origin }.
  * arrEnabledFormIds is the list configured for the budget cycle; forms outside it are reported separately.
  */
-export function evaluateRequiredForms(objAnswers, objTotals, objCommon, arrEnabledFormIds, objOverrides = {}) {
+export function evaluateRequiredForms(objAnswers, objTotals, objCommon, arrEnabledFormIds, objOverrides = {}, arrCustomForms = [], objFormConfigs = {}) {
   const mapRequired = new Map();
+  const context = { answers: objAnswers, totals: objTotals, common: objCommon };
 
   BP_FORM_RULES.forEach((objRule) => {
-    if (!objRule.when(objAnswers, objTotals, objCommon)) return;
+    if (objFormConfigs[objRule.formId]?.requirement?.mode && objFormConfigs[objRule.formId].requirement.mode !== 'default') return;
+    if (objRule.condition && !matchesCondition(objRule.condition, context)) return;
 
     const objEntry = mapRequired.get(objRule.formId) || { formId: objRule.formId, ruleIds: [], reasons: [], origin: 'rule' };
     if (!objEntry.ruleIds.includes(objRule.id)) objEntry.ruleIds.push(objRule.id);
     objEntry.reasons.push(objRule.reason);
     mapRequired.set(objRule.formId, objEntry);
   });
+
+  arrCustomForms.forEach((objForm) => {
+    if (objFormConfigs[objForm.id]?.requirement?.mode && objFormConfigs[objForm.id].requirement.mode !== 'default') return;
+    mapRequired.set(objForm.id, { formId: objForm.id, ruleIds: ['CYCLE'], reasons: [`Required by the administrator for FY${objCommon?.fiscalYear || objCommon?.fiscalYearLabel || ''}`], origin: 'cycle' });
+  });
+
+  Object.entries(objFormConfigs).forEach(([formId, config]) => {
+    const requirement = config.requirement;
+    if (!requirement || !['always', 'conditional'].includes(requirement.mode)) return;
+    if (requirement.mode === 'conditional' && !matchesRequirement(requirement, context)) return;
+    const reasons = requirement.mode === 'always' ? ['Required by the administrator for this fiscal year']
+      : [`Required when ${requirement.match === 'all' ? 'all' : 'any'} enabled conditions match: ${(requirement.conditions || []).filter((row) => row.enabled !== false).map(describeCondition).join('; ')}`];
+    mapRequired.set(formId, { formId, ruleIds: ['CYCLE'], reasons, origin: 'cycle' });
+  });
+
+  const arrApplicableFormIds = [...mapRequired.keys()].filter((id) => arrEnabledFormIds.includes(id));
 
   // Recorded user overrides: add a form the rules did not select, or remove one they did
   Object.entries(objOverrides).forEach(([strFormId, objOverride]) => {
@@ -109,5 +130,5 @@ export function evaluateRequiredForms(objAnswers, objTotals, objCommon, arrEnabl
     else arrNotInCycle.push(objEntry);
   });
 
-  return { arrRequired, arrNotInCycle };
+  return { arrRequired, arrNotInCycle, arrApplicableFormIds };
 }

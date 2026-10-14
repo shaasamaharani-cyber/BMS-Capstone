@@ -19,6 +19,7 @@ import { BsCloudUpload, BsFileEarmarkText } from 'react-icons/bs';
 import { Button, Dropdown } from '../ui';
 import AttachmentPreview from '../shared/attachment_preview';
 import { formatAttachmentFileSize, getGeneratedFileUrl } from '../../utils/attachments';
+import UnifiedRequestFormsSummary from './unified_request_forms_summary';
 
 export default function BudgetRequestAttachedFormsTab({
   canEdit = true,
@@ -39,6 +40,7 @@ export default function BudgetRequestAttachedFormsTab({
   onAttachFiles = () => {},
   onDetachFile = () => {},
   renderFilePreview,
+  unifiedRequest,
   formatFileSize = formatAttachmentFileSize,
 }) {
   const fileInputRef = useRef(null);
@@ -55,6 +57,7 @@ export default function BudgetRequestAttachedFormsTab({
 
   return (
     <div className="p-4">
+      <UnifiedRequestFormsSummary unified={unifiedRequest} />
       <div className="card border rounded-3 p-4">
         <FormHeader title={title} />
 
@@ -224,6 +227,7 @@ FormHeader.propTypes = {
 };
 
 BudgetRequestAttachedFormsTab.propTypes = {
+  unifiedRequest: PropTypes.object,
   canEdit: PropTypes.bool,
   title: PropTypes.string,
   attachmentMode: PropTypes.oneOf(['forms', 'files', 'both']),

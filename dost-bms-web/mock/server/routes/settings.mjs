@@ -1,5 +1,7 @@
 import { resolveRequestActor } from '../services/requestActor.mjs';
-import { BP_FORM_CATALOG } from '../../../src/bp_forms/bp_form_catalog.js';
+import { getCycleFormCatalog } from '../../../src/bp_forms/bp_form_catalog.js';
+import { readBudgetCycle as readCycle, validateCustomForms } from '../services/budgetCycles.mjs';
+import { validateFormConfigs } from '../../../src/bp_forms/bp_form_configuration.js';
 
 // Team defaults until DOST confirms its own targets (same colour bands as Team 27's dashboard)
 const DEFAULT_SETTINGS = { attention_below: 90, amber_below: 75, due_soon_days: 14 };
@@ -8,17 +10,6 @@ const DEFAULT_SETTINGS = { attention_below: 90, amber_below: 75, due_soon_days: 
 const LOCKED_STAGE_KEYS = ['draft', 'finance_planning_director'];
 
 const readSettings = (db) => ({ ...DEFAULT_SETTINGS, ...(db.find('app-settings', 1) || {}) });
-
-// A budget cycle = one fiscal year's required BP forms and supporting documents (DOST answers 2, 5, 7).
-// Until an administrator sets it, every form in the catalogue applies and no documents are listed.
-const ALL_FORM_IDS = BP_FORM_CATALOG.map((objForm) => objForm.id);
-const readCycle = (db, strYear) => ({
-  fy_year: String(strYear),
-  enabled_form_ids: ALL_FORM_IDS,
-  supporting_documents: [],
-  configured: false,
-  ...(db.find('budget-cycles', strYear) || {}),
-});
 
 function logChange(db, actor, strArea, strDetails) {
   const id = db.nextId('admin-change-logs');
@@ -55,12 +46,16 @@ export async function handleSettings(ctx) {
   }
   // Every signed-in user may read a cycle: the request wizard needs the year's forms and documents
   if (req.method === 'GET' && blnCycles && parts[1]) {
+    if (!db.rows('fiscal-years').some((row) => String(row.fy_year) === parts[1])) {
+      json(res, 404, { message: 'Fiscal year not found' });
+      return true;
+    }
     json(res, 200, { data: readCycle(db, parts[1]) });
     return true;
   }
   if (req.method === 'GET' && blnCycles) {
-    const arrOpenYears = db.rows('fiscal-years').filter((row) => Number(row.fy_is_active) === 1).map((row) => String(row.fy_year)).sort();
-    json(res, 200, { data: arrOpenYears.map((strYear) => readCycle(db, strYear)) });
+    const arrYears = db.rows('fiscal-years').sort((a, b) => Number(b.fy_year) - Number(a.fy_year));
+    json(res, 200, { data: arrYears.map((row) => readCycle(db, row.fy_year)) });
     return true;
   }
   if (String(actor.role?.role_group || '').toLowerCase() !== 'admin') {
@@ -124,15 +119,33 @@ export async function handleSettings(ctx) {
 
   if (req.method === 'PUT' && blnCycles && parts[1]) {
     const strYear = String(parts[1]);
-    if (!db.rows('fiscal-years').some((row) => String(row.fy_year) === strYear)) {
+    const objYear = db.rows('fiscal-years').find((row) => String(row.fy_year) === strYear);
+    if (!objYear) {
       json(res, 404, { message: 'Fiscal year not found' });
       return true;
     }
-    const arrFormIds = [...new Set(Array.isArray(payload.enabled_form_ids) ? payload.enabled_form_ids.map(String) : [])];
-    if (arrFormIds.length === 0 || arrFormIds.some((strId) => !ALL_FORM_IDS.includes(strId))) {
-      json(res, 422, { message: 'Choose at least one BP form from the list.' });
+    if (Number(objYear.fy_is_active) !== 1) {
+      json(res, 422, { message: `FY${strYear} is closed. Reopen it in Settings before changing its BP forms.` });
       return true;
     }
+    const objBefore = readCycle(db, strYear);
+    const { forms: arrCustomForms, error: strFormError } = validateCustomForms(payload.custom_forms ?? objBefore.custom_forms);
+    if (strFormError) {
+      json(res, 422, { message: strFormError });
+      return true;
+    }
+    const arrCatalog = getCycleFormCatalog({ custom_forms: arrCustomForms });
+    const arrAllowedIds = arrCatalog.map((objForm) => objForm.id);
+    const { configs: objFormConfigs, error: strConfigError } = validateFormConfigs(payload.form_configs ?? objBefore.form_configs, arrAllowedIds);
+    if (strConfigError) {
+      json(res, 422, { message: strConfigError });
+      return true;
+    }
+    if (!Array.isArray(payload.enabled_form_ids) || payload.enabled_form_ids.some((strId) => !arrAllowedIds.includes(strId))) {
+      json(res, 422, { message: 'Choose BP forms belonging to this fiscal year.' });
+      return true;
+    }
+    const arrFormIds = [...new Set(payload.enabled_form_ids)];
     const arrDocs = (Array.isArray(payload.supporting_documents) ? payload.supporting_documents : [])
       .map((objDoc) => ({ name: String(objDoc?.name || '').trim(), required: Boolean(objDoc?.required) }));
     const arrNames = arrDocs.map((objDoc) => objDoc.name.toLowerCase());
@@ -140,13 +153,16 @@ export async function handleSettings(ctx) {
       json(res, 422, { message: 'Each supporting document needs a different name (up to 100 characters).' });
       return true;
     }
-    const objBefore = readCycle(db, strYear);
     const arrAdded = arrFormIds.filter((strId) => !objBefore.enabled_form_ids.includes(strId));
     const arrRemoved = objBefore.enabled_form_ids.filter((strId) => !arrFormIds.includes(strId));
-    const strCode = (strId) => BP_FORM_CATALOG.find((objForm) => objForm.id === strId)?.code;
+    const strCode = (strId) => arrCatalog.find((objForm) => objForm.id === strId)?.code || getCycleFormCatalog(objBefore).find((objForm) => objForm.id === strId)?.code || strId;
     const arrDetails = [
       arrAdded.length ? `forms added: ${arrAdded.map(strCode).join(', ')}` : '',
       arrRemoved.length ? `forms removed: ${arrRemoved.map(strCode).join(', ')}` : '',
+      JSON.stringify(objBefore.custom_forms) !== JSON.stringify(arrCustomForms)
+        ? `custom form definitions updated: ${arrCustomForms.map((objForm) => objForm.code).join(', ') || 'none'}` : '',
+      JSON.stringify(objBefore.form_configs) !== JSON.stringify(objFormConfigs)
+        ? `fields and requirements updated: ${Object.keys(objFormConfigs).filter((id) => JSON.stringify(objBefore.form_configs[id]) !== JSON.stringify(objFormConfigs[id])).map(strCode).join(', ') || 'definitions reset'}` : '',
       JSON.stringify(objBefore.supporting_documents) !== JSON.stringify(arrDocs)
         ? `documents: ${arrDocs.map((objDoc) => `${objDoc.name}${objDoc.required ? ' (required)' : ''}`).join(', ') || 'none'}` : '',
     ].filter(Boolean);
@@ -154,6 +170,8 @@ export async function handleSettings(ctx) {
       id: strYear,
       fy_year: strYear,
       enabled_form_ids: arrFormIds,
+      custom_forms: arrCustomForms,
+      form_configs: objFormConfigs,
       supporting_documents: arrDocs,
       configured: true,
       updated_by: actor.usr_name,
