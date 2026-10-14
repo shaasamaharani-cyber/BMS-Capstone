@@ -39,7 +39,7 @@ export default function UsersPage() {
   const [blnSaving, setBlnSaving] = useState(false);
 
   const loadAll = useCallback(async () => {
-    const [objUsers, objRoles, objUnits, objChanges] = await Promise.all([getUsers(1, 200), getRoles(), getRequestingUnits(), getUserChanges()]);
+    const [objUsers, objRoles, objUnits, objChanges] = await Promise.all([getUsers(1, 200), getRoles(), getRequestingUnits({ ru_is_active: 1 }), getUserChanges()]);
     setArrUsers(rowsOf(objUsers));
     setArrRoles(rowsOf(objRoles));
     setArrUnits(rowsOf(objUnits));
