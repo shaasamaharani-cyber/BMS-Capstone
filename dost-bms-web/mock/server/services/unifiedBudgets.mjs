@@ -1,3 +1,4 @@
+import { computeBudgetLineItemTotals } from '../../../src/utils/budget_financials.js';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
 import { money, sortItems } from '../utils.mjs';
@@ -5,7 +6,6 @@ import { logActivity, getVersionsForRequest } from './budgetRequestLifecycle.mjs
 import { saveBudgetRequest } from './budgetRequests.mjs';
 import { generateUnifiedBudgetVersionPdf } from './unifiedBudgetVersionPdf.mjs';
 
-const CATEGORY_CODES = ['PS', 'MOOE', 'CO', 'TAG'];
 const GENERATED_ATTACHMENTS_DIR = resolve('mock/generated/attachments');
 const PUBLIC_FILE_BASE = process.env.MOCK_PUBLIC_BASE_URL
   || `http://${process.env.MOCK_API_HOST || '127.0.0.1'}:${process.env.MOCK_API_PORT || 4000}`;
@@ -254,6 +254,9 @@ function buildConsolidatedLineItems(db, ubId) {
       amount: Number(item.ubi_adjusted_amount ?? item.ubi_original_amount ?? 0),
       originalAmount: Number(item.ubi_original_amount ?? item.ubi_adjusted_amount ?? 0),
       justification: item.ubi_adjustment_notes ?? '',
+      climateAmount: item.ubi_climate_amount ?? 0,
+      climateTypology: item.ubi_climate_typology || '',
+      climateType: item.ubi_climate_type || '',
     });
   });
 
@@ -261,24 +264,11 @@ function buildConsolidatedLineItems(db, ubId) {
 }
 
 function totalsForItems(db, ubId) {
-  const totals = { psTotal: 0, mooeTotal: 0, coTotal: 0, tagTotal: 0, grandTotal: 0 };
-
-  unifiedBudgetItems(db, ubId).forEach((item) => {
-    const category = categoryForId(db, item.ubi_category_id)?.bcat_code;
-    const amount = Number(item.ubi_adjusted_amount ?? item.ubi_original_amount ?? 0);
-
-    if (category === 'PS') totals.psTotal += amount;
-    if (category === 'MOOE') totals.mooeTotal += amount;
-    if (category === 'CO') totals.coTotal += amount;
-    if (category === 'TAG') totals.tagTotal += amount;
-  });
-
-  totals.grandTotal = CATEGORY_CODES.reduce((sum, code) => {
-    const key = `${code.toLowerCase()}Total`;
-    return sum + totals[key];
-  }, 0);
-
-  return totals;
+  return computeBudgetLineItemTotals(unifiedBudgetItems(db, ubId).map((item) => ({
+    category: categoryForId(db, item.ubi_category_id)?.bcat_code,
+    amount: item.ubi_adjusted_amount ?? item.ubi_original_amount ?? 0,
+    climateAmount: item.ubi_climate_amount ?? 0,
+  })));
 }
 
 function budgetRequestIdsForBudget(db, ubId) {
@@ -358,14 +348,6 @@ function markLinkedBudgetRequestsConsolidated(db, ubId, payload, existing, actor
     }
 
     const latestVersion = getVersionsForRequest(db, intBrId).at(-1);
-    if (latestVersion) {
-      latestVersion.brv_status = 'consolidated';
-      if (latestVersion.brv_snapshot?.overview) {
-        latestVersion.brv_snapshot.overview.status = 'consolidated';
-      }
-      db.upsert('budget-request-versions', latestVersion.id, latestVersion);
-    }
-
     saveBudgetRequest(db, { br_status: 'consolidated' }, objRequest);
     logActivity(
       db,
@@ -612,6 +594,9 @@ function saveUnifiedBudgetItems(db, ubId, sections, now, actor = null) {
         ubi_original_amount: originalAmount,
         ubi_adjusted_amount: amount,
         ubi_adjustment_notes: item.justification ?? null,
+        ubi_climate_amount: Number(sourceItem?.bri_climate_amount ?? item.climateAmount ?? existingRow?.ubi_climate_amount ?? 0),
+        ubi_climate_typology: sourceItem?.bri_climate_typology || item.climateTypology || existingRow?.ubi_climate_typology || '',
+        ubi_climate_type: sourceItem?.bri_climate_type || item.climateType || existingRow?.ubi_climate_type || '',
         ubi_created_at: now,
         ubi_updated_at: now,
         ubi_deleted_at: null,
@@ -695,6 +680,14 @@ function buildVersionSnapshot(db, saved, version) {
     itemCount: consolidatedLineItems.reduce((sum, section) => sum + (Array.isArray(section.items) ? section.items.length : 0), 0),
     consolidatedLineItems: cloneJson(consolidatedLineItems),
     attachedFiles,
+    sourceRequestForms: budgetRequestIdsForBudget(db, saved.ub_id ?? saved.id).map((requestId) => {
+      const source = getVersionsForRequest(db, requestId).at(-1);
+      return source ? {
+        requestId, versionId: source.id, versionNumber: source.brv_version_number,
+        unifiedRequest: cloneJson(source.brv_snapshot?.unifiedRequest),
+        attachedFiles: cloneJson(source.brv_attached_files),
+      } : { requestId, versionId: null };
+    }),
     capturedAt: new Date().toISOString(),
     overview: {
       id: saved.ub_id ?? saved.id,
