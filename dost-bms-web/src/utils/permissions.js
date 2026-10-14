@@ -23,33 +23,23 @@ export const PERMISSIONS = {
   REPORTS:            'route:reports',
   FORMS:              'route:forms',
   SETTINGS:           'route:settings',
+  USERS:              'route:users',
 };
 
 export const ROLE_PERMISSIONS = {
-  admin:     [PERMISSIONS.DASHBOARD, PERMISSIONS.FORMS, PERMISSIONS.SETTINGS],
+  // Administrators keep the system running: no budget pages and no peso amounts (least privilege)
+  admin:     [PERMISSIONS.DASHBOARD, PERMISSIONS.USERS, PERMISSIONS.FORMS, PERMISSIONS.SETTINGS],
   reviewer:  [PERMISSIONS.DASHBOARD, PERMISSIONS.SPENDING_MONITORING, PERMISSIONS.BUDGET_REVIEW, PERMISSIONS.BUDGET_CONSOLIDATION, PERMISSIONS.BUDGET_TRACKING, PERMISSIONS.REPORTS, PERMISSIONS.FORMS],
   requester: [PERMISSIONS.DASHBOARD, PERMISSIONS.BUDGET_REQUESTS, PERMISSIONS.SPENDING_MONITORING],
   executive: [PERMISSIONS.DASHBOARD, PERMISSIONS.SPENDING_MONITORING, PERMISSIONS.BUDGET_CONSOLIDATION, PERMISSIONS.BUDGET_TRACKING, PERMISSIONS.REPORTS, PERMISSIONS.FORMS],
 };
 
-// Only requesters create and manage budget requests, so full access leaves the Budget Requests menu out
-export const ALL_PERMISSIONS = Object.values(PERMISSIONS).filter((strPermission) => strPermission !== PERMISSIONS.BUDGET_REQUESTS);
-
-const FULL_ACCESS_EMAILS = new Set([
-  'main.admin@dost.gov.ph',
-]);
 
 export function getPermissionsForRoleGroup(roleGroup) {
   return ROLE_PERMISSIONS[String(roleGroup || '').toLowerCase()] || [];
 }
 
 export function getPermissionsForUser(user) {
-  const email = String(user?.usr_email || user?.email || '').toLowerCase().trim();
-
-  if (FULL_ACCESS_EMAILS.has(email)) {
-    return ALL_PERMISSIONS;
-  }
-
   return getPermissionsForRoleGroup(user?.role?.role_group);
 }
 

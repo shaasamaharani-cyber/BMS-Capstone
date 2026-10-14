@@ -33,10 +33,9 @@ import DashboardFilters from '../../components/shared/dashboard_filters';
 import { getDashboardData } from '../../api';
 import { useAuth } from '../../context/auth_context';
 import { isRequesterRole } from '../../utils/requesting_unit_scope';
-import { PERMISSIONS, getPermissionsForUser } from '../../utils/permissions';
 import RequesterDashboard from './requester_dashboard';
 import CentralOfficeWork, { ApprovalsWaiting } from './central_office_work';
-import TechAdminDashboard, { AdminSetupCards } from './admin_cards';
+import TechAdminDashboard from './admin_cards';
 import DrillDown from './drill_down';
 import {
   ExecutionAmountCards,
@@ -305,7 +304,7 @@ function normalizeDashboardPayload(objRaw)
   };
 }
 
-function OrganisationDashboard({ strCentralView, blnMainAdmin })
+function OrganisationDashboard({ strCentralView })
 {
   // Directors open on Budget Execution Monitoring, where the Financial Overview is (their top section in the proposal)
   const [strActiveTab,       setStrActiveTab]       = useState(strCentralView === 'director' ? 'monitoring' : 'planning');
@@ -523,9 +522,8 @@ function OrganisationDashboard({ strCentralView, blnMainAdmin })
     <div className="dashboard-page">
       <PageHeader title="Financial Dashboard" />
 
-      {blnMainAdmin && <AdminSetupCards />}
       {strCentralView === 'officer' && <CentralOfficeWork strView="officer" />}
-      {strCentralView === 'director' && <ApprovalsWaiting blnCanApprove={!blnMainAdmin} />}
+      {strCentralView === 'director' && <ApprovalsWaiting blnCanApprove />}
 
       <Tabs
         tabs={DASHBOARD_TABS}
@@ -753,15 +751,13 @@ export default function DashboardPage()
 
   if (isRequesterRole(user)) return <RequesterDashboard />;
   const strGroup = String(user?.role?.role_group || '').toLowerCase();
-  // Main admin (full access) = admin cards + the directors' view until DOST defines the role; tech admin sees no peso amounts
-  const blnMainAdmin = strGroup === 'admin' && getPermissionsForUser(user).includes(PERMISSIONS.BUDGET_REVIEW);
-  if (strGroup === 'admin' && !blnMainAdmin) return <TechAdminDashboard />;
-  const strCentralView = blnMainAdmin ? 'director' : (CENTRAL_VIEWS[strGroup] || null);
+  // Administrators keep the system running and see no peso amounts
+  if (strGroup === 'admin') return <TechAdminDashboard />;
+  const strCentralView = CENTRAL_VIEWS[strGroup] || null;
   // Keyed so the starting tab is set again if the role arrives after the first render
-  return <OrganisationDashboard key={`${strCentralView || 'none'}-${blnMainAdmin}`} strCentralView={strCentralView} blnMainAdmin={blnMainAdmin} />;
+  return <OrganisationDashboard key={strCentralView || 'none'} strCentralView={strCentralView} />;
 }
 
 OrganisationDashboard.propTypes = {
   strCentralView: PropTypes.oneOf(['officer', 'director']),
-  blnMainAdmin: PropTypes.bool.isRequired,
 };

@@ -3,39 +3,18 @@ import { withUserRelations } from '../services/users.mjs';
 const TOKEN_PREFIX = 'mock-token-uid-';
 
 const ROLE_PERMISSIONS = {
-  admin:     ['route:dashboard', 'route:forms', 'route:settings'],
+  // Administrators keep the system running: no budget pages and no peso amounts (least privilege)
+  admin:     ['route:dashboard', 'route:users', 'route:forms', 'route:settings'],
   reviewer:  ['route:dashboard', 'route:spending-monitoring', 'route:budget-review', 'route:budget-consolidation', 'route:budget-tracking', 'route:reports', 'route:forms'],
   requester: ['route:dashboard', 'route:budget-requests', 'route:spending-monitoring'],
   executive: ['route:dashboard', 'route:spending-monitoring', 'route:budget-consolidation', 'route:budget-tracking', 'route:reports', 'route:forms'],
 };
-
-// Only requesters create and manage budget requests, so full access leaves route:budget-requests out
-const ALL_PERMISSIONS = [
-  'route:dashboard',
-  'route:spending-monitoring',
-  'route:budget-review',
-  'route:budget-consolidation',
-  'route:budget-tracking',
-  'route:reports',
-  'route:forms',
-  'route:settings',
-];
-
-const FULL_ACCESS_EMAILS = new Set([
-  'main.admin@dost.gov.ph',
-]);
 
 function tokenToId(token) {
   return token?.startsWith(TOKEN_PREFIX) ? token.slice(TOKEN_PREFIX.length) : null;
 }
 
 export function permissionsForUser(user) {
-  const email = String(user?.usr_email || user?.email || '').toLowerCase().trim();
-
-  if (FULL_ACCESS_EMAILS.has(email)) {
-    return ALL_PERMISSIONS;
-  }
-
   const group = String(user?.role?.role_group || '').toLowerCase();
   return ROLE_PERMISSIONS[group] || [];
 }
@@ -49,8 +28,8 @@ export async function handleAuth(ctx) {
     const typed = String(payload?.email || payload?.usr_email || '').toLowerCase().trim();
     const email = typed && !typed.includes('@') ? `${typed}@dost.gov.ph` : typed;
     const found = email ? users.find((u) => String(u.usr_email || '').toLowerCase() === email) : null;
-    // Unknown accounts are refused (DOST Security Standard 4.10, 6.3); never fall back to another user
-    if (!found) {
+    // Unknown and deactivated accounts get the same answer (DOST Security Standard 4.10, 6.3)
+    if (!found || Number(found.usr_is_active) === 0) {
       json(res, 401, { message: 'Invalid username and/or password.' });
       return true;
     }
@@ -70,7 +49,7 @@ export async function handleAuth(ctx) {
     const token = authHeader.replace(/^Bearer\s+/i, '').trim();
     const uid = tokenToId(token);
     const found = uid ? db.find('users', uid) : null;
-    if (!found) {
+    if (!found || Number(found.usr_is_active) === 0) {
       json(res, 401, { message: 'Unauthenticated.' });
       return true;
     }
