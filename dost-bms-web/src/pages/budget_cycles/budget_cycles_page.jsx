@@ -17,7 +17,7 @@ import PageHeader from '../../components/layout/page_header';
 import { Badge, Button, Input, Modal, useToast } from '../../components/ui';
 import { createFiscalYear, getBudgetCycles, updateBudgetCycle } from '../../api/settings_api';
 import { BP_FORM_CATALOG, FORM_LEVEL, getCycleFormCatalog } from '../../bp_forms/bp_form_catalog';
-import { FIELD_SOURCE, getDefaultFormDefinition } from '../../bp_forms/bp_form_fields';
+import { FIELD_SOURCE, getDefaultFormDefinition, getFormDefinition } from '../../bp_forms/bp_form_fields';
 import { getDefaultRequirement } from '../../bp_forms/bp_form_rules';
 import { validateFormConfig } from '../../bp_forms/bp_form_configuration';
 import FormConfigurationEditor from './form_configuration_editor';
@@ -128,10 +128,11 @@ export default function BudgetCyclesPage() {
     setObjEditing(objForm || { id: createClientId('custom-'), code: '', name: '', level: FORM_LEVEL.REQUEST, completedBy: 'Proposing office' });
     const objConfig = objCurrent.form_configs?.[objForm?.id];
     const objDefinition = objForm ? getDefaultFormDefinition(objForm.id) : null;
-    setObjFormConfig(structuredClone(objConfig || {
+    setObjFormConfig(structuredClone(objConfig ? { ...objConfig, fields: getFormDefinition(objForm.id, { formConfigs: objCurrent.form_configs }).fields } : {
       level: objForm?.level || FORM_LEVEL.REQUEST,
       fields: (objDefinition?.fields || [{ key: 'details', label: 'Details', source: FIELD_SOURCE.USER, type: 'textarea', required: true }]).map((field) => ({ ...field, type: field.type || 'text', required: Boolean(field.required) })),
-      requirement: getDefaultRequirement(objForm?.id),
+      requirement: objForm && !BP_FORM_CATALOG.some((form) => form.id === objForm.id) && objForm.optionalByDefault !== true
+        ? { ...getDefaultRequirement(objForm.id), mode: 'always' } : getDefaultRequirement(objForm?.id),
     }));
   };
   const handleApplyForm = async (objEvent) => {
@@ -142,7 +143,7 @@ export default function BudgetCyclesPage() {
       return;
     }
     const objForm = { id: objEditing.id, code: objEditing.code.trim(), name: objEditing.name.trim(), completedBy: objEditing.completedBy.trim(), level: objFormConfig.level };
-    const { config: objValidConfig, error: strConfigError } = validateFormConfig({ ...objFormConfig, fields: objFormConfig.fields.map((field) => ({ ...field, options: field.options?.map((option) => option.trim()).filter(Boolean) })) });
+    const { config: objValidConfig, error: strConfigError } = validateFormConfig({ ...objFormConfig, completedBy: objForm.completedBy, fields: objFormConfig.fields.map((field) => ({ ...field, options: field.options?.map((option) => option.trim()).filter(Boolean) })) });
     if (strConfigError) { setStrFormError(strConfigError); return; }
     if (!objForm.code || !objForm.name || !objForm.completedBy) {
       setStrFormError('Enter a form code, name and completing office.');
@@ -264,9 +265,9 @@ export default function BudgetCyclesPage() {
             <p className="small text-muted mb-0">Fields and requirements apply to FY{strFormYear}. Request-level forms are filled online by requesters; agency-level forms are completed at consolidation. Submitted requests retain their saved definitions.</p>
             <div><label className="form-label" htmlFor="bp-form-code">Form code</label><Input id="bp-form-code" readOnly={blnBuiltIn} required maxLength={50} placeholder="e.g. BP Form 208" value={objEditing.code} onChange={(objEvent) => setObjEditing({ ...objEditing, code: objEvent.target.value })} /></div>
             <div><label className="form-label" htmlFor="bp-form-name">Form name</label><Input id="bp-form-name" readOnly={blnBuiltIn} required maxLength={200} value={objEditing.name} onChange={(objEvent) => setObjEditing({ ...objEditing, name: objEvent.target.value })} /></div>
-            <div><label className="form-label" htmlFor="bp-form-level">Form level</label><select id="bp-form-level" className="form-select" value={objFormConfig.level} onChange={(objEvent) => setObjFormConfig({ ...objFormConfig, level: objEvent.target.value })}><option value={FORM_LEVEL.REQUEST}>Request-level (filled by requester)</option><option value={FORM_LEVEL.AGENCY}>Agency-level (filled at consolidation)</option></select></div>
-            <div><label className="form-label" htmlFor="bp-form-owner">Completed by</label><Input id="bp-form-owner" readOnly={blnBuiltIn} required maxLength={150} value={objEditing.completedBy} onChange={(objEvent) => setObjEditing({ ...objEditing, completedBy: objEvent.target.value })} /></div>
-            <FormConfigurationEditor value={objFormConfig} onChange={setObjFormConfig} />
+            <div><label className="form-label" htmlFor="bp-form-level">Form level</label><select id="bp-form-level" className="form-select" value={objFormConfig.level} onChange={(objEvent) => setObjFormConfig({ ...objFormConfig, level: objEvent.target.value })}><option value={FORM_LEVEL.REQUEST}>Request-level (filled by requester)</option><option value={FORM_LEVEL.AGENCY}>Institution / consolidation schedule (office assignment configurable)</option></select></div>
+            <div><label className="form-label" htmlFor="bp-form-owner">Completed by</label><Input id="bp-form-owner" required maxLength={150} value={objEditing.completedBy} onChange={(objEvent) => setObjEditing({ ...objEditing, completedBy: objEvent.target.value })} /></div>
+            <FormConfigurationEditor formId={objEditing.id} value={objFormConfig} onChange={setObjFormConfig} />
             {strFormError && <p role="alert" className="text-danger small mb-0">{strFormError}</p>}
             <p className="small text-muted mb-0">Saving this form also saves any pending availability and document changes for FY{strFormYear}.</p>
             <div className="d-flex justify-content-end gap-2"><Button type="button" variant="ghost" onClick={() => setObjEditing(null)}>Cancel</Button><Button type="submit">{blnSaving ? 'Saving...' : blnEditingExisting ? 'Save BP form' : 'Add BP form'}</Button></div>

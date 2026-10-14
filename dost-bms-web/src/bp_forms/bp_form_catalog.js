@@ -69,7 +69,7 @@ export function getCycleFormCatalog(objCycle) {
   return [...BP_FORM_CATALOG, ...(objCycle?.custom_forms || [])].map((form) => {
     const config = objCycle?.form_configs?.[form.id];
     const metadata = { reportingScope: 'Individual institution and Central Office consolidation', responsibilityStatus: 'DOST assignment requires confirmation' };
-    return config ? { ...metadata, ...form, level: config.level || form.level, engine: config.fields?.length ? FORM_ENGINE.DYNAMIC : form.engine, automation: config.fields?.some((field) => field.source !== 'user') ? AUTOMATION_LEVEL.AUTO_PLUS : AUTOMATION_LEVEL.MANUAL } : { ...metadata, ...form };
+    return config ? { ...metadata, ...form, completedBy: config.completedBy || form.completedBy, level: config.level || form.level, engine: config.fields?.length ? FORM_ENGINE.DYNAMIC : form.engine, automation: config.fields?.some((field) => field.source !== 'user') ? AUTOMATION_LEVEL.AUTO_PLUS : AUTOMATION_LEVEL.MANUAL } : { ...metadata, ...form };
   });
 }
 

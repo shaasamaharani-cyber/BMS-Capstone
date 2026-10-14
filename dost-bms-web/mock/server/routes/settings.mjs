@@ -134,6 +134,12 @@ export async function handleSettings(ctx) {
       json(res, 422, { message: strFormError });
       return true;
     }
+    // Older unconfigured custom forms keep their established requirement. New ones
+    // must have an explicit Always/Conditional configuration to become mandatory.
+    for (const form of arrCustomForms) {
+      const previous = objBefore.custom_forms.find((row) => row.id === form.id);
+      if (!previous || previous.optionalByDefault === true) form.optionalByDefault = true;
+    }
     const arrCatalog = getCycleFormCatalog({ custom_forms: arrCustomForms });
     const arrAllowedIds = arrCatalog.map((objForm) => objForm.id);
     const { configs: objFormConfigs, error: strConfigError } = validateFormConfigs(payload.form_configs ?? objBefore.form_configs, arrAllowedIds);

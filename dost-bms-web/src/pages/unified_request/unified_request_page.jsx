@@ -260,11 +260,12 @@ export default function UnifiedRequestPage() {
 
   const objTotals = useMemo(() => computeBudgetLineItemTotals(arrLineItems), [arrLineItems]);
   const strUnitName = arrRequestingUnits.find((objUnit) => String(objUnit.ru_id) === objRequest.unitId)?.ru_name || '';
+  const strAgencyName = arrRequestingUnits.find((objUnit) => String(objUnit.ru_id) === objRequest.unitId)?.agency || '';
   const strFiscalYearLabel = String(arrFiscalYears.find((objYear) => String(objYear.fy_id) === objRequest.fiscalYearId)?.fy_year || '');
 
   const objCommon = useMemo(
-    () => resolveCommonValues(objRequest, { unitName: strUnitName, fiscalYearLabel: strFiscalYearLabel }),
-    [objRequest, strUnitName, strFiscalYearLabel]
+    () => resolveCommonValues(objRequest, { unitName: strUnitName, agencyName: strAgencyName, fiscalYearLabel: strFiscalYearLabel }),
+    [objRequest, strUnitName, strAgencyName, strFiscalYearLabel]
   );
 
   // The year's budget cycle (set by the administrator): which forms apply and which documents to attach

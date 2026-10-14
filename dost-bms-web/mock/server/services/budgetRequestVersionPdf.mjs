@@ -54,7 +54,7 @@ function ensureSpace(doc, height = 36) {
 function writeSection(doc, title) {
   ensureSpace(doc, 34);
   doc.moveDown(0.8);
-  doc.font('Helvetica-Bold').fontSize(11).fillColor('#111827').text(title);
+  doc.font('Helvetica-Bold').fontSize(11).fillColor('#111827').text(title, doc.page.margins.left, doc.y, { width: doc.page.width - doc.page.margins.left - doc.page.margins.right, align: 'left' });
   doc.moveTo(doc.page.margins.left, doc.y + 3)
     .lineTo(doc.page.width - doc.page.margins.right, doc.y + 3)
     .strokeColor('#d1d5db')
@@ -65,7 +65,7 @@ function writeSection(doc, title) {
 
 function writeKeyValue(doc, label, value) {
   ensureSpace(doc, 18);
-  doc.font('Helvetica-Bold').fontSize(9).text(`${label}: `, { continued: true });
+  doc.font('Helvetica-Bold').fontSize(9).text(`${label}: `, doc.page.margins.left, doc.y, { width: doc.page.width - doc.page.margins.left - doc.page.margins.right, continued: true, align: 'left' });
   doc.font('Helvetica').text(formatValue(value));
 }
 
@@ -165,16 +165,20 @@ function writeCompletedForms(doc, unified) {
     const view = buildFormView(entry.formId, context);
     if (!form || !view) continue;
     writeSection(doc, `${form.code} - ${form.name}`);
-    doc.font('Helvetica').fontSize(8).text('Internal working schedule in pesos; not an official DBM template.');
+    doc.font('Helvetica').fontSize(8).text(entry.formId === 'bp-b' ? 'Performance working schedule; targets use indicator units. Layout verification and certification remain required.' : 'Internal working schedule in pesos; not an official DBM template.');
     for (const field of view.fields) {
       if (field.type === 'table') {
         writeKeyValue(doc, field.label, '');
         for (const [index, row] of field.value.entries()) {
-          writeKeyValue(doc, `Row ${index + 1}`, field.columns.map((column) => `${column.label}: ${row[column.key] ?? 'Awaiting data'}`).join(' | '));
+          if (entry.formId === 'bp-b') {
+            writeKeyValue(doc, `Indicator row ${index + 1}`, '');
+            for (const column of field.columns) writeKeyValue(doc, column.label, row[column.key] ?? 'Awaiting data');
+          } else writeKeyValue(doc, `Row ${index + 1}`, field.columns.map((column) => `${column.label}: ${row[column.key] ?? 'Awaiting data'}`).join(' | '));
         }
-      } else writeKeyValue(doc, field.label, typeof field.value === 'boolean' ? field.value ? 'Yes' : 'No' : field.value);
+      } else writeKeyValue(doc, field.label, entry.formId === 'bp-b' && field.key === 'approvalDate' && /^\d{4}-\d{2}-\d{2}$/.test(field.value) ? field.value.split('-').reverse().join('/') : typeof field.value === 'boolean' ? field.value ? 'Yes' : 'No' : field.value);
     }
     if (view.table) for (const row of view.table.rows) writeKeyValue(doc, String(row.name || 'Item'), view.table.columns.map((column) => `${column.label}: ${row[column.key] ?? 'Awaiting data'}`).join(' | '));
+    for (const signer of view.signatories || []) writeKeyValue(doc, `${signer.label} - signature`, '____________________________');
   }
 }
 

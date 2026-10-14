@@ -7,6 +7,7 @@ const reservedKeys = new Set(['__proto__', 'constructor', 'prototype', '__done']
 // Shared validation prevents an invalid editor configuration reaching the requester renderer.
 export function validateFormConfig(value) {
   if (!value || typeof value !== 'object' || !['request', 'agency'].includes(value.level)) return { error: 'Choose a form level.' };
+  if (value.completedBy !== undefined && (typeof value.completedBy !== 'string' || !value.completedBy.trim() || value.completedBy.trim().length > 150)) return { error: 'Enter a completing office (up to 150 characters).' };
   if (!Array.isArray(value.fields) || value.fields.length < 1 || value.fields.length > 150) return { error: 'Add between 1 and 150 fields to this form.' };
   const fields = [];
   const keys = new Set();
@@ -54,6 +55,7 @@ export function validateFormConfig(value) {
   const conditions = [];
   const ids = new Set();
   for (const row of requirement.conditions) {
+    if (row?.questionId && row.field && row.questionId !== row.field) return { error: 'The condition question and request value must match.' };
     const option = CONDITION_OPTIONS.find((item) => item.field === (row?.questionId || row?.field));
     if (!row || !/^[a-zA-Z0-9-]{1,80}$/.test(row.id) || ids.has(row.id) || !option) return { error: 'Each condition needs a unique identifier and a valid request value.' };
     const operators = option.numeric ? NUMBER_OPERATORS : VALUE_OPERATORS;
@@ -63,7 +65,7 @@ export function validateFormConfig(value) {
     ids.add(row.id);
   }
   if (requirement.mode === 'conditional' && !conditions.length) return { error: 'Add at least one condition, or choose a different requirement mode.' };
-  return { config: { level: value.level, fields, requirement: { mode: requirement.mode, enabled: requirement.enabled !== false, allowOverride: requirement.allowOverride === true, match: requirement.match, conditions } } };
+  return { config: { level: value.level, ...(value.completedBy !== undefined ? { completedBy: value.completedBy.trim() } : {}), fields, requirement: { mode: requirement.mode, enabled: requirement.enabled !== false, allowOverride: requirement.allowOverride === true, match: requirement.match, conditions } } };
 }
 
 export function validateFormConfigs(value, arrFormIds) {

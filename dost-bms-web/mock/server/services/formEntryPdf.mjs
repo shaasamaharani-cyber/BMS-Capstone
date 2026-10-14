@@ -80,7 +80,7 @@ function ensureSpace(doc, height = 36) {
 
 function writeKeyValue(doc, label, value) {
   ensureSpace(doc, 18);
-  doc.font('Helvetica-Bold').fontSize(9).text(`${label}: `, { continued: true });
+  doc.font('Helvetica-Bold').fontSize(9).text(`${label}: `, doc.page.margins.left, doc.y, { width: doc.page.width - doc.page.margins.left - doc.page.margins.right, continued: true, align: 'left' });
   doc.font('Helvetica').text(formatValue(value));
 }
 
@@ -89,6 +89,16 @@ function writeTable(doc, tableInfo, rows) {
   doc.moveDown(0.8);
   doc.font('Helvetica-Bold').fontSize(11).text(tableInfo.title);
   doc.moveDown(0.3);
+
+  // Performance targets cannot be totalled, or truncated to the first eight columns.
+  // This is a readable working report, not a reproduction of the official layout.
+  if (tableInfo.table.kind === 'performance') {
+    for (const [index, row] of (rows || []).entries()) {
+      writeKeyValue(doc, `Indicator row ${index + 1}`, '');
+      for (const column of tableInfo.table.columns || []) writeKeyValue(doc, column.label || column.key, row[column.key]);
+    }
+    return;
+  }
 
   const columns = (tableInfo.table.columns || []).slice(0, 8);
   if (!columns.length) return;
@@ -167,12 +177,20 @@ export async function generateFormEntryPdf({ entry, schemaRecord }) {
     doc.moveDown(1);
 
     (schema.headerFields || []).forEach((field) => {
-      writeKeyValue(doc, field.label || field.key, entry.header?.[field.key]);
+      const value = entry.header?.[field.key];
+      writeKeyValue(doc, field.label || field.key, schema.id === 'bp-form-b' && field.key === 'approvalDate' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value.split('-').reverse().join('/') : value);
     });
 
     collectTables(schema.sections).forEach((tableInfo) => {
       writeTable(doc, tableInfo, entry.sections?.[tableInfo.key] || []);
     });
+
+    if (schema.id === 'bp-form-b') {
+      const known = new Set(collectTables(schema.sections).map((table) => table.key));
+      for (const [key, rows] of Object.entries(entry.sections || {})) if (!known.has(key) && rows?.length) {
+        writeKeyValue(doc, `Internal: preserved legacy section ${key} (not converted to performance measures)`, JSON.stringify(rows));
+      }
+    }
 
     if (schema.footer?.notes?.length) {
       doc.moveDown(0.8);
@@ -183,6 +201,7 @@ export async function generateFormEntryPdf({ entry, schemaRecord }) {
         doc.text(note.label || '');
       });
     }
+    for (const signer of schema.footer?.signers || []) writeKeyValue(doc, signer.role || signer.key, '____________________________');
 
     doc.end();
   });

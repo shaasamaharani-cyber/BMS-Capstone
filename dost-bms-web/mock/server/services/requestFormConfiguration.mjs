@@ -24,7 +24,7 @@ export function validateConfiguredSubmission(db, request) {
   const lineItems = items.map((item) => financialItemFromStored(item, db.rows('budget-categories')));
   const totals = computeBudgetLineItemTotals(lineItems);
   const unit = db.rows('requesting-units').find((row) => Number(row.ru_id) === Number(request.br_requesting_unit_id));
-  const common = resolveCommonValues({ ...unified.request, title: request.br_title, description: request.br_description, fundingSource: unified.request?.fundingSource || unified.common?.fundingSource || '' }, { unitName: unit?.ru_name || '', fiscalYearLabel: String(year?.fy_year || '') });
+  const common = resolveCommonValues({ ...unified.request, title: request.br_title, description: request.br_description, fundingSource: unified.request?.fundingSource || unified.common?.fundingSource || '' }, { unitName: unit?.ru_name || '', agencyName: unit?.agency || '', fiscalYearLabel: String(year?.fy_year || '') });
   const overrides = unified.overrides || {};
   const errors = [];
   if (!String(request.br_title || '').trim()) errors.push('Enter a title for the request.');

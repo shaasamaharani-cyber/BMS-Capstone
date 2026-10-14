@@ -1,4 +1,5 @@
 import StructuredField from '../../components/form/structured_field';
+import FormSignatories from '../../components/form/form_signatories';
 /**
  * System Name: Budget Management System
  * Module Name: Core Module
@@ -59,7 +60,7 @@ const formatLockedValue = (objField) => {
 export default function StepPrefilledForms({ arrCatalog = BP_FORM_CATALOG, arrRequired, objContext, blnSnapshotStale, strSelectedFormId, onSelectForm, onFormValueChange, onRegenerate }) {
   const getFormById = (strId) => findForm(strId, arrCatalog);
   const navigate = useNavigate();
-  // Requesters have no Forms module; agency-level schema forms are completed by Central Office offices
+  // Access to the separate Forms module follows permissions; completing offices remain configurable.
   const blnCanOpenForms = useHasPermission(PERMISSIONS.FORMS);
   const strActiveId = arrRequired.some((objEntry) => objEntry.formId === strSelectedFormId) ? strSelectedFormId : arrRequired[0]?.formId;
   const objActiveForm = strActiveId ? getFormById(strActiveId) : null;
@@ -110,7 +111,7 @@ export default function StepPrefilledForms({ arrCatalog = BP_FORM_CATALOG, arrRe
         <div className={styles.formPanel}>
           <section id="request-form-print-area" className={`${styles.card} print-area`}>
             <h3 className={styles.cardTitle}>{objActiveForm.code} - {objActiveForm.name}</h3>
-            <p className={styles.cardHint}>Internal working schedule in pesos; this layout is not an official DBM template.</p><p className={styles.cardHint}>Completed by: {objActiveForm.completedBy}</p>
+            <p className={styles.cardHint}>{strActiveId === 'bp-b' ? 'Performance working schedule; targets use indicator units. Layout verification and office certification remain required.' : 'Internal working schedule in pesos; this layout is not an official DBM template.'}</p><p className={styles.cardHint}>Completed by: {objActiveForm.completedBy}</p>
             {objView && <div className="no-print mb-3"><Button type="button" variant="outline" size="sm" onClick={() => exportToPdf('request-form-print-area')} disabled={blnSnapshotStale || !getFormCompletion(strActiveId, objContext).complete}>Print / Save as PDF</Button><p className="small text-muted mt-1 mb-0">Print this working schedule for review. Upload the signed official BP form required by your institution.</p></div>}
             {objActiveForm.level === FORM_LEVEL.AGENCY && (
               <div className={styles.autoSummary}>
@@ -164,7 +165,7 @@ export default function StepPrefilledForms({ arrCatalog = BP_FORM_CATALOG, arrRe
                     </div>
                   </>
                 )}
-                <div className="print-only mt-4">Signature: ______________________________ &nbsp; Date: __________________</div>
+                {objView.signatories ? <FormSignatories signatories={objView.signatories} values={objUserValues} /> : <div className="print-only mt-4">Signature: ______________________________ &nbsp; Date: __________________</div>}
               </>
             ) : (
               <div className={styles.inlinePanel}>

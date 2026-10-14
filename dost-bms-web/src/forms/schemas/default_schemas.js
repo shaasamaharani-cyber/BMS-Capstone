@@ -13,6 +13,8 @@
  * All rights reserved.
  */
 
+import { PERFORMANCE_COLUMNS, PERFORMANCE_SIGNATORIES, performanceYearLabel } from '../../bp_forms/bp_form_b.js';
+
 function createEmptyBPFormSchema(code) {
   return {
     id: `bp-form-${code.toLowerCase()}`,
@@ -25,7 +27,20 @@ function createEmptyBPFormSchema(code) {
 }
 
 export const BPFormASchema = createEmptyBPFormSchema('A');
-export const BPFormBSchema = createEmptyBPFormSchema('B');
+export const BPFormBSchema = {
+  id: 'bp-form-b', name: 'BP FORM B — Agency Performance Measures', version: 'FY2027 / NBM 156',
+  headerFields: [
+    { key: 'department', label: 'Department', type: 'text' },
+    { key: 'agency', label: 'Agency', type: 'text' },
+    ...PERFORMANCE_SIGNATORIES.map((signer) => ({ key: signer.key, label: `${signer.label} (name)`, type: 'text' })),
+    { key: 'approvalDate', label: 'Date', type: 'date' },
+  ],
+  sections: [{ id: 'performance', title: 'Agency performance measures — FY2027', table: {
+    addRowLabel: 'Add indicator', showSubtotal: false, kind: 'performance',
+    columns: PERFORMANCE_COLUMNS.map((column) => ({ ...column, label: performanceYearLabel(column.label, 2027) })),
+  } }],
+  footer: { showGrandTotal: false, notes: [{ key: 'source', label: 'Based on NBM No. 156, BP Form B. Use DBM-agreed indicators and units. Layout verification and office certification remain required.' }], signers: PERFORMANCE_SIGNATORIES.map((signer) => ({ key: signer.key, role: `${signer.label} — signature: ____________________` })) },
+};
 export const BPFormCSchema = createEmptyBPFormSchema('C');
 export const BPFormDSchema = createEmptyBPFormSchema('D');
 

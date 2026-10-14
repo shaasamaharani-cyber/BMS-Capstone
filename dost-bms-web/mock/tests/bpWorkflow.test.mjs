@@ -9,7 +9,7 @@ import { PROPOSAL_QUESTIONS } from '../../src/bp_forms/proposal_questions.js';
 import { QUESTION_CONDITION_OPTIONS, matchesRequirement } from '../../src/bp_forms/bp_form_conditions.js';
 import { BP_FORM_CATALOG, getCycleFormCatalog } from '../../src/bp_forms/bp_form_catalog.js';
 import { evaluateRequiredForms, getRequiredQuestions } from '../../src/bp_forms/bp_form_rules.js';
-import { buildFormView, getFormCompletion, getFormContent, getFormDefinition, getDefaultFormDefinition } from '../../src/bp_forms/bp_form_fields.js';
+import { buildFormView, getFormCompletion, getFormContent, getFormDefinition, getDefaultFormDefinition, resolveCommonValues } from '../../src/bp_forms/bp_form_fields.js';
 import { validateFormConfig } from '../../src/bp_forms/bp_form_configuration.js';
 import { STAFFING_COLUMNS, calculateTableRows } from '../../src/bp_forms/structured_fields.js';
 import { computeBudgetLineItemTotals, financialItemFromStored, getLineItemErrors } from '../../src/utils/budget_financials.js';
@@ -137,6 +137,80 @@ test('peso totals reconcile FinEx, climate subsets and unchanged legacy TAG amou
   for (const item of [{ category: 'MOOE', name: 'x', amount: -1 }, { category: 'MOOE', name: 'x', amount: 'NaN' }, { category: 'CO', name: 'x', amount: 100, climateAmount: 101 }, { category: 'PS', name: 'x', amount: 100, climateAmount: 10 }]) assert.ok(getLineItemErrors(item).length);
 });
 
+test('common metadata uses named sources independently, without treating request IDs as accounting references', () => {
+  const common = resolveCommonValues({ title: 'Research', unitId: '67', fiscalYearId: '67', appropriationSource: 'GAA', prexcCode: 'Office-confirmed UACS reference', programPap: 'Research program' }, { unitName: 'Laboratory A', agencyName: 'Research Institute', fiscalYearLabel: '2027' });
+  assert.equal(common.agency, 'Research Institute');
+  assert.equal(common.operatingUnit, 'Laboratory A');
+  assert.equal(common.appropriationSource, 'GAA');
+  assert.equal(common.prexcCode, 'Office-confirmed UACS reference');
+  assert.equal(common.programPap, 'Research program');
+  const unknown = resolveCommonValues({ unitId: '67' }, {});
+  for (const key of ['operatingUnit', 'appropriationSource', 'prexcCode', 'agency']) assert.equal(unknown[key], '');
+  const overridden = resolveCommonValues({ implementingAgency: 'Confirmed agency', operatingUnit: 'Field office', appropriationSource: '67', prexcCode: '67' }, { agencyName: 'Lookup agency', unitName: 'Lookup unit' });
+  assert.equal(overridden.agency, 'Confirmed agency');
+  assert.equal(overridden.operatingUnit, 'Field office');
+  assert.equal(overridden.prexcCode, '67', 'Existing user-entered references must not be silently erased');
+});
+
+test('Form A no longer requires the internal performance measure and retains old data and captured definitions', () => {
+  const previous = { fields: [{ key: 'performanceMeasure', label: 'Associated performance measure', type: 'textarea', source: 'user', required: true }], table: { kind: 'matrix' } };
+  const context = { common: {}, totals: {}, lineItems: [], formConfigs: { 'bp-a': { fields: previous.fields } }, formValues: { 'bp-a': { performanceMeasure: 'Previously entered output' } } };
+  assert.equal(getFormCompletion('bp-a', { ...context, formValues: {} }).complete, true);
+  const field = buildFormView('bp-a', context).fields[0];
+  assert.equal(field.required, false);
+  assert.match(field.label, /Internal/);
+  assert.equal(field.value, 'Previously entered output');
+  assert.equal(getFormDefinition('bp-a', { ...context, formDefinitions: { 'bp-a': previous } }), previous);
+  assert.equal(previous.fields[0].required, true, 'Historical signed definitions remain intact');
+});
+
+test('Form B uses indicator units, exact year and tier columns, signatories, and preserves an unassigned legacy target', () => {
+  const values = { performance: [{ outcome: 'Outcome 1', program: 'Research', subprogram: 'Grants', indicatorType: 'Output indicator', indicator: 'Projects delivered', actualTarget: '80%', actualAccomplishment: '82%', currentTarget: '90%', baseline: 'Percentage of projects', proposedTier1: '92%', proposedTier2: '95%', proposedTarget: 99, outyearOne: 100 }] };
+  const context = { common: { fiscalYear: '2027' }, formValues: { 'bp-b': values }, totals: {}, lineItems: [] };
+  const view = buildFormView('bp-b', context);
+  const table = view.fields.find((field) => field.key === 'performance');
+  for (const [key, label] of [['actualTarget', '2025 GAA targets'], ['actualAccomplishment', '2025 actual accomplishments'], ['currentTarget', '2026 GAA targets'], ['proposedTier1', '2027 NEP targets — Tier 1'], ['proposedTier2', '2027 NEP targets — Tier 2']]) {
+    assert.equal(table.columns.find((column) => column.key === key).label, label);
+    assert.equal(table.columns.find((column) => column.key === key).type, 'text');
+  }
+  assert.match(table.columns.find((column) => column.key === 'proposedTarget').label, /tier unassigned/);
+  assert.deepEqual(table.value, values.performance);
+  assert.equal(getFormCompletion('bp-b', context).complete, true);
+  assert.equal(view.table, null, 'Performance targets are never a financial matrix');
+  assert.equal(view.signatories.length, 3);
+  const fresh = buildFormView('bp-b', { ...context, formValues: {} }).fields.find((field) => field.key === 'performance');
+  assert.ok(!fresh.columns.some((column) => column.key === 'proposedTarget'));
+  assert.equal(validateFormConfig(config([], { fields: getDefaultFormDefinition('bp-b').fields, requirement: { mode: 'always', match: 'all', conditions: [] } })).error, undefined);
+  const oldKeys = ['outcome', 'program', 'indicator', 'baseline', 'actualTarget', 'actualAccomplishment', 'currentTarget', 'proposedTarget', 'outyearOne', 'outyearTwo'];
+  const old = { fields: [{ key: 'performance', label: 'Performance', type: 'table', source: 'user', columns: oldKeys.map((key) => ({ key, label: key, type: key.includes('Target') ? 'number' : 'text' })) }] };
+  const upgraded = buildFormView('bp-b', { ...context, formConfigs: { 'bp-b': old } });
+  assert.ok(upgraded.fields[0].columns.some((column) => column.key === 'proposedTier2'));
+  assert.equal(upgraded.fields[0].value[0].proposedTarget, 99);
+  const frozen = getFormDefinition('bp-b', { formDefinitions: { 'bp-b': old } });
+  assert.equal(frozen, old);
+  assert.equal(old.fields[0].columns.length, 10);
+});
+
+test('Form B draft targets and signers reopen unchanged; target edits invalidate signatures and submitted values remain captured', async (t) => {
+  const { db, request, create, sign } = fixture(t, ['bp-b']);
+  const fields = getDefaultFormDefinition('bp-b').fields;
+  db.upsert('budget-cycles', '2027', { id: '2027', enabled_form_ids: ['bp-b'], custom_forms: [], form_configs: { 'bp-b': config([], { fields, requirement: { mode: 'always', match: 'any', conditions: [] } }) }, supporting_documents: [] });
+  const values = { performance: [{ outcome: 'Outcome A', program: 'Research', indicatorType: 'Outcome indicator', indicator: 'Service quality', actualTarget: '80%', actualAccomplishment: '85%', currentTarget: '90%', baseline: '% satisfaction', proposedTier1: '92%', proposedTier2: '95%', proposedTarget: 100 }], budgetOfficer: 'Prepared name', planningOfficer: 'Planning name', agencyHead: 'Approved name', approvalDate: '2026-10-14' };
+  const draft = await create({ br_unified_request: { request: { fundingSource: 'national_government' }, answers: {}, formValues: { 'bp-b': values } } });
+  const reopened = await request('GET', 'budget-requests/1');
+  assert.deepEqual(reopened.data.br_unified_request.formValues['bp-b'], values);
+  assert.deepEqual(validateConfiguredSubmission(db, sign(draft, 'bp-b')).errors, []);
+  const changed = structuredClone(values);
+  changed.performance[0].proposedTier2 = '97%';
+  await request('PUT', 'budget-requests/1', { br_unified_request: { ...draft.br_unified_request, formValues: { 'bp-b': changed } } });
+  assert.match((await request('POST', 'budget-requests/1/submit')).message, /content changed/);
+  sign(db.find('budget-requests', 1), 'bp-b');
+  assert.equal((await request('POST', 'budget-requests/1/submit')).status, 200);
+  const submitted = db.find('budget-request-versions', 1).brv_snapshot.unifiedRequest;
+  assert.deepEqual(submitted.formValues['bp-b'], changed);
+  assert.equal(submitted.formDefinitions['bp-b'].fields.find((field) => field.key === 'performance').columns.find((column) => column.key === 'proposedTier2').type, 'text');
+});
+
 test('structured staffing calculates explicit costs, validates rows and preserves unknown amounts', () => {
   const row = { pap: 'Research', unit: 'Lab', position: 'Scientist', classification: 'Contractual', tier: 'Tier 2', salaryGrade: 1, positions: 2, months: 6, monthlyRate: 10000, ...Object.fromEntries(STAFFING_COLUMNS.filter((column) => column.type === 'number' && !column.calculation && !column.required).map((column) => [column.key, 0])) };
   const result = calculateTableRows(STAFFING_COLUMNS, [row])[0];
@@ -210,7 +284,7 @@ test('default built-in fields and signed copies are enforced independently by th
   await create();
   const rejected = await request('POST', 'budget-requests/1/submit', { actor_id: 4, requiredForms: [] });
   assert.equal(rejected.status, 422);
-  assert.match(rejected.message, /Associated performance measure/);
+  assert.doesNotMatch(rejected.message, /associated performance measure/i);
   assert.match(rejected.message, /signed copy/);
 });
 

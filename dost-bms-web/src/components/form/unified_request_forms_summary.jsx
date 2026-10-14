@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import StructuredField from './structured_field';
+import FormSignatories from './form_signatories';
 import { getCycleFormCatalog } from '../../bp_forms/bp_form_catalog';
 import { buildFormView } from '../../bp_forms/bp_form_fields';
 
@@ -16,7 +17,7 @@ export default function UnifiedRequestFormsSummary({ unified }) {
   if (!forms.length) return null;
   return (
     <section className="card border rounded-3 p-4 mb-3">
-      <h6 className="fw-bold">Submitted BP working schedules</h6><p className="small text-muted">Internal working schedules in pesos. Official DBM templates and office certification remain required.</p>
+      <h6 className="fw-bold">Submitted BP working schedules</h6><p className="small text-muted">Financial amounts are in pesos; performance targets use indicator units. Official DBM templates and office certification remain required.</p>
       {forms.map(({ form, view }) => (
         <details className="border rounded p-3 mb-2" key={form.id}>
           <summary className="fw-semibold">{form.code} - {form.name}</summary>
@@ -29,6 +30,7 @@ export default function UnifiedRequestFormsSummary({ unified }) {
             ))}
           </dl>
           {view.table && <div className="table-responsive"><table className="table table-sm small"><thead><tr>{view.table.columns.map((column) => <th key={column.key}>{column.label}</th>)}</tr></thead><tbody>{view.table.rows.map((row, index) => <tr key={index}>{view.table.columns.map((column) => <td key={column.key}>{row[column.key] ?? 'Awaiting data'}</td>)}</tr>)}</tbody></table></div>}
+          <FormSignatories signatories={view.signatories} values={unified.formValues?.[form.id]} />
         </details>
       ))}
     </section>

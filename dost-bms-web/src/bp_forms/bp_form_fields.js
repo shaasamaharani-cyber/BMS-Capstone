@@ -18,6 +18,7 @@ import { FUNDING_COLUMNS, STAFFING_COLUMNS, calculateTableRows } from './structu
 import { getCostStructureAbbreviation } from '../utils/cost_structure.js';
 import { BP_FORM_CATALOG } from './bp_form_catalog.js';
 import { DEFAULT_FORM_SCHEMAS } from '../forms/schemas/default_schemas.js';
+import { PERFORMANCE_COLUMNS, PERFORMANCE_SIGNATORIES, performanceYearLabel, upgradeLegacyPerformanceFields } from './bp_form_b.js';
 
 export const FIELD_SOURCE = {
   CANONICAL: 'canonical',
@@ -27,7 +28,7 @@ export const FIELD_SOURCE = {
 
 export const CANONICAL_FIELD_LABELS = {
   department: 'Department',
-  agency: 'Agency / Requesting unit',
+  agency: 'Agency',
   fiscalYear: 'Fiscal year',
   programPap: 'Program / Activity / Project',
   location: 'Implementation location',
@@ -60,6 +61,10 @@ const user = (strKey, strLabel, strType = 'text', blnRequired = false, arrOption
 const HEADER = [canonical('department', 'department'), canonical('agency', 'agency'), canonical('fiscalYear', 'fiscalYear')];
 const SHARED_CLASSIFICATION = ['operatingUnit', 'appropriationSource', 'prexcCode'].map((key) => canonical(key, key));
 const PERIOD = [canonical('implementationStart', 'implementationStart'), canonical('implementationEnd', 'implementationEnd')];
+const PERFORMANCE_SIGNATORY_FIELDS = [
+  ...PERFORMANCE_SIGNATORIES.map((signer) => user(signer.key, `${signer.label} (name)`)),
+  user('approvalDate', 'Date (day / month / year on printed form)', 'date'),
+];
 
 const ITEM_COLUMNS = [
   { key: 'name', label: 'Item' },
@@ -72,15 +77,13 @@ const usesStaffingRows = (definition, values) => definition.fields.some((field) 
 
 export const FORM_DEFINITIONS = {
   'bp-a': {
-    fields: [...HEADER, ...SHARED_CLASSIFICATION, canonical('programPap', 'programPap'), user('performanceMeasure', 'Associated performance measure', 'textarea', true), user('remarks', 'Remarks', 'textarea')],
+    fields: [...HEADER, ...SHARED_CLASSIFICATION, canonical('programPap', 'programPap'), user('performanceMeasure', 'Internal: associated performance measure (optional)', 'textarea'), user('remarks', 'Remarks', 'textarea')],
     table: { kind: 'matrix' },
   },
   'bp-b': {
-    fields: [...HEADER, ...SHARED_CLASSIFICATION, { ...user('performance', 'Performance measures and targets', 'table'), columns: [
-      { key: 'outcome', label: 'Organisational outcome', type: 'text' }, { key: 'program', label: 'Program / sub-program', type: 'text' },
-      { key: 'indicator', label: 'Performance indicator', type: 'text' }, { key: 'baseline', label: 'Baseline / unit', type: 'text' },
-      ...['actualTarget', 'actualAccomplishment', 'currentTarget', 'proposedTarget', 'outyearOne', 'outyearTwo'].map((key, index) => ({ key, label: ['Actual-year GAA target', 'Actual accomplishment', 'Current-year GAA target', 'Proposed NEP target', 'Outyear 1 target', 'Outyear 2 target'][index], type: 'number' })),
-    ] }], table: null,
+    fields: [...HEADER, ...SHARED_CLASSIFICATION, { ...user('performance', 'Performance measures and targets', 'table'), columns: PERFORMANCE_COLUMNS }, ...PERFORMANCE_SIGNATORY_FIELDS],
+    signatories: PERFORMANCE_SIGNATORIES,
+    table: null,
   },
   'bp-c': {
     fields: [...HEADER, { ...user('rdcInputs', 'RDC inputs and agency response', 'table'), columns: [
@@ -220,7 +223,13 @@ export function getFormDefinition(strFormId, objContext = {}) {
   if (objContext.formDefinitions && Object.hasOwn(objContext.formDefinitions, strFormId)) return objContext.formDefinitions[strFormId];
   const config = objContext.formConfigs?.[strFormId];
   const base = FORM_DEFINITIONS[strFormId];
-  return config?.fields ? { ...base, fields: config.fields, table: base?.table || null } : base || null;
+  if (!config?.fields) return base || null;
+  let fields = config.fields;
+  if (strFormId === 'bp-b') fields = upgradeLegacyPerformanceFields(fields, PERFORMANCE_SIGNATORY_FIELDS);
+  // This key came from the old built-in Form A, not from the official matrix.
+  // Retain its data; an administrator can create a separately named internal requirement.
+  if (strFormId === 'bp-a') fields = fields.map((field) => field.key === 'performanceMeasure' && field.source === FIELD_SOURCE.USER ? { ...field, required: false, label: 'Internal: associated performance measure (optional)' } : field);
+  return { ...base, fields, table: base?.table || null };
 }
 
 // Stored alongside a signature; changing a label, answer, common value or item invalidates it.
@@ -233,11 +242,11 @@ export function resolveCommonValues(objRequest, objLookups) {
   return {
     department: DEPARTMENT_NAME,
     projectName: objRequest.title || '',
-    implementingAgency: objRequest.implementingAgency || objLookups.unitName || '',
+    implementingAgency: objRequest.implementingAgency || objLookups.agencyName || objLookups.unitName || '',
     operatingUnit: objRequest.operatingUnit || objLookups.unitName || '',
     appropriationSource: objRequest.appropriationSource || '',
     prexcCode: objRequest.prexcCode || '',
-    agency: objLookups.unitName || '',
+    agency: objRequest.implementingAgency || objLookups.agencyName || objLookups.unitName || '',
     fiscalYear: objLookups.fiscalYearLabel || '',
     programPap: objRequest.programPap || objRequest.title || '',
     location: objRequest.location || '',
@@ -304,8 +313,10 @@ export function buildFormView(strFormId, objContext) {
 
   const displayFields = objDefinition.fields.filter((field) => !(strFormId === 'bp-204' && usesStaffingRows(objDefinition, objUserValues) && LEGACY_STAFFING_KEYS.has(field.key)));
   const arrFields = displayFields.map((definitionField) => {
-    const year = Number(objContext.common?.fiscalYear);
-    const objField = { ...definitionField, label: definitionField.label.replaceAll('{fiscalYear}', year || 'proposed year').replaceAll('{actualYear}', year ? year - 2 : 'actual year').replaceAll('{currentYear}', year ? year - 1 : 'current year') };
+    const objField = { ...definitionField, label: performanceYearLabel(definitionField.label, objContext.common?.fiscalYear) };
+    if (objField.type === 'table') objField.columns = objField.columns
+      .filter((column) => !column.legacy || (Array.isArray(objUserValues[objField.key]) && objUserValues[objField.key].some((row) => row?.[column.key] !== undefined && row?.[column.key] !== '')))
+      .map((column) => ({ ...column, label: performanceYearLabel(column.label, objContext.common?.fiscalYear) }));
     if (objField.source === FIELD_SOURCE.CANONICAL) {
       const strValue = objField.canonical === 'fundingSource' ? objContext.common.fundingSourceLabel : objContext.common[objField.canonical];
       return { ...objField, value: strValue ?? '', locked: true };
@@ -316,7 +327,7 @@ export function buildFormView(strFormId, objContext) {
     return { ...objField, value: objField.type === 'table' ? calculateTableRows(objField.columns, objUserValues[objField.key]) : objUserValues[objField.key] ?? '', locked: false };
   });
 
-  return { formId: strFormId, fields: arrFields, table: buildDerivedTable(objDefinition.table, objContext.lineItems) };
+  return { formId: strFormId, fields: arrFields, table: buildDerivedTable(objDefinition.table, objContext.lineItems), ...(objDefinition.signatories ? { signatories: objDefinition.signatories } : {}) };
 }
 
 export function getFieldValueError(field, value) {

@@ -32,6 +32,11 @@ export function seedDefaultSchemas() {
       if (!existingIds.includes(schema.id)) {
         await createSchema(record);
       } else {
+        // Fill the old empty Form B placeholder without replacing an institution's
+        // customised layout or changing any saved entry data.
+        const saved = existing.find((row) => row.id === schema.id);
+        const savedSchema = saved?.schema || saved;
+        if (schema.id === 'bp-form-b' && (savedSchema?.sections?.length || savedSchema?.headerFields?.length)) continue;
         await updateSchema(schema.id, record);
       }
     }

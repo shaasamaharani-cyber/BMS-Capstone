@@ -45,7 +45,7 @@ export const BP_FORM_RULES = [
 
 export function getDefaultRequirement(strFormId) {
   const rules = BP_FORM_RULES.filter((rule) => rule.formId === strFormId);
-  return { mode: rules.length ? 'default' : 'always', enabled: true, match: 'any', conditions: rules.filter((rule) => rule.condition).map((rule, index) => ({ ...rule.condition, id: `default-${index}`, enabled: true })) };
+  return { mode: rules.length ? 'default' : 'optional', enabled: true, match: 'any', conditions: rules.filter((rule) => rule.condition).map((rule, index) => ({ ...rule.condition, id: `default-${index}`, enabled: true })) };
 }
 
 export function getRequiredQuestions(enabledIds, configs = {}, catalog = []) {
@@ -84,6 +84,7 @@ export function evaluateRequiredForms(objAnswers, objTotals, objCommon, arrEnabl
   });
 
   arrCustomForms.forEach((objForm) => {
+    if (objForm.optionalByDefault === true) return;
     if (objFormConfigs[objForm.id]?.requirement?.enabled === false) return;
     if (objFormConfigs[objForm.id]?.requirement?.mode && objFormConfigs[objForm.id].requirement.mode !== 'default') return;
     mapRequired.set(objForm.id, { formId: objForm.id, ruleIds: ['CYCLE'], reasons: [`Required by the administrator for FY${objCommon?.fiscalYear || objCommon?.fiscalYearLabel || ''}`], origin: 'cycle' });

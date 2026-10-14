@@ -16,6 +16,7 @@
 import { useState } from 'react';
 import DynamicTable from './dynamic_table';
 import HeaderFields from './header_fields';
+import StructuredField from '../../components/form/structured_field';
 import styles from './flexible_forms.module.css';
 
 function getSectionKey(sectionId, tabId) {
@@ -80,7 +81,7 @@ function SectionRenderer({ section, entry, activeTab, setActiveTab, updateSectio
               ))}
             </div>
           ) : null}
-          {table ? (
+          {table?.kind === 'performance' ? <StructuredField field={{ key: 'performance', label: section.title, columns: table.columns.filter((column) => !column.legacy || rows.some((row) => row[column.key] !== undefined && row[column.key] !== '')) }} value={rows} onChange={(nextRows) => updateSection(sectionKey, nextRows)} /> : table ? (
             <DynamicTable
               schema={table}
               rows={rows}
@@ -150,6 +151,11 @@ export default function FormRenderer({ schema, entry, setEntry }) {
         />
       ))}
       <Footer footer={schema.footer} />
+      {schema.id === 'bp-form-b' && Object.entries(entry.sections || {}).filter(([key, rows]) => !schema.sections.some((section) => section.id === key) && rows?.length).map(([key, rows]) => <details key={key} className="border rounded p-3 mt-3">
+        <summary>Internal: preserved legacy section {key}</summary>
+        <p className="small text-muted">These original values have not been converted to performance indicators or assigned to a budget tier.</p>
+        <pre className="small" style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(rows, null, 2)}</pre>
+      </details>)}
     </div>
   );
 }
