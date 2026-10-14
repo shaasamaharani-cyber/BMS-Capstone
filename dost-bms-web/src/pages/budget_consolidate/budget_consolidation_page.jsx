@@ -37,6 +37,7 @@ import {
 import { getBudgetRequests, getReviewedBudgetRequests } from '../../api/budget_requests_api';
 import { formatTimestamp, getBadgeStatus } from '../../utils/formatters';
 import { useAuth } from '../../context/auth_context';
+import { canActAsDivision } from '../../utils/permissions';
 import { getFiscalYear } from '../../utils/helpers';
 import { extractApiRows, toReviewedRequests } from '../../utils/budget_request_utils';
 
@@ -64,10 +65,10 @@ const parseBudgetValue = (value) => {
 // ---------------------------------------------------------------------------
 // ActionMenu — inline dropdown for each table row (portal-based to escape overflow)
 // ---------------------------------------------------------------------------
-function ActionMenu({ row, navigate, canApprove }) {
+function ActionMenu({ row, navigate, canApprove, canAct }) {
   const normalizedStatus = String(row.status || '').trim().toUpperCase();
-  // Directors (canApprove) approve or reject; only the division edits
-  const canEdit = !canApprove && ['DRAFT', 'REJECTED'].includes(normalizedStatus);
+  // Directors (canApprove) approve or reject; only the division edits (the main administrator views)
+  const canEdit = canAct && ['DRAFT', 'REJECTED'].includes(normalizedStatus);
   const showApprove = canApprove && normalizedStatus === 'PENDING';
   const [blnOpen, setBlnOpen] = useState(false);
   const [objMenuStyle, setObjMenuStyle] = useState({});
@@ -178,6 +179,7 @@ export default function BudgetConsolidationPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const canApprove = String(user?.role?.role_group || '').toLowerCase() === 'executive';
+  const blnCanAct = canActAsDivision(user);
 
   // ── Data state ──
   const [arrBudgets, setArrBudgets] = useState([]);
@@ -396,17 +398,17 @@ export default function BudgetConsolidationPage() {
     () =>
       TABLE_COLUMNS.map((col) =>
         col.key === 'actions'
-          ? { ...col, render: (_, row) => <ActionMenu row={row} navigate={navigate} canApprove={canApprove} /> }
+          ? { ...col, render: (_, row) => <ActionMenu row={row} navigate={navigate} canApprove={canApprove} canAct={blnCanAct} /> }
           : { ...col, sortable: true }
       ),
-    [navigate, canApprove]
+    [navigate, canApprove, blnCanAct]
   );
 
   return (
     <div>
       {/* ── Section 1: Page Header ── */}
       <PageHeader title="Budget Consolidation">
-        {!canApprove && (
+        {blnCanAct && (
           <Button onClick={() => setBlnShowConsolidateModal(true)}>
             🔗 Consolidate Budget
           </Button>

@@ -52,3 +52,9 @@ export function getPermissionsForUser(user) {
 
   return getPermissionsForRoleGroup(user?.role?.role_group);
 }
+
+// Seeing a page is not the same as acting on it: only the Budget and Finance Division (reviewer group)
+// validates, returns, consolidates and records external results. The main administrator views only.
+export function canActAsDivision(user) {
+  return String(user?.role?.role_group || '').toLowerCase() === 'reviewer';
+}

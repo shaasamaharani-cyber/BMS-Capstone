@@ -17,19 +17,22 @@ import { Navigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { useAuth } from '../context/auth_context';
 import { useHasPermission } from '../hooks/use_permissions';
+import { canActAsDivision } from '../utils/permissions';
 
-export default function PermissionRoute({ permission, redirectTo = '/dashboard', children }) {
+export default function PermissionRoute({ permission, requireDivision = false, redirectTo = '/dashboard', children }) {
   const { isLoading, user } = useAuth();
   const hasAccess = useHasPermission(permission);
 
   // Wait for auth hydration (initial load OR post-login /me flight)
   if (isLoading || !user) return null;
-  if (!hasAccess) return <Navigate to={redirectTo} replace />;
+  // Pages that change data in the budget flow also need the division's role, not only view access
+  if (!hasAccess || (requireDivision && !canActAsDivision(user))) return <Navigate to={redirectTo} replace />;
   return children;
 }
 
 PermissionRoute.propTypes = {
   permission: PropTypes.oneOfType([PropTypes.string, PropTypes.arrayOf(PropTypes.string)]).isRequired,
+  requireDivision: PropTypes.bool,
   redirectTo: PropTypes.string,
   children:   PropTypes.node.isRequired,
 };

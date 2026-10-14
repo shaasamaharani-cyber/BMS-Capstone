@@ -39,6 +39,7 @@ import {
   fetchPlanningPeriodsForPage,
 } from '../../utils/budget_request_utils';
 import { useAuth } from '../../context/auth_context';
+import { canActAsDivision } from '../../utils/permissions';
 import { toAmount, toFiscalYear } from '../../utils/helpers';
 import { formatTimestamp } from '../../utils/formatters';
 
@@ -206,8 +207,7 @@ export default function BudgetConsolidationDetailPage() {
     String(user?.role?.role_group || '').toLowerCase() === 'executive' &&
     recordStatus === 'PENDING';
   // The division edits a draft or a budget the director returned (as-is step 7); directors only approve or reject
-  const canEdit = String(user?.role?.role_group || '').toLowerCase() !== 'executive'
-    && ['DRAFT', 'REJECTED'].includes(recordStatus);
+  const canEdit = canActAsDivision(user) && ['DRAFT', 'REJECTED'].includes(recordStatus);
 
   const handleApprove = async () => {
     setBlnIsSubmitting(true);

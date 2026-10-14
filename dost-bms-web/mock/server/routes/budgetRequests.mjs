@@ -11,7 +11,6 @@ import {
   nextVersionNumber,
 } from '../services/budgetRequestLifecycle.mjs';
 import { resolveRequestActor } from '../services/requestActor.mjs';
-import { permissionsForUser } from './auth.mjs';
 import {
   canRequesterAccessBudgetRequest,
   isRequesterUser,
@@ -167,8 +166,9 @@ export async function handleBudgetRequests(ctx) {
   }
 
   if (req.method === 'POST' && sub === 'review') {
-    // Only the logged-in user's role decides: validate and return need Budget Review access (Security Standard 6.15)
-    if (!permissionsForUser(resolveRequestActor(db, req)).includes('route:budget-review')) {
+    // Only the logged-in user's role decides: validate and return are the Budget and Finance Division's
+    // actions (reviewer group); the main administrator may view but not act (Security Standard 6.15)
+    if (String(resolveRequestActor(db, req)?.role?.role_group || '').toLowerCase() !== 'reviewer') {
       json(res, 403, { message: 'Unauthorized. Insufficient permissions.' });
       return true;
     }
