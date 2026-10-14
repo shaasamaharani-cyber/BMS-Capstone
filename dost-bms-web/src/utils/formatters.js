@@ -13,6 +13,8 @@
  * All rights reserved.
  */
 
+import { AMBER_BELOW, ATTENTION_BELOW } from './app_settings';
+
 export const formatDate = (date, formatStr = 'MMM dd, yyyy') => {
   if (!date) return '';
   const d = new Date(date);
@@ -132,8 +134,8 @@ export const formatRate = (numberValue) => {
  * @returns {string}
  */
 export const getRateClassName = (value) => {
-  if (value >= 90) return 'dashboard-rate--green';
-  if (value >= 75) return 'dashboard-rate--amber';
+  if (value >= ATTENTION_BELOW) return 'dashboard-rate--green';
+  if (value >= AMBER_BELOW) return 'dashboard-rate--amber';
   return 'dashboard-rate--red';
 };
 

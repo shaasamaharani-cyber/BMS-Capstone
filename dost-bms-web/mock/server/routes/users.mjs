@@ -18,8 +18,8 @@ function validateUser(db, objUser, intOwnId = null) {
   if (blnTaken) return 'Another account already uses this email.';
   if (!roleGroupOf(db, objUser.usr_role_id)) return 'Choose a role.';
   if (roleGroupOf(db, objUser.usr_role_id) === 'requester') {
-    const blnUnit = db.rows('requesting-units').some((row) => Number(row.ru_id) === Number(objUser.usr_requesting_unit_id));
-    if (!blnUnit) return 'A requester must belong to a requesting unit.';
+    const blnUnit = db.rows('requesting-units').some((row) => Number(row.ru_id) === Number(objUser.usr_requesting_unit_id) && Number(row.ru_is_active) !== 0);
+    if (!blnUnit) return 'A requester must belong to an active requesting unit.';
   }
   return null;
 }

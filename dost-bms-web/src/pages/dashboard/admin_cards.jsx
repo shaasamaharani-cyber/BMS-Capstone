@@ -133,7 +133,7 @@ export default function TechAdminDashboard() {
             <tr><td>Require a justification when obligations exceed the allotment</td><td>Any amount over</td><td>Awaiting DOST</td></tr>
           </tbody>
         </table>
-        <p className={styles.footnote}>View only. These become editable here once DOST confirms its thresholds.</p>
+        <p className={styles.footnote}>Team defaults until DOST confirms its targets. <Link to="/settings">Change them in Settings</Link>.</p>
       </section>
 
       <section className={`dashboard-panel ${styles.card}`}>

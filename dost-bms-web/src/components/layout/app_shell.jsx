@@ -13,19 +13,27 @@
  * All rights reserved.
  */
 
+import { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './sidebar';
 import Topbar from './topbar';
+import { loadAppSettings } from '../../utils/app_settings';
 import styles from './app_shell.module.css';
 
 export default function AppShell() {
+  // Alert thresholds come from the administrator's Settings; load them once before the pages render
+  const [blnSettingsReady, setBlnSettingsReady] = useState(false);
+  useEffect(() => {
+    loadAppSettings().finally(() => setBlnSettingsReady(true));
+  }, []);
+
   return (
     <div className={styles.shell}>
       <Sidebar />
       <div className={styles.main}>
         <Topbar />
         <main className={styles.content}>
-          <Outlet />
+          {blnSettingsReady ? <Outlet /> : null}
         </main>
       </div>
     </div>

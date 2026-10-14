@@ -14,11 +14,8 @@
 
 import { getBudgetRequestActivity } from '../../api';
 
-// Same colour band as the existing dashboard (amber/red below 90%). DOST has not confirmed its own targets.
-export const ATTENTION_BELOW = 90;
-
-// Team assumption (slice 2 plan): a spending report is "due soon" within 14 days of its due date
-export const DUE_SOON_DAYS = 14;
+// Set by the administrator on the Settings page (defaults: 90% and 14 days, until DOST confirms its targets)
+export { ATTENTION_BELOW, DUE_SOON_DAYS } from '../../utils/app_settings';
 
 export function sortByUpdated(arrRequests) {
   return [...arrRequests].sort((objA, objB) => new Date(objB.br_updated_at || 0) - new Date(objA.br_updated_at || 0));
