@@ -7,6 +7,7 @@ import { createVersionSnapshot, getVersionsForRequest } from './server/services/
 import { json, paginate, readJsonBody } from './server/http.mjs';
 import { handleAuth } from './server/routes/auth.mjs';
 import { handleReferenceData } from './server/routes/referenceData.mjs';
+import { handleSettings } from './server/routes/settings.mjs';
 import { handleUnifiedBudgets } from './server/routes/unifiedBudgets.mjs';
 import { handleUsers } from './server/routes/users.mjs';
 import { handleBudgetReview } from './server/routes/budgetReview.mjs';
@@ -41,6 +42,7 @@ for (const objRequest of db.rows('budget-requests')) {
 
 const routes = [
   handleAuth,
+  handleSettings,
   handleReferenceData,
   handleUnifiedBudgets,
   handleUsers,
