@@ -32,6 +32,8 @@ export {
   deleteUser,
   activateUser,
   deactivateUser,
+  getRoles,
+  getUserChanges,
 } from './users_api';
 
 export {

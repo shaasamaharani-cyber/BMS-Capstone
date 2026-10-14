@@ -73,3 +73,21 @@ export async function deactivateUser(intId)
 
   return objResponse.data;
 }
+
+
+// Roles for the Users & Roles page (names and groups only)
+export async function getRoles()
+{
+  const objResponse = await client.get('/roles');
+
+  return objResponse.data;
+}
+
+
+// The latest account changes (who changed which account, and how)
+export async function getUserChanges()
+{
+  const objResponse = await client.get(`${ENDPOINTS.USERS.INDEX}/changes`);
+
+  return objResponse.data;
+}
