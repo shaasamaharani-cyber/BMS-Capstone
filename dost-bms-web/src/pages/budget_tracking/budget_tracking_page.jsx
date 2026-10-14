@@ -21,6 +21,7 @@ import PageHeader from '../../components/layout/page_header';
 import ApprovalWorkflowTimeline from '../../components/shared/approval_workflow_timeline';
 import { getUnifiedBudgetById, updateUnifiedBudget } from '../../api';
 import { useAuth } from '../../context/auth_context';
+import { canActAsDivision } from '../../utils/permissions';
 import {
   getTrackingBudgets,
   getTrackingFiscalYearOptions,
@@ -431,13 +432,13 @@ function BudgetTrackingDetailView() {
     () => splitUnifiedWorkflowStepsByLane(workflowSteps, arrWorkflowStageDefinitions),
     [workflowSteps, arrWorkflowStageDefinitions]
   );
-  // External results are recorded by the division (as-is steps 12-16), not by the directors
-  const blnIsDirector = String(user?.role?.role_group || '').toLowerCase() === 'executive';
+  // External results are recorded by the division (as-is steps 12-16), not by directors or the main administrator
+  const blnIsDivision = canActAsDivision(user);
   const blnShowExternalStageUpdate = useMemo(
-    () => !blnIsDirector
+    () => blnIsDivision
       && isExternalStageUpdatePanelVisible(objRecord, activeWorkflow, arrWorkflowStageDefinitions)
       && externalSteps.length > 0,
-    [blnIsDirector, objRecord, activeWorkflow, arrWorkflowStageDefinitions, externalSteps.length]
+    [blnIsDivision, objRecord, activeWorkflow, arrWorkflowStageDefinitions, externalSteps.length]
   );
   const blnWorkflowFullyApproved = useMemo(
     () => isUnifiedBudgetWorkflowFullyApproved(activeWorkflow, arrWorkflowStageDefinitions),

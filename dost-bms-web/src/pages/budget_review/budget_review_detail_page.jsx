@@ -49,6 +49,7 @@ import {
 } from '../../utils/budget_request_utils';
 import { DEFAULT_COST_STRUCTURE, normalizeCostStructure } from '../../utils/cost_structure';
 import { useAuth } from '../../context/auth_context';
+import { canActAsDivision } from '../../utils/permissions';
 import { formatTimestamp, toTitleCase } from '../../utils/formatters';
 
 const REVIEWABLE_STATUSES = ['submitted'];
@@ -87,9 +88,10 @@ export default function BudgetReviewDetailPage() {
 
   const strApiStatus = objBudgetRequest?.br_status || '';
   const strStatus = toTitleCase(strApiStatus || 'draft');
-  const isReviewable = REVIEWABLE_STATUSES.includes(strApiStatus.toLowerCase());
+  // Only the division acts; the main administrator sees the same page without the decision buttons
+  const isReviewable = canActAsDivision(user) && REVIEWABLE_STATUSES.includes(strApiStatus.toLowerCase());
   const isAlreadyReviewed = REVIEWED_STATUSES.includes(strApiStatus.toLowerCase());
-  const isValidatable = strApiStatus.toLowerCase() === 'approved';
+  const isValidatable = canActAsDivision(user) && strApiStatus.toLowerCase() === 'approved';
 
   const workflowSteps = useMemo(
     () => getWorkflowSteps(
