@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import PageHeader from '../../components/layout/page_header';
 import { fetchAllSchemas, getBudgetRequests, getFiscalYears, getUsers } from '../../api';
+import { getBudgetCycles } from '../../api/settings_api';
 import { extractApiRows } from '../../utils/budget_request_utils';
 import { formatTimestamp, toTitleCase } from '../../utils/formatters';
 import { ActivityTable } from './central_office_work';
@@ -32,17 +33,19 @@ export function AdminSetupCards() {
   const [arrSchemas, setArrSchemas] = useState([]);
   const [arrYears, setArrYears] = useState([]);
   const [arrUsers, setArrUsers] = useState([]);
+  const [arrCycles, setArrCycles] = useState([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnFailed, setBlnFailed] = useState(false);
 
   useEffect(() => {
     let blnMounted = true;
-    Promise.all([fetchAllSchemas(), getFiscalYears(), getUsers(1, 100)])
-      .then(([arrFormSchemas, objYears, objUsers]) => {
+    Promise.all([fetchAllSchemas(), getFiscalYears(), getUsers(1, 100), getBudgetCycles()])
+      .then(([arrFormSchemas, objYears, objUsers, arrCycleRows]) => {
         if (!blnMounted) return;
         setArrSchemas(arrFormSchemas);
         setArrYears(extractApiRows(objYears));
         setArrUsers(extractApiRows(objUsers));
+        setArrCycles(Array.isArray(arrCycleRows) ? arrCycleRows : []);
       })
       .catch(() => { if (blnMounted) setBlnFailed(true); })
       .finally(() => { if (blnMounted) setBlnLoading(false); });
@@ -78,12 +81,24 @@ export function AdminSetupCards() {
                 <span className={styles.amountValue}>{arrActiveYears.length > 0 ? arrActiveYears.join(', ') : 'None'}</span>
               </div>
             </div>
-            <div className={styles.linkRow}><Link to="/forms">Open the Forms module</Link></div>
+            <table className={styles.table}>
+              <thead><tr><th>Budget cycle</th><th>BP forms</th><th>Supporting documents</th><th>Set up</th></tr></thead>
+              <tbody>
+                {arrCycles.map((objCycle) => (
+                  <tr key={objCycle.fy_year}>
+                    <td>FY{objCycle.fy_year}</td>
+                    <td>{objCycle.enabled_form_ids.length}</td>
+                    <td>{objCycle.supporting_documents.length} ({objCycle.supporting_documents.filter((objDoc) => objDoc.required).length} required)</td>
+                    <td>{objCycle.configured ? 'Yes' : 'Not yet (all forms apply)'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className={styles.linkRow}><Link to="/budget-cycles">Open Budget Cycles</Link> · <Link to="/forms">Open the Forms module</Link></div>
           </>
         )}
         <p className={styles.footnote}>
           DOST said administrators set which forms and supporting documents are required for each budget cycle (written answers 2, 5, 7).
-          That per-cycle setting is not built yet.
         </p>
       </section>
 

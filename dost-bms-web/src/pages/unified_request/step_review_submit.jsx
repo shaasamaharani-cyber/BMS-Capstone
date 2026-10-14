@@ -29,7 +29,7 @@ const STATUS_TEXT = {
   none: { text: 'Not used', className: 'statusMuted' },
 };
 
-export default function StepReviewSubmit({ arrIssues, arrTotalsCheck, arrRequired, objSigned, arrSupporting = [], objSummary, strComment, blnSubmitting, blnSavingDraft, onSignedChange, onSupportingAdd, onSupportingRemove, onCommentChange, onGoToStep, onSubmit, onSaveDraft }) {
+export default function StepReviewSubmit({ arrIssues, arrTotalsCheck, arrRequired, objSigned, arrSupporting = [], arrCycleDocs = [], objSummary, strComment, blnSubmitting, blnSavingDraft, onSignedChange, onSupportingAdd, onSupportingRemove, onCommentChange, onGoToStep, onSubmit, onSaveDraft }) {
   const arrSignable = arrRequired.filter((objEntry) => getFormById(objEntry.formId)?.engine === FORM_ENGINE.DYNAMIC && getFormById(objEntry.formId)?.level === FORM_LEVEL.REQUEST);
   const blnReady = arrIssues.length === 0;
 
@@ -93,10 +93,23 @@ export default function StepReviewSubmit({ arrIssues, arrTotalsCheck, arrRequire
       </section>
 
       <section className={styles.card}>
-        <h3 className={styles.cardTitle}>Supporting documents (optional)</h3>
-        <p className={styles.cardHint}>Quotes, plans or other documents the reviewer may need. The list DOST requires for each budget cycle will be set by an administrator later.</p>
-        {arrSupporting.length === 0 && <p className={styles.emptyCell}>No supporting documents added.</p>}
-        {arrSupporting.map((objFile) => (
+        <h3 className={styles.cardTitle}>Supporting documents</h3>
+        <p className={styles.cardHint}>The documents this year's budget cycle lists (set by the administrator), then any other documents the reviewer may need.</p>
+        {arrCycleDocs.map((objDoc) => {
+          const objFile = arrSupporting.find((objCandidate) => objCandidate.docName === objDoc.name);
+          return (
+            <div key={objDoc.name} className={styles.overrideRow}>
+              <span><strong>{objDoc.name}</strong> {objDoc.required ? '(required)' : '(optional)'} <span className={styles.subText}>{objFile ? objFile.name : 'No file uploaded'}</span></span>
+              <label className={styles.uploadButton}>
+                {objFile ? 'Replace file' : 'Upload'}
+                <input type="file" accept=".pdf,image/png,image/jpeg" hidden onChange={(objEvent) => { const objPicked = objEvent.target.files?.[0]; if (objPicked) onSupportingAdd([objPicked], objDoc.name); objEvent.target.value = ''; }} />
+              </label>
+            </div>
+          );
+        })}
+        <p className={styles.fieldLabel}>Other documents (optional)</p>
+        {arrSupporting.filter((objFile) => !objFile.docName).length === 0 && <p className={styles.emptyCell}>No other documents added.</p>}
+        {arrSupporting.filter((objFile) => !objFile.docName).map((objFile) => (
           <div key={objFile.id} className={styles.overrideRow}>
             <span>{objFile.name}</span>
             <Button variant="ghost" size="sm" onClick={() => onSupportingRemove(objFile.id)} aria-label={`Remove ${objFile.name}`}>Remove</Button>
@@ -140,6 +153,7 @@ StepReviewSubmit.propTypes = {
   blnSavingDraft: PropTypes.bool,
   onSignedChange: PropTypes.func.isRequired,
   arrSupporting: PropTypes.array,
+  arrCycleDocs: PropTypes.array,
   onSupportingAdd: PropTypes.func.isRequired,
   onSupportingRemove: PropTypes.func.isRequired,
   onCommentChange: PropTypes.func.isRequired,

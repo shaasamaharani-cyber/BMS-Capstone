@@ -38,8 +38,6 @@ export const AUTOMATION_LABELS = {
   manual: 'Manual input',
 };
 
-const CYCLE_CONFIG_KEY_PREFIX = 'dost-bms.cycle-forms.';
-
 // Source: team research (Brandon Findlay, FY2027 BP form analysis). Rules and owners are proposals pending DOST confirmation.
 export const BP_FORM_CATALOG = [
   { id: 'bp-a', code: 'BP Form A', name: 'Program Budget Matrix', level: FORM_LEVEL.REQUEST, engine: FORM_ENGINE.DYNAMIC, automation: AUTOMATION_LEVEL.AUTO_PLUS, completedBy: 'Proposing office, reviewed by Budget Office' },
@@ -67,29 +65,4 @@ export const BP_FORM_CATALOG = [
 
 export function getFormById(strFormId) {
   return BP_FORM_CATALOG.find((objForm) => objForm.id === strFormId) || null;
-}
-
-// The administrator picks which forms apply to a budget cycle. Until an admin screen exists (Phase 2 backend), the choice is
-// kept in localStorage per fiscal year and defaults to every form in the catalogue.
-export function getEnabledFormIds(intFiscalYear) {
-  const arrAllIds = BP_FORM_CATALOG.map((objForm) => objForm.id);
-  if (!intFiscalYear) return arrAllIds;
-
-  try {
-    const strStored = localStorage.getItem(`${CYCLE_CONFIG_KEY_PREFIX}${intFiscalYear}`);
-    if (!strStored) return arrAllIds;
-    const arrStored = JSON.parse(strStored);
-    return Array.isArray(arrStored) ? arrStored : arrAllIds;
-  } catch {
-    return arrAllIds;
-  }
-}
-
-export function saveEnabledFormIds(intFiscalYear, arrFormIds) {
-  if (!intFiscalYear) return;
-  try {
-    localStorage.setItem(`${CYCLE_CONFIG_KEY_PREFIX}${intFiscalYear}`, JSON.stringify(arrFormIds));
-  } catch {
-    // Storage unavailable - configuration simply stays at its default
-  }
 }

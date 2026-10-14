@@ -39,6 +39,7 @@ import FormBuilder from '../pages/forms/form_builder';
 import FormsDataPage from '../pages/forms/forms_data_page';
 import SettingsPage from '../pages/settings/settings_page';
 import UsersPage from '../pages/users/users_page';
+import BudgetCyclesPage from '../pages/budget_cycles/budget_cycles_page';
 import NotFoundPage from '../pages/not_found/not_found_page';
 
 export default function AppRouter() {
@@ -116,6 +117,9 @@ export default function AppRouter() {
           } />
           <Route path="forms/:schemaId/entries/:entryId" element={
             <PermissionRoute permission={PERMISSIONS.FORMS}><EntryPage /></PermissionRoute>
+          } />
+          <Route path="budget-cycles" element={
+            <PermissionRoute permission={PERMISSIONS.BUDGET_CYCLES}><BudgetCyclesPage /></PermissionRoute>
           } />
           <Route path="users" element={
             <PermissionRoute permission={PERMISSIONS.USERS}><UsersPage /></PermissionRoute>

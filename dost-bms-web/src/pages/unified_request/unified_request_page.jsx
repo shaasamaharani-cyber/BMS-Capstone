@@ -48,7 +48,8 @@ import {
   fetchPlanningPeriodsForPage,
   fetchRequestingUnitsForBudgetPage,
 } from '../../utils/budget_request_utils';
-import { BP_FORM_CATALOG, FORM_LEVEL, getEnabledFormIds, getFormById } from '../../bp_forms/bp_form_catalog';
+import { BP_FORM_CATALOG, FORM_LEVEL, getFormById } from '../../bp_forms/bp_form_catalog';
+import { getBudgetCycle } from '../../api/settings_api';
 import { evaluateRequiredForms, countUnansweredQuestions } from '../../bp_forms/bp_form_rules';
 import { getFormCompletion, resolveCommonValues } from '../../bp_forms/bp_form_fields';
 import { buildTotalsCheck, collectSubmissionIssues, STEP_IDS } from '../../utils/unified_request_checks';
@@ -86,12 +87,21 @@ function signedFromAttachedFiles(arrFiles) {
   return objSigned;
 }
 
-// Supporting documents (quotes, plans...; DOST answer 7) travel as attachments named "Supporting - <file name>"
+// Supporting documents (quotes, plans...; DOST answer 7) travel as attachments named "Supporting - <file name>",
+// or "Supporting [<document>] - <file name>" when the file is for a document the budget cycle lists
 const SUPPORTING_PREFIX = 'Supporting - ';
+const SUPPORTING_NAMED_PATTERN = /^Supporting [(.+?)] - (.+)$/;
+const supportingFileName = (objFile) => (objFile.docName ? `Supporting [${objFile.docName}] - ${objFile.name}` : `${SUPPORTING_PREFIX}${objFile.name}`);
 function supportingFromAttachedFiles(arrFiles) {
-  return (arrFiles || [])
-    .filter((objFile) => String(objFile.name || '').startsWith(SUPPORTING_PREFIX))
-    .map((objFile) => ({ id: objFile.id, name: objFile.name.slice(SUPPORTING_PREFIX.length), size: objFile.size, type: objFile.type, lastModified: objFile.lastModified, url: objFile.url }));
+  return (arrFiles || []).flatMap((objFile) => {
+    const strName = String(objFile.name || '');
+    const arrNamed = strName.match(SUPPORTING_NAMED_PATTERN);
+    if (!arrNamed && !strName.startsWith(SUPPORTING_PREFIX)) return [];
+    return [{
+      id: objFile.id, docName: arrNamed ? arrNamed[1] : null, name: arrNamed ? arrNamed[2] : strName.slice(SUPPORTING_PREFIX.length),
+      size: objFile.size, type: objFile.type, lastModified: objFile.lastModified, url: objFile.url,
+    }];
+  });
 }
 
 // Signed copies and supporting files both count as unsaved changes
@@ -258,7 +268,16 @@ export default function UnifiedRequestPage() {
     [objRequest, strUnitName, strFiscalYearLabel]
   );
 
-  const arrEnabledFormIds = useMemo(() => getEnabledFormIds(Number(strFiscalYearLabel) || null), [strFiscalYearLabel]);
+  // The year's budget cycle (set by the administrator): which forms apply and which documents to attach
+  const [objCycle, setObjCycle] = useState(null);
+  useEffect(() => {
+    let blnCurrent = true;
+    if (!strFiscalYearLabel) { setObjCycle(null); return undefined; }
+    getBudgetCycle(strFiscalYearLabel).then((objLoaded) => { if (blnCurrent) setObjCycle(objLoaded); }).catch(() => { if (blnCurrent) setObjCycle(null); });
+    return () => { blnCurrent = false; };
+  }, [strFiscalYearLabel]);
+  const arrCycleDocs = useMemo(() => objCycle?.supporting_documents || [], [objCycle]);
+  const arrEnabledFormIds = useMemo(() => objCycle?.enabled_form_ids || BP_FORM_CATALOG.map((objForm) => objForm.id), [objCycle]);
 
   const { arrRequired, arrNotInCycle } = useMemo(
     () => evaluateRequiredForms(objAnswers, objTotals, objCommon, arrEnabledFormIds, objOverrides),
@@ -285,8 +304,8 @@ export default function UnifiedRequestPage() {
   );
 
   const arrIssues = useMemo(
-    () => collectSubmissionIssues({ objRequest, arrLineItems, objAnswers, arrRequired, objContext, objSigned, objTotalsCheck: arrTotalsCheck }),
-    [objRequest, arrLineItems, objAnswers, arrRequired, objContext, objSigned, arrTotalsCheck]
+    () => collectSubmissionIssues({ objRequest, arrLineItems, objAnswers, arrRequired, objContext, objSigned, objTotalsCheck: arrTotalsCheck, arrCycleDocs, arrSupporting }),
+    [objRequest, arrLineItems, objAnswers, arrRequired, objContext, objSigned, arrTotalsCheck, arrCycleDocs, arrSupporting]
   );
 
   const objHints = useMemo(() => {
@@ -370,11 +389,15 @@ export default function UnifiedRequestPage() {
     setObjSigned((objPrev) => ({ ...objPrev, [strFormId]: { id: `${strFormId}-${objFile.name}-${objFile.size}`, name: objFile.name, size: objFile.size, type: objFile.type || 'File', lastModified: objFile.lastModified, dataUrl: strDataUrl } }));
   };
 
-  const handleSupportingAdd = async (arrFiles) => {
+  // strDocName = one of the budget cycle's listed documents (one file each, replaced on a new upload); empty = other documents
+  const handleSupportingAdd = async (arrFiles, strDocName = null) => {
     const arrAdded = await Promise.all(arrFiles.map(async (objFile) => ({
-      id: `${objFile.name}-${objFile.size}-${objFile.lastModified}`, name: objFile.name, size: objFile.size, type: objFile.type || 'File', lastModified: objFile.lastModified, dataUrl: await readFileAsDataUrl(objFile),
+      id: `${strDocName || 'other'}-${objFile.name}-${objFile.size}-${objFile.lastModified}`, docName: strDocName, name: objFile.name, size: objFile.size, type: objFile.type || 'File', lastModified: objFile.lastModified, dataUrl: await readFileAsDataUrl(objFile),
     })));
-    setArrSupporting((arrPrev) => [...arrPrev, ...arrAdded.filter((objNew) => !arrPrev.some((objOld) => objOld.id === objNew.id))]);
+    setArrSupporting((arrPrev) => [
+      ...arrPrev.filter((objOld) => !strDocName || objOld.docName !== strDocName),
+      ...arrAdded.filter((objNew) => !arrPrev.some((objOld) => objOld.id === objNew.id)),
+    ]);
   };
 
   const handleSupportingRemove = (strId) => setArrSupporting((arrPrev) => arrPrev.filter((objFile) => objFile.id !== strId));
@@ -396,7 +419,7 @@ export default function UnifiedRequestPage() {
     br_requesting_unit_id: Number(objRequest.unitId),
     br_attached_files: [
       ...Object.entries(objSigned).map(([strFormId, objFile]) => ({ ...objFile, name: `Signed - ${getFormById(strFormId)?.code} - ${objFile.name}` })),
-      ...arrSupporting.map((objFile) => ({ ...objFile, name: `${SUPPORTING_PREFIX}${objFile.name}` })),
+      ...arrSupporting.map((objFile) => ({ ...objFile, name: supportingFileName(objFile) })),
     ],
     // Everything the forms need, so a saved draft reopens exactly where it was and the backend can rebuild the forms
     br_unified_request: {
@@ -590,6 +613,7 @@ export default function UnifiedRequestPage() {
               blnSavingDraft={blnSavingDraft}
               onSignedChange={handleSignedChange}
               arrSupporting={arrSupporting}
+              arrCycleDocs={arrCycleDocs}
               onSupportingAdd={handleSupportingAdd}
               onSupportingRemove={handleSupportingRemove}
               onCommentChange={setStrComment}

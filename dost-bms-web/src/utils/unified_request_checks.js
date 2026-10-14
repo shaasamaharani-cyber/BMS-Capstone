@@ -42,7 +42,7 @@ export function buildTotalsCheck(objTotals, objSnapshot, arrRequiredFormIds) {
 }
 
 /** Returns the list of things still blocking submission: [{ id, step, message }]. An empty list means ready. */
-export function collectSubmissionIssues({ objRequest, arrLineItems, objAnswers, arrRequired, objContext, objSigned, objTotalsCheck }) {
+export function collectSubmissionIssues({ objRequest, arrLineItems, objAnswers, arrRequired, objContext, objSigned, objTotalsCheck, arrCycleDocs = [], arrSupporting = [] }) {
   const arrIssues = [];
   const add = (strId, strStep, strMessage) => arrIssues.push({ id: strId, step: strStep, message: strMessage });
 
@@ -77,6 +77,11 @@ export function collectSubmissionIssues({ objRequest, arrLineItems, objAnswers, 
     if (objForm?.engine === FORM_ENGINE.DYNAMIC && objForm.level === FORM_LEVEL.REQUEST && !objSigned[objEntry.formId]) {
       add(`signed-${objEntry.formId}`, 'review', `Upload the signed copy of ${objForm.code}.`);
     }
+  });
+
+  // Supporting documents the budget cycle marks as required (DOST answer 7)
+  arrCycleDocs.filter((objDoc) => objDoc.required).forEach((objDoc) => {
+    if (!arrSupporting.some((objFile) => objFile.docName === objDoc.name)) add(`doc-${objDoc.name}`, 'review', `Upload the ${objDoc.name}.`);
   });
 
   objTotalsCheck.forEach((objRow) => {
