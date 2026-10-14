@@ -1,4 +1,5 @@
 import { resolveRequestActor } from '../services/requestActor.mjs';
+import { BP_FORM_CATALOG } from '../../../src/bp_forms/bp_form_catalog.js';
 
 // Team defaults until DOST confirms its own targets (same colour bands as Team 27's dashboard)
 const DEFAULT_SETTINGS = { attention_below: 90, amber_below: 75, due_soon_days: 14 };
@@ -7,6 +8,17 @@ const DEFAULT_SETTINGS = { attention_below: 90, amber_below: 75, due_soon_days: 
 const LOCKED_STAGE_KEYS = ['draft', 'finance_planning_director'];
 
 const readSettings = (db) => ({ ...DEFAULT_SETTINGS, ...(db.find('app-settings', 1) || {}) });
+
+// A budget cycle = one fiscal year's required BP forms and supporting documents (DOST answers 2, 5, 7).
+// Until an administrator sets it, every form in the catalogue applies and no documents are listed.
+const ALL_FORM_IDS = BP_FORM_CATALOG.map((objForm) => objForm.id);
+const readCycle = (db, strYear) => ({
+  fy_year: String(strYear),
+  enabled_form_ids: ALL_FORM_IDS,
+  supporting_documents: [],
+  configured: false,
+  ...(db.find('budget-cycles', strYear) || {}),
+});
 
 function logChange(db, actor, strArea, strDetails) {
   const id = db.nextId('admin-change-logs');
@@ -27,9 +39,10 @@ function logChange(db, actor, strArea, strDetails) {
 export async function handleSettings(ctx) {
   const { db, json, parts, req, res, payload } = ctx;
   const blnSettings = parts[0] === 'settings';
+  const blnCycles = parts[0] === 'budget-cycles';
   const blnWrite = req.method !== 'GET'
     && ['approval-workflow-stages', 'requesting-units', 'fiscal-years'].includes(parts[0]);
-  if (!blnSettings && !blnWrite) return false;
+  if (!blnSettings && !blnCycles && !blnWrite) return false;
 
   const actor = resolveRequestActor(db, req);
   if (!actor) {
@@ -38,6 +51,16 @@ export async function handleSettings(ctx) {
   }
   if (req.method === 'GET' && blnSettings && parts.length === 1) {
     json(res, 200, { data: readSettings(db) });
+    return true;
+  }
+  // Every signed-in user may read a cycle: the request wizard needs the year's forms and documents
+  if (req.method === 'GET' && blnCycles && parts[1]) {
+    json(res, 200, { data: readCycle(db, parts[1]) });
+    return true;
+  }
+  if (req.method === 'GET' && blnCycles) {
+    const arrOpenYears = db.rows('fiscal-years').filter((row) => Number(row.fy_is_active) === 1).map((row) => String(row.fy_year)).sort();
+    json(res, 200, { data: arrOpenYears.map((strYear) => readCycle(db, strYear)) });
     return true;
   }
   if (String(actor.role?.role_group || '').toLowerCase() !== 'admin') {
@@ -96,6 +119,48 @@ export async function handleSettings(ctx) {
     db.upsert('approval-workflow-stages', objStage.id, { ...objStage, aws_is_active: intActive });
     logChange(db, actor, 'Approval stages', `${objStage.aws_name}: ${intActive ? 'turned on' : 'turned off'} (new budgets only)`);
     json(res, 200, { data: db.find('approval-workflow-stages', objStage.id) });
+    return true;
+  }
+
+  if (req.method === 'PUT' && blnCycles && parts[1]) {
+    const strYear = String(parts[1]);
+    if (!db.rows('fiscal-years').some((row) => String(row.fy_year) === strYear)) {
+      json(res, 404, { message: 'Fiscal year not found' });
+      return true;
+    }
+    const arrFormIds = [...new Set(Array.isArray(payload.enabled_form_ids) ? payload.enabled_form_ids.map(String) : [])];
+    if (arrFormIds.length === 0 || arrFormIds.some((strId) => !ALL_FORM_IDS.includes(strId))) {
+      json(res, 422, { message: 'Choose at least one BP form from the list.' });
+      return true;
+    }
+    const arrDocs = (Array.isArray(payload.supporting_documents) ? payload.supporting_documents : [])
+      .map((objDoc) => ({ name: String(objDoc?.name || '').trim(), required: Boolean(objDoc?.required) }));
+    const arrNames = arrDocs.map((objDoc) => objDoc.name.toLowerCase());
+    if (arrDocs.some((objDoc) => !objDoc.name || objDoc.name.length > 100) || new Set(arrNames).size !== arrNames.length) {
+      json(res, 422, { message: 'Each supporting document needs a different name (up to 100 characters).' });
+      return true;
+    }
+    const objBefore = readCycle(db, strYear);
+    const arrAdded = arrFormIds.filter((strId) => !objBefore.enabled_form_ids.includes(strId));
+    const arrRemoved = objBefore.enabled_form_ids.filter((strId) => !arrFormIds.includes(strId));
+    const strCode = (strId) => BP_FORM_CATALOG.find((objForm) => objForm.id === strId)?.code;
+    const arrDetails = [
+      arrAdded.length ? `forms added: ${arrAdded.map(strCode).join(', ')}` : '',
+      arrRemoved.length ? `forms removed: ${arrRemoved.map(strCode).join(', ')}` : '',
+      JSON.stringify(objBefore.supporting_documents) !== JSON.stringify(arrDocs)
+        ? `documents: ${arrDocs.map((objDoc) => `${objDoc.name}${objDoc.required ? ' (required)' : ''}`).join(', ') || 'none'}` : '',
+    ].filter(Boolean);
+    db.upsert('budget-cycles', strYear, {
+      id: strYear,
+      fy_year: strYear,
+      enabled_form_ids: arrFormIds,
+      supporting_documents: arrDocs,
+      configured: true,
+      updated_by: actor.usr_name,
+      updated_at: new Date().toISOString(),
+    });
+    if (arrDetails.length) logChange(db, actor, `Budget cycle FY${strYear}`, arrDetails.join('; '));
+    json(res, 200, { data: readCycle(db, strYear) });
     return true;
   }
 
