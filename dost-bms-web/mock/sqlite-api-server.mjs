@@ -184,6 +184,14 @@ async function handle(req, res) {
     ? url.pathname.slice(API_PREFIX.length)
     : url.pathname;
   const parts = path.split('/').filter(Boolean);
+
+  // A deactivated account's token stops working everywhere, not only at login
+  const strTokenUserId = String(req.headers.authorization || '').replace(/^Bearer\s+mock-token-uid-/i, '');
+  const objTokenUser = /^\d+$/.test(strTokenUserId) ? db.find('users', strTokenUserId) : null;
+  if (objTokenUser && Number(objTokenUser.usr_is_active) === 0) {
+    return json(res, 401, { message: 'Unauthenticated.' });
+  }
+
   const payload = ['POST', 'PUT', 'PATCH'].includes(req.method)
     ? await readJsonBody(req)
     : {};
