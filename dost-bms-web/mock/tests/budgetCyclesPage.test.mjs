@@ -3,7 +3,7 @@ import test from 'node:test';
 import { JSDOM } from 'jsdom';
 import { createServer } from 'vite';
 import { BP_FORM_CATALOG } from '../../src/bp_forms/bp_form_catalog.js';
-import { evaluateRequiredForms } from '../../src/bp_forms/bp_form_rules.js';
+import { evaluateRequiredForms, PROPOSAL_QUESTIONS } from '../../src/bp_forms/bp_form_rules.js';
 import { getFormCompletion } from '../../src/bp_forms/bp_form_fields.js';
 
 test('Add BP form works without randomUUID, saves to any open year, and keeps closed years read-only', async () => {
@@ -72,10 +72,18 @@ test('Add BP form works without randomUUID, saves to any open year, and keeps cl
     await fill('#editor-label-0', 'Project title');
     await choose('#editor-type-0', 'text');
     await choose('#requirement-mode', 'conditional');
+    await click(button('+ Add Question Condition'));
     await choose('#condition-match', 'all');
-    await click(button('+ Add condition'));
-    await choose('#condition-field-1', 'grandTotal');
-    await fill('#condition-value-1', '99');
+    assert.deepEqual([...document.querySelector('#condition-field-0').options].filter((option) => option.value).map((option) => ({ id: option.value, label: option.textContent })), PROPOSAL_QUESTIONS.map((question) => ({ id: question.id, label: question.label })));
+    for (const question of PROPOSAL_QUESTIONS) {
+      await choose('#condition-field-0', question.id);
+      assert.deepEqual([...document.querySelector('#condition-value-0').options].map((option) => ({ value: option.value, label: option.textContent })), question.options);
+    }
+    await choose('#condition-field-0', 'proposalTier');
+    await choose('#condition-value-0', 'tier2');
+    await click(button('+ Add Question Condition'));
+    await choose('#condition-field-1', 'hasClimate');
+    await choose('#condition-value-1', 'yes');
     await click(button('+ Add field'));
     await fill('#editor-label-1', 'Estimated cost');
     await choose('#editor-type-1', 'number');
@@ -146,7 +154,7 @@ test('Add BP form works without randomUUID, saves to any open year, and keeps cl
     const totals = { grandTotal: 100, psTotal: 0, mooeTotal: 100, coTotal: 0, tagTotal: 0 };
     const tier1 = evaluateRequiredForms({ proposalTier: 'tier1' }, totals, {}, savedCycle.enabled_form_ids, {}, savedCycle.custom_forms, savedCycle.form_configs);
     assert.ok(!tier1.arrRequired.some((entry) => entry.formId === custom.id));
-    const required = evaluateRequiredForms({ proposalTier: 'tier2' }, totals, {}, savedCycle.enabled_form_ids, {}, savedCycle.custom_forms, savedCycle.form_configs).arrRequired.filter((entry) => entry.formId === custom.id);
+    const required = evaluateRequiredForms({ proposalTier: 'tier2', hasClimate: 'yes' }, totals, {}, savedCycle.enabled_form_ids, {}, savedCycle.custom_forms, savedCycle.form_configs).arrRequired.filter((entry) => entry.formId === custom.id);
     let savedValues = {};
     function RequesterHarness({ initialValues }) {
       const [values, setValues] = React.useState(initialValues);

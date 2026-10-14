@@ -7,7 +7,7 @@ import { BP_FORM_CATALOG, FORM_ENGINE, getCycleFormCatalog } from '../../src/bp_
 import { evaluateRequiredForms, PROPOSAL_QUESTIONS } from '../../src/bp_forms/bp_form_rules.js';
 import { buildTotalsCheck, collectSubmissionIssues } from '../../src/utils/unified_request_checks.js';
 import { signedFromAttachedFiles } from '../../src/utils/unified_request_form_attachments.js';
-import { buildFormView, getDefaultFormDefinition, getFormCompletion, getFormDefinition } from '../../src/bp_forms/bp_form_fields.js';
+import { buildFormView, getDefaultFormDefinition, getFormCompletion, getFormDefinition, getFormContent } from '../../src/bp_forms/bp_form_fields.js';
 import { getDefaultRequirement } from '../../src/bp_forms/bp_form_rules.js';
 import { validateFormConfig } from '../../src/bp_forms/bp_form_configuration.js';
 import { captureRequestFormConfiguration, validateConfiguredSubmission } from '../server/services/requestFormConfiguration.mjs';
@@ -20,14 +20,17 @@ const defaultIds = BP_FORM_CATALOG.map((form) => form.id);
 
 function fixture() {
   const resources = new Map(Object.entries({
-    users: [{ id: 1, usr_id: 1, usr_name: 'Main Administrator', usr_role_id: 1 }, { id: 2, usr_id: 2, usr_name: 'Requester', usr_role_id: 2 }, { id: 3, usr_id: 3, usr_name: 'Technical Administrator', usr_role_id: 3 }],
+    users: [{ id: 1, usr_id: 1, usr_name: 'Main Administrator', usr_role_id: 1 }, { id: 2, usr_id: 2, usr_name: 'Requester', usr_role_id: 2, usr_requesting_unit_id: 1 }, { id: 3, usr_id: 3, usr_name: 'Technical Administrator', usr_role_id: 3 }],
     roles: [{ id: 1, role_id: 1, role_group: 'admin', role_name: 'main_administrator' }, { id: 2, role_id: 2, role_group: 'requester' }, { id: 3, role_id: 3, role_group: 'admin', role_name: 'technical_administrator' }],
+    'requesting-units': [{ id: 1, ru_id: 1, ru_name: 'Central Office' }],
+    'budget-categories': [{ id: 1, bcat_id: 1, bcat_code: 'MOOE' }],
     'fiscal-years': [{ id: 1, fy_id: 1, fy_year: '2027', fy_is_active: 1 }, { id: 2, fy_id: 2, fy_year: '2028', fy_is_active: 1 }, { id: 3, fy_id: 3, fy_year: '2026', fy_is_active: 0 }],
   }));
   const db = {
     rows: (resource) => structuredClone(resources.get(resource) || []),
     find: (resource, id) => structuredClone((resources.get(resource) || []).find((row) => String(row.id) === String(id)) || null),
     nextId: (resource) => Math.max(0, ...db.rows(resource).map((row) => Number(row.id))) + 1,
+    remove: (resource, id) => resources.set(resource, db.rows(resource).filter((row) => String(row.id) !== String(id))),
     upsert: (resource, id, value) => resources.set(resource, [...db.rows(resource).filter((row) => String(row.id) !== String(id)), structuredClone(value)]),
   };
   async function request(method, path, payload = {}, actorId = 1) {
@@ -151,16 +154,16 @@ function submission(changes = {}) {
   return collectSubmissionIssues({
     arrCatalog: getCycleFormCatalog({ custom_forms: [{ ...newForm(), engine: FORM_ENGINE.MANUAL }] }),
     objRequest: { title: 'Proposal', unitId: 1, fiscalYearId: 1, fundingSource: 'national_government' },
-    arrLineItems: [{ name: 'Supplies', amount: 100 }],
+    arrLineItems: [{ name: 'Supplies', category: 'MOOE', amount: 100 }],
     objAnswers: Object.fromEntries(PROPOSAL_QUESTIONS.map((question) => [question.key, 'no'])),
     arrRequired: [{ formId: 'custom-208' }],
-    objContext: { formValues: {} }, objSigned: {}, objTotalsCheck: [], ...changes,
+    objSigned: {}, objTotalsCheck: [], ...changes, objContext: { ...changes.objContext, formValues: changes.objContext?.formValues || {}, enabledFormIds: ['custom-208'] },
   });
 }
 
 test('manual request forms require completion and signed uploads; agency forms do not block requesters', () => {
   assert.deepEqual(submission().map((issue) => issue.id), ['form-custom-208', 'signed-custom-208']);
-  assert.deepEqual(submission({ objContext: { formValues: { 'custom-208': { __done: true } } }, objSigned: { 'custom-208': { name: 'signed.pdf' } } }), []);
+  assert.deepEqual(submission({ objContext: { formValues: { 'custom-208': { __done: true } } }, objSigned: { 'custom-208': { name: 'signed.pdf', formContent: getFormContent('custom-208', { formValues: { 'custom-208': { __done: true } } }) } } }), []);
   assert.deepEqual(submission({ arrCatalog: getCycleFormCatalog({ custom_forms: [newForm({ level: 'agency', engine: FORM_ENGINE.MANUAL })] }) }), []);
 });
 
@@ -175,7 +178,7 @@ test('saved signed copies for custom forms reopen by stable ID even after the fo
 
 const textField = (changes = {}) => ({ key: 'projectName', label: 'Project name', source: 'user', type: 'text', required: true, ...changes });
 const tierCondition = (changes = {}) => ({ id: 'tier', field: 'proposalTier', operator: 'equals', value: 'tier2', enabled: true, ...changes });
-const formConfig = (changes = {}) => ({ level: 'request', fields: [textField()], requirement: { mode: 'conditional', match: 'any', enabled: true, conditions: [tierCondition()] }, ...changes });
+const formConfig = (changes = {}) => ({ level: 'request', fields: [textField()], requirement: { mode: 'conditional', match: 'any', enabled: true, allowOverride: false, conditions: [tierCondition()] }, ...changes });
 
 test('existing and new form fields and requirements are saved for the chosen year only', async () => {
   const { request } = fixture();
@@ -231,6 +234,8 @@ test('conditional new forms follow tier changes and optional forms can still be 
   const evaluate = (tier, overrides = {}) => evaluateRequiredForms({ proposalTier: tier }, {}, {}, ['custom-208'], overrides, [newForm()], configs);
   assert.deepEqual(evaluate('tier1').arrRequired, []);
   assert.equal(evaluate('tier2').arrRequired[0].formId, 'custom-208');
+  assert.equal(evaluate('tier2', { 'custom-208': { action: 'remove', reason: 'Handled by partner' } }).arrRequired.length, 1, 'Administrator-mandated form cannot be removed by default');
+  configs['custom-208'].requirement.allowOverride = true;
   assert.deepEqual(evaluate('tier2', { 'custom-208': { action: 'remove', reason: 'Handled by partner' } }).arrRequired, []);
   configs['custom-208'].requirement.mode = 'optional';
   assert.deepEqual(evaluate('tier2').arrRequired, []);
@@ -281,11 +286,12 @@ test('server captures trusted definitions, retains filled draft values, and vali
   const unified = { answers: { proposalTier: 'tier2' }, request: { fundingSource: 'national_government' }, formConfigs: { 'custom-208': formConfig({ fields: [] }) }, formValues: { 'custom-208': { projectName: 'Saved research proposal' } }, requiredForms: [] };
   const captured = captureRequestFormConfiguration(db, unified, 1);
   assert.deepEqual(captured.formConfigs['custom-208'], config);
-  const draft = saveBudgetRequest(db, { br_fiscal_year_id: 1, br_requesting_unit_id: 1, br_title: 'Draft', br_unified_request: unified, br_attached_files: [] });
+  const draft = saveBudgetRequest(db, { br_fiscal_year_id: 1, br_requesting_unit_id: 1, br_title: 'Draft', br_unified_request: unified, br_attached_files: [], items: [{ bri_category_id: 1, bri_description: 'Supplies', bri_planned_amount: 100 }] });
   assert.equal(draft.br_unified_request.formValues['custom-208'].projectName, 'Saved research proposal');
   assert.deepEqual(draft.br_unified_request.formConfigs['custom-208'], config);
   assert.match(validateConfiguredSubmission(db, draft).errors.join(' '), /signed copy/);
-  const complete = { ...draft, br_attached_files: [{ formId: 'custom-208', name: 'Signed - BP Form 208 - scan.pdf', url: '/scan.pdf', formDefinition: JSON.stringify(getFormDefinition('custom-208', { formConfigs: captured.formConfigs })) }] };
+  const context = { common: {}, totals: {}, lineItems: [], formConfigs: captured.formConfigs, formValues: unified.formValues };
+  const complete = saveBudgetRequest(db, { br_attached_files: [{ formId: 'custom-208', name: 'Signed - BP Form 208 - scan.pdf', dataUrl: 'data:application/pdf;base64,JVBERi0xCg==', formDefinition: JSON.stringify(getFormDefinition('custom-208', context)), formContent: getFormContent('custom-208', context) }] }, draft);
   assert.deepEqual(validateConfiguredSubmission(db, complete).errors, []);
   const incomplete = { ...complete, br_unified_request: { ...complete.br_unified_request, formValues: {}, formConfigs: {} } };
   assert.match(validateConfiguredSubmission(db, incomplete).errors.join(' '), /Project name/);
@@ -296,7 +302,7 @@ test('server captures trusted definitions, retains filled draft values, and vali
 test('submit endpoint rejects missing configured fields even if a client claims no forms are required', async () => {
   const { request, db } = fixture();
   await request('PUT', 'budget-cycles/2027', { enabled_form_ids: ['bp-a'], form_configs: { 'bp-a': formConfig({ requirement: { mode: 'always', enabled: true, match: 'any', conditions: [] } }) } });
-  db.upsert('budget-requests', 1, { id: 1, br_id: 1, br_fiscal_year_id: 1, br_status: 'draft', br_unified_request: { requiredForms: [], formValues: {}, formConfigs: {} } });
+  db.upsert('budget-requests', 1, { id: 1, br_id: 1, br_fiscal_year_id: 1, br_status: 'draft', br_requesting_unit_id: 1, br_unified_request: { requiredForms: [], formValues: {}, formConfigs: {} } });
   let response;
   await handleBudgetRequests({ db, parts: ['budget-requests', '1', 'submit'], payload: {}, req: { method: 'POST', headers: { authorization: 'Bearer mock-token-uid-2' } }, res: {}, json: (_, status, body) => { response = { status, ...body }; } });
   assert.equal(response.status, 422);
@@ -309,7 +315,7 @@ test('submission cannot bypass conditions by omitting proposal answers or supply
   const config = formConfig({ requirement: { mode: 'conditional', enabled: true, match: 'all', conditions: [tierCondition(), tierCondition({ id: 'amount', field: 'mooeTotal', operator: 'gte', value: 100 })] } });
   await request('PUT', 'budget-cycles/2027', { custom_forms: [newForm()], enabled_form_ids: ['custom-208'], form_configs: { 'custom-208': config } });
   const draft = { id: 1, br_id: 1, br_fiscal_year_id: 1, br_unified_request: { answers: {}, formValues: {}, totalsAtGeneration: { mooeTotal: 0 } } };
-  assert.match(validateConfiguredSubmission(db, draft).errors.join(' '), /proposal tier/);
+  assert.match(validateConfiguredSubmission(db, draft).errors.join(' '), /budget tier/);
   draft.br_unified_request.answers.proposalTier = 'tier2';
   db.upsert('budget-categories', 1, { id: 1, bcat_id: 1, bcat_code: 'MOOE' });
   db.upsert('budget-request-items', 1, { id: 1, bri_br_id: 1, bri_category_id: 1, bri_planned_amount: 100 });
@@ -321,9 +327,10 @@ test('field changes invalidate an earlier signed copy while saved definitions re
   const { request, db } = fixture();
   const original = formConfig();
   await request('PUT', 'budget-cycles/2027', { custom_forms: [newForm()], enabled_form_ids: ['custom-208'], form_configs: { 'custom-208': original } });
-  const captured = captureRequestFormConfiguration(db, { answers: { proposalTier: 'tier2' }, formValues: { 'custom-208': { projectName: 'Proposal' } } }, 1);
+  const captured = captureRequestFormConfiguration(db, { answers: { proposalTier: 'tier2' }, request: { fundingSource: 'national_government' }, formValues: { 'custom-208': { projectName: 'Proposal' } } }, 1);
   const oldDefinition = JSON.stringify(getFormDefinition('custom-208', { formConfigs: captured.formConfigs }));
-  const draft = { br_id: 1, br_fiscal_year_id: 1, br_unified_request: captured, br_attached_files: [{ formId: 'custom-208', url: '/scan.pdf', formDefinition: oldDefinition }] };
+  const content = getFormContent('custom-208', { common: {}, totals: {}, lineItems: [], formConfigs: captured.formConfigs, formValues: captured.formValues });
+  const draft = saveBudgetRequest(db, { br_fiscal_year_id: 1, br_requesting_unit_id: 1, br_title: 'Proposal', br_unified_request: captured, items: [{ bri_category_id: 1, bri_description: 'Supplies', bri_planned_amount: 100 }], br_attached_files: [{ formId: 'custom-208', name: 'Signed - BP Form 208 - scan.pdf', dataUrl: 'data:application/pdf;base64,JVBERi0xCg==', formDefinition: oldDefinition, formContent: content }] });
   assert.deepEqual(validateConfiguredSubmission(db, draft).errors, []);
   await request('PUT', 'budget-cycles/2027', { enabled_form_ids: ['custom-208'], form_configs: { 'custom-208': formConfig({ fields: [textField({ label: 'Updated project name' })] }) } });
   assert.match(validateConfiguredSubmission(db, draft).errors.join(' '), /fields changed/);

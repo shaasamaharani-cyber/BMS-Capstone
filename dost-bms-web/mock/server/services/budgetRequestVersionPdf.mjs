@@ -132,7 +132,9 @@ function writeTotals(doc, totals = {}) {
   writeKeyValue(doc, 'PS', formatMoney(totals.psTotal));
   writeKeyValue(doc, 'MOOE', formatMoney(totals.mooeTotal));
   writeKeyValue(doc, 'CO', formatMoney(totals.coTotal));
-  writeKeyValue(doc, 'TAG', formatMoney(totals.tagTotal));
+  writeKeyValue(doc, 'FinEx', formatMoney(totals.finexTotal ?? 0));
+  writeKeyValue(doc, 'Legacy TAG (unclassified)', formatMoney(totals.tagTotal));
+  writeKeyValue(doc, 'Climate expenditure (included)', formatMoney(totals.climateTotal ?? 0));
   writeKeyValue(doc, 'Grand Total', formatMoney(totals.grandTotal));
 }
 
@@ -156,14 +158,23 @@ function writeAttachedFiles(doc, files = []) {
 
 function writeCompletedForms(doc, unified) {
   if (!unified?.requiredForms?.length) return;
-  const catalog = getCycleFormCatalog({ custom_forms: unified.customForms, form_configs: unified.formConfigs });
-  const context = { common: unified.common || {}, totals: unified.totalsAtGeneration || {}, lineItems: [], formValues: unified.formValues || {}, formConfigs: unified.formConfigs || {} };
+  const catalog = unified.formCatalog || getCycleFormCatalog({ custom_forms: unified.customForms, form_configs: unified.formConfigs });
+  const context = { common: unified.common || {}, totals: unified.totalsAtGeneration || {}, lineItems: unified.lineItems || [], formDefinitions: unified.formDefinitions, formValues: unified.formValues || {}, formConfigs: unified.formConfigs || {} };
   for (const entry of unified.requiredForms) {
     const form = catalog.find((row) => row.id === entry.formId);
     const view = buildFormView(entry.formId, context);
     if (!form || !view) continue;
     writeSection(doc, `${form.code} - ${form.name}`);
-    for (const field of view.fields) writeKeyValue(doc, field.label, typeof field.value === 'boolean' ? field.value ? 'Yes' : 'No' : field.value);
+    doc.font('Helvetica').fontSize(8).text('Internal working schedule in pesos; not an official DBM template.');
+    for (const field of view.fields) {
+      if (field.type === 'table') {
+        writeKeyValue(doc, field.label, '');
+        for (const [index, row] of field.value.entries()) {
+          writeKeyValue(doc, `Row ${index + 1}`, field.columns.map((column) => `${column.label}: ${row[column.key] ?? 'Awaiting data'}`).join(' | '));
+        }
+      } else writeKeyValue(doc, field.label, typeof field.value === 'boolean' ? field.value ? 'Yes' : 'No' : field.value);
+    }
+    if (view.table) for (const row of view.table.rows) writeKeyValue(doc, String(row.name || 'Item'), view.table.columns.map((column) => `${column.label}: ${row[column.key] ?? 'Awaiting data'}`).join(' | '));
   }
 }
 

@@ -15,15 +15,16 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createClientId } from '../../utils/client_id';
 import { DEFAULT_COST_STRUCTURE } from '../../utils/cost_structure';
 import { DEFAULT_PLANNING_PERIOD_ID } from '../../utils/budget_request_utils';
 
 export const UNIFIED_DRAFT_KEY = 'dost-bms.unified-request.draft';
 
-let intNextItemId = 1000;
+
 export const createEmptyLineItem = (strCategory = 'MOOE') => {
-  intNextItemId += 1;
-  return { id: intNextItemId, briId: null, name: '', category: strCategory, costStructure: DEFAULT_COST_STRUCTURE, amount: '', justification: '' };
+
+  return { id: createClientId('line-'), briId: null, name: '', category: strCategory, costStructure: DEFAULT_COST_STRUCTURE, amount: '', justification: '', climateAmount: '', climateTypology: '', climateType: '' };
 };
 
 export const createInitialDraft = () => ({
@@ -52,11 +53,11 @@ export const createInitialDraft = () => ({
 export function getDraftSnapshot(objDraft, objSigned = {}) {
   return JSON.stringify({
     request: objDraft.objRequest,
-    items: objDraft.arrLineItems.map((objItem) => [objItem.name, objItem.category, objItem.costStructure, objItem.amount, objItem.justification]),
+    items: objDraft.arrLineItems.map((objItem) => [objItem.name, objItem.category, objItem.costStructure, objItem.amount, objItem.justification, objItem.climateAmount, objItem.climateTypology, objItem.climateType]),
     answers: objDraft.objAnswers,
     overrides: objDraft.objOverrides,
     formValues: objDraft.objFormValues,
-    signed: Object.entries(objSigned).map(([strFormId, objFile]) => [strFormId, objFile.name, objFile.size]),
+    signed: Object.entries(objSigned).map(([strFormId, objFile]) => [strFormId, objFile.name, objFile.size, objFile.lastModified, objFile.formContent]),
   });
 }
 

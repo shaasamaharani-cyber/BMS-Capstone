@@ -1,3 +1,4 @@
+import { resolveRequestActor } from '../services/requestActor.mjs';
 import { withBudgetRequestRelations } from '../services/budgetRequests.mjs';
 import { sortItems } from '../utils.mjs';
 
@@ -8,6 +9,9 @@ export async function handleBudgetReview(ctx) {
 
   if (req.method !== 'GET' || path !== '/budget-review') return false;
 
+  const actor = resolveRequestActor(db, req);
+  if (!actor) { json(res, 401, { message: 'Authentication required.' }); return true; }
+  if (String(actor.role?.role_group).toLowerCase() !== 'reviewer') { json(res, 403, { message: 'Insufficient permissions.' }); return true; }
   let rows = db.rows('budget-requests')
     .filter((item) => REVIEW_STATUSES.includes(String(item.br_status).toLowerCase()))
     .map((item) => withBudgetRequestRelations(db, item));

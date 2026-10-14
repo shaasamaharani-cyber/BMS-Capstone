@@ -22,7 +22,6 @@ import LoginPage from '../pages/login/login_page';
 import DashboardPage from '../pages/dashboard/dashboard_page';
 import BudgetRequestsPage from '../pages/budget_requests/budget_requests_page';
 import BudgetRequestDetailPage from '../pages/budget_requests/budget_request_detail_page';
-import NewBudgetRequest from '../pages/budget_requests/new_budget_request';
 import UnifiedRequestPage from '../pages/unified_request/unified_request_page';
 import EditBudgetRequest from '../pages/budget_requests/edit_budget_request';
 import SpendingMonitoringPage from '../pages/spending_monitoring/spending_monitoring_page';
@@ -55,16 +54,16 @@ export default function AppRouter() {
             <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS}><BudgetRequestsPage /></PermissionRoute>
           } />
           <Route path="budget-requests/new" element={
-            <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS}><NewBudgetRequest /></PermissionRoute>
+            <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS} requireRequester><Navigate to="/budget-requests/unified/new" replace /></PermissionRoute>
           } />
           <Route path="budget-requests/unified/new" element={
-            <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS}><UnifiedRequestPage /></PermissionRoute>
+            <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS} requireRequester><UnifiedRequestPage /></PermissionRoute>
           } />
           <Route path="budget-requests/unified/:id" element={
-            <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS}><UnifiedRequestPage /></PermissionRoute>
+            <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS} requireRequester><UnifiedRequestPage /></PermissionRoute>
           } />
           <Route path="budget-requests/:id/edit" element={
-            <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS}><EditBudgetRequest /></PermissionRoute>
+            <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS} requireRequester><EditBudgetRequest /></PermissionRoute>
           } />
           {/* Read-only view stays open to reviewers: the consolidation form links to the source request */}
           <Route path="budget-requests/:id" element={
