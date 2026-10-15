@@ -53,6 +53,9 @@ const routes = [
   handleSpendingReports,
 ];
 
+// Routes that return budget requests, consolidated budgets or spending figures
+const BUDGET_DATA_ROUTES = ['budget-requests', 'unified-budgets', 'budget-review', 'dashboard', 'spending-reports'];
+
 const MIME_TYPES = {
   '.pdf': 'application/pdf',
   '.png': 'image/png',
@@ -192,6 +195,12 @@ async function handle(req, res) {
   const objTokenUser = /^\d+$/.test(strTokenUserId) ? db.find('users', strTokenUserId) : null;
   if (objTokenUser && Number(objTokenUser.usr_is_active) === 0) {
     return json(res, 401, { message: 'Unauthenticated.' });
+  }
+
+  // Administrators run the system and get no budget data or peso amounts (least privilege; Security Standard 6.15)
+  const strTokenGroup = objTokenUser ? String(db.find('roles', objTokenUser.usr_role_id)?.role_group || '').toLowerCase() : '';
+  if (strTokenGroup === 'admin' && BUDGET_DATA_ROUTES.includes(parts[0])) {
+    return json(res, 403, { message: 'Unauthorized. Insufficient permissions.' });
   }
 
   const payload = ['POST', 'PUT', 'PATCH'].includes(req.method)

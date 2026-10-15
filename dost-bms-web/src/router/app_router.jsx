@@ -13,7 +13,7 @@
  * All rights reserved.
  */
 
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import AppShell from '../components/layout/app_shell';
 import ProtectedRoute from '../routes/protected_route';
 import PermissionRoute from '../routes/permission_route';
@@ -22,9 +22,7 @@ import LoginPage from '../pages/login/login_page';
 import DashboardPage from '../pages/dashboard/dashboard_page';
 import BudgetRequestsPage from '../pages/budget_requests/budget_requests_page';
 import BudgetRequestDetailPage from '../pages/budget_requests/budget_request_detail_page';
-import NewBudgetRequest from '../pages/budget_requests/new_budget_request';
 import UnifiedRequestPage from '../pages/unified_request/unified_request_page';
-import EditBudgetRequest from '../pages/budget_requests/edit_budget_request';
 import SpendingMonitoringPage from '../pages/spending_monitoring/spending_monitoring_page';
 import BudgetReviewPage from '../pages/budget_review/budget_review_page';
 import BudgetReviewDetailPage from '../pages/budget_review/budget_review_detail_page';
@@ -42,6 +40,12 @@ import UsersPage from '../pages/users/users_page';
 import BudgetCyclesPage from '../pages/budget_cycles/budget_cycles_page';
 import NotFoundPage from '../pages/not_found/not_found_page';
 
+// Older requests (made before the wizard) also open in the wizard, which rebuilds them from their line items
+function EditInWizard() {
+  const { id } = useParams();
+  return <Navigate to={`/budget-requests/unified/${id}`} replace />;
+}
+
 export default function AppRouter() {
   return (
     <BrowserRouter>
@@ -54,18 +58,15 @@ export default function AppRouter() {
           <Route path="budget-requests" element={
             <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS}><BudgetRequestsPage /></PermissionRoute>
           } />
-          <Route path="budget-requests/new" element={
-            <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS}><NewBudgetRequest /></PermissionRoute>
-          } />
+          {/* Team 27's one-page form is replaced by the wizard, so there is only one way to prepare and submit a request */}
+          <Route path="budget-requests/new" element={<Navigate to="/budget-requests/unified/new" replace />} />
           <Route path="budget-requests/unified/new" element={
             <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS}><UnifiedRequestPage /></PermissionRoute>
           } />
           <Route path="budget-requests/unified/:id" element={
             <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS}><UnifiedRequestPage /></PermissionRoute>
           } />
-          <Route path="budget-requests/:id/edit" element={
-            <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS}><EditBudgetRequest /></PermissionRoute>
-          } />
+          <Route path="budget-requests/:id/edit" element={<EditInWizard />} />
           {/* Read-only view stays open to reviewers: the consolidation form links to the source request */}
           <Route path="budget-requests/:id" element={
             <PermissionRoute permission={[PERMISSIONS.BUDGET_REQUESTS, PERMISSIONS.BUDGET_REVIEW, PERMISSIONS.BUDGET_CONSOLIDATION]}><BudgetRequestDetailPage /></PermissionRoute>
