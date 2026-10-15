@@ -51,7 +51,6 @@ const normalizeRow = (row) => ({
   lastUpdated: row?.br_updated_at || row?.br_created_at || null,
   createdAt: row?.br_created_at || null,
   totalAmount: row?.br_total_amount || '0.00',
-  unified: Boolean(row?.br_unified_request),
 });
 
 export default function BudgetRequestsPage() {
@@ -328,7 +327,7 @@ export default function BudgetRequestsPage() {
           <ul className="dropdown-menu">
             <li><button type="button" className="dropdown-item" onClick={() => navigate(`/budget-requests/${row.id}`)}>View</button></li>
             {['Draft', 'Rejected'].includes(String(row.status || '')) ? (
-              <li><button type="button" className="dropdown-item" onClick={() => navigate(getBudgetRequestEditPath(row.id, row.unified))}>Edit</button></li>
+              <li><button type="button" className="dropdown-item" onClick={() => navigate(getBudgetRequestEditPath(row.id))}>Edit</button></li>
             ) : null}
           </ul>
         </div>

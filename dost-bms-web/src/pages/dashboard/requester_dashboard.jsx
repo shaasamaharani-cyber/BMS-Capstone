@@ -191,7 +191,7 @@ export default function RequesterDashboard() {
                 <span className={styles.muted}>{objRequest.br_reference_no} - {blnReturned ? 'returned by the reviewer' : 'saved as a draft'}</span>
                 {blnReturned && objRequest.br_review_comment && <span className={styles.remark}>Reviewer&apos;s remark: {objRequest.br_review_comment}</span>}
               </div>
-              <Button size="sm" variant="outline" onClick={() => navigate(getBudgetRequestEditPath(objRequest.id, Boolean(objRequest.br_unified_request)))}>{blnReturned ? 'Fix and resubmit' : 'Open'}</Button>
+              <Button size="sm" variant="outline" onClick={() => navigate(getBudgetRequestEditPath(objRequest.id))}>{blnReturned ? 'Fix and resubmit' : 'Open'}</Button>
             </div>
           );
         })}

@@ -17,12 +17,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import PageHeader from '../../components/layout/page_header';
-import { fetchAllSchemas, getBudgetRequests, getFiscalYears, getUsers } from '../../api';
-import { getBudgetCycles } from '../../api/settings_api';
+import { fetchAllSchemas, getFiscalYears, getUserChanges, getUsers } from '../../api';
+import { getBudgetCycles, getSettingsChanges } from '../../api/settings_api';
 import { extractApiRows } from '../../utils/budget_request_utils';
 import { formatTimestamp, toTitleCase } from '../../utils/formatters';
-import { ActivityTable } from './central_office_work';
-import { ATTENTION_BELOW, DUE_SOON_DAYS, loadRecentActivity, sortByUpdated } from './dashboard_helpers';
+import { ATTENTION_BELOW, DUE_SOON_DAYS } from './dashboard_helpers';
 import { ProposalTag } from './proposal_sections';
 import styles from './requester_dashboard.module.css';
 
@@ -123,10 +122,14 @@ export default function TechAdminDashboard() {
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnFailed, setBlnFailed] = useState(false);
 
+  // System changes only (accounts, settings, budget cycles): administrators see no budget data
   useEffect(() => {
     let blnMounted = true;
-    getBudgetRequests({ per_page: 100 })
-      .then((objRequests) => loadRecentActivity(sortByUpdated(extractApiRows(objRequests)).slice(0, RECENT_ACTIVITY_COUNT), RECENT_ACTIVITY_COUNT))
+    Promise.all([getUserChanges(), getSettingsChanges()])
+      .then(([objUserChanges, arrSettingChanges]) => [
+        ...extractApiRows(objUserChanges).map((objLog) => ({ strWhen: objLog.ucl_created_at, strArea: `Account: ${objLog.ucl_user_name}`, strChange: objLog.ucl_action, strDetails: objLog.ucl_details, strBy: objLog.ucl_actor_name })),
+        ...(Array.isArray(arrSettingChanges) ? arrSettingChanges : []).map((objLog) => ({ strWhen: objLog.acl_created_at, strArea: objLog.acl_area, strChange: objLog.acl_details, strBy: objLog.acl_actor_name })),
+      ].sort((objA, objB) => String(objB.strWhen).localeCompare(String(objA.strWhen))).slice(0, RECENT_ACTIVITY_COUNT))
       .then((arrLogs) => { if (blnMounted) setArrActivity(arrLogs); })
       .catch(() => { if (blnMounted) setBlnFailed(true); })
       .finally(() => { if (blnMounted) setBlnLoading(false); });
@@ -154,7 +157,22 @@ export default function TechAdminDashboard() {
       <section className={`dashboard-panel ${styles.card}`}>
         <h3 className={`dashboard-section__title ${styles.cardTitle}`}>Activity History <ProposalTag section="activity" /></h3>
         {blnFailed && <div className={styles.errorBanner}>Cannot perform transaction. Error encountered.</div>}
-        <ActivityTable arrActivity={arrActivity} blnLoading={blnLoading} />
+        {!blnLoading && arrActivity.length === 0 && <p className={styles.muted}>No account or setting changes yet.</p>}
+        {arrActivity.length > 0 && (
+          <table className={styles.table}>
+            <thead><tr><th>When</th><th>What</th><th>Change</th><th>By</th></tr></thead>
+            <tbody>
+              {arrActivity.map((objLog, intIndex) => (
+                <tr key={`${objLog.strWhen}-${intIndex}`}>
+                  <td>{formatTimestamp(objLog.strWhen)}</td>
+                  <td>{objLog.strArea}</td>
+                  <td>{objLog.strChange}{objLog.strDetails && <span className={styles.muted}>{objLog.strDetails}</span>}</td>
+                  <td>{objLog.strBy || '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </section>
     </div>
   );
