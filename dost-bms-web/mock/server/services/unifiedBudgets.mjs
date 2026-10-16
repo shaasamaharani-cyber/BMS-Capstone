@@ -907,6 +907,8 @@ export async function saveUnifiedBudget(db, payload, existing = null) {
 }
 
 const EXTERNAL_STEP_TYPES = new Set(['external_approval', 'review']);
+// Same text as the detail page shows straight after an approval
+const NOT_RECORDED_TEXT = 'Not recorded in the BMS';
 
 function nowLocaleString() {
   return new Date().toLocaleString('en-US', {
@@ -923,17 +925,26 @@ export function applyApproveToWorkflow(steps, strActorName = '') {
   const strApproveLabel = strPerson ? `Approved by ${strPerson}` : 'Approved';
   let firstExternal = true;
 
-  return steps.map((step) => {
+  const intCurrent = steps.findIndex((step) => step.status === 'current');
+
+  return steps.map((step, intIndex) => {
     const isExternal = EXTERNAL_STEP_TYPES.has(String(step.type || '').toLowerCase());
     if (!isExternal) {
-      return {
-        ...step,
-        status: 'done',
-        actionText: strApproveLabel,
-        actionAt: step.actionAt || approvedAt,
-        actorRole: step.actorRole || step.title || '',
-        actorName: strPerson,
-      };
+      // Only the director's own stage is credited to the director; earlier stages keep who did them
+      // (e.g. "Submitted by" the division). Later internal stages such as USEC and Secretary have no
+      // BMS user and are not in DOST's as-is workflow, so they are shown as not recorded.
+      if (intIndex === intCurrent) {
+        return {
+          ...step,
+          status: 'done',
+          actionText: strApproveLabel,
+          actionAt: approvedAt,
+          actorRole: step.actorRole || step.title || '',
+          actorName: strPerson,
+        };
+      }
+      if (step.status === 'done') return step;
+      return { ...step, status: 'locked', actionText: NOT_RECORDED_TEXT };
     }
     if (firstExternal) {
       firstExternal = false;

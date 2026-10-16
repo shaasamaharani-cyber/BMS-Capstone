@@ -151,20 +151,25 @@ export default function BudgetConsolidationDetailPage() {
 
     const { internalSteps, externalSteps } = splitUnifiedWorkflowStepsByLane(workflowSteps);
 
+    // Mirrors the server: credit only the director's stage, keep earlier stages, and show
+    // later internal stages (USEC, Secretary) as not recorded in the BMS
     const approvedInternal = new Map(
-      internalSteps.map((step) => [
-        step.stepKey,
-        {
-          ...step,
-          status: 'done',
-          statusText: formatUnifiedWorkflowActionText({
+      internalSteps.map((step) => {
+        if (step.status === 'done') return [step.stepKey, step];
+        if (step.status === 'current') {
+          return [step.stepKey, {
             ...step,
             status: 'done',
-            actionText: step.statusText || step.actionText || 'Approved',
-            actorName: step.actorName || getWorkflowActorNameFromUser(user),
-          }),
-        },
-      ])
+            statusText: formatUnifiedWorkflowActionText({
+              ...step,
+              status: 'done',
+              actionText: 'Approved',
+              actorName: getWorkflowActorNameFromUser(user),
+            }),
+          }];
+        }
+        return [step.stepKey, { ...step, status: 'locked', statusText: 'Not recorded in the BMS' }];
+      })
     );
     const updatedExternal = new Map(
       externalSteps.map((step, idx) => [
