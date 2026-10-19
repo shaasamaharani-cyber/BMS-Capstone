@@ -121,7 +121,8 @@ export function ToastProvider({ children }) {
     const toast = {
       id,
       message: normalized?.message || '',
-      variant: normalized?.variant || 'success',
+      // 'error' is accepted as another name for 'danger' so failures never show as "Success"
+      variant: normalized?.variant === 'error' ? 'danger' : normalized?.variant || 'success',
       title: normalized?.title || '',
       timeLabel: normalized?.timeLabel || 'just now',
       duration,

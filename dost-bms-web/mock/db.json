@@ -714,7 +714,7 @@
       "id": 20,
       "br_id": 20,
       "br_reference_no": "BR-2027-005",
-      "br_title": "Sample 1: Highway (workflow test)",
+      "br_title": "Sample 1: Highway - workflow test",
       "br_description": "Sample request to test the Request Unit lane: resurfacing and safety works on the highway access road to the NCR office.",
       "br_status": "submitted",
       "br_requesting_unit_id": 2,
@@ -727,7 +727,7 @@
       "br_attached_files": [],
       "br_unified_request": {
         "request": {
-          "title": "Sample 1: Highway (workflow test)",
+          "title": "Sample 1: Highway - workflow test",
           "unitId": "2",
           "fiscalYearId": "6",
           "planningPeriodId": "1",
@@ -754,7 +754,7 @@
           "department": "Department of Science and Technology",
           "agency": "NCR",
           "fiscalYear": "2027",
-          "programPap": "Sample 1: Highway (workflow test)",
+          "programPap": "Sample 1: Highway - workflow test",
           "location": "Quezon City, Metro Manila",
           "implementationStart": "2027-01-01",
           "implementationEnd": "2027-12-31",

@@ -18,7 +18,7 @@ import { CATEGORY_FORM_MAP, getFormCompletion, getFormDefinition, getFormContent
 import { BP_FORM_CATALOG, FORM_ENGINE, FORM_LEVEL, getFormById } from '../bp_forms/bp_form_catalog.js';
 import { countUnansweredQuestions, getRequiredQuestions } from '../bp_forms/bp_form_rules.js';
 import { getLineItemErrors } from './budget_financials.js';
-
+import { validateTitle } from './input_validation.js';
 export const STEP_IDS = ['details', 'questions', 'forms', 'fill', 'review'];
 
 const isCompleteLineItem = (objItem) => String(objItem.name || '').trim() !== '' && objItem.amount !== '' && objItem.amount !== null;
@@ -51,6 +51,8 @@ export function collectSubmissionIssues({ arrCatalog = BP_FORM_CATALOG, objReque
 
   // Step 1 - details
   if (!String(objRequest.title || '').trim()) add('title', 'details', 'Enter a title for the request.');
+  // Same character rule as consolidated budget titles (ITD Security Standard §2.11)
+  else if (validateTitle(objRequest.title)) add('title', 'details', validateTitle(objRequest.title));
   if (!objRequest.unitId) add('unit', 'details', 'Choose the requesting unit.');
   if (!objRequest.fiscalYearId) add('fy', 'details', 'Choose the fiscal year.');
   if (!objRequest.fundingSource) add('funding', 'details', 'Choose the funding source (it decides whether BP Form 203 applies).');

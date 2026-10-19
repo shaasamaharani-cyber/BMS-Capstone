@@ -23,7 +23,8 @@ const STATUS_BADGE = {
   submitted: { bg: 'bg-primary', label: 'Submitted' },
   reviewed: { bg: 'bg-success', label: 'Reviewed' },
   consolidated: { bg: 'bg-teal', label: 'Consolidated' },
-  rejected: { bg: 'bg-danger', label: 'Rejected' },
+  // A request sent back for clarification is shown as "Returned" everywhere
+  rejected: { bg: 'bg-danger', label: 'Returned' },
 };
 
 function StatusBadge({ status = '' }) {

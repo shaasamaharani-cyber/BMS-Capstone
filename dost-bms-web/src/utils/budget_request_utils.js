@@ -30,9 +30,9 @@ export function formatBudgetRequestCurrency(numValue) {
   return `${formatCurrency(n)}`;
 }
 
-/** Requests created in the unified wizard are edited in the wizard (it holds their forms); older ones use the classic edit page. */
-export function getBudgetRequestEditPath(intId, blnUnified) {
-  return blnUnified ? `/budget-requests/unified/${intId}` : `/budget-requests/${intId}/edit`;
+/** Every request is edited in the wizard; older requests are rebuilt there from their line items. */
+export function getBudgetRequestEditPath(intId) {
+  return `/budget-requests/unified/${intId}`;
 }
 
 export function getBudgetRequestPageTimestamp() {
