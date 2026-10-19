@@ -14,11 +14,11 @@
  * All rights reserved.
  */
 
-import { CATEGORY_FORM_MAP, getFormCompletion, getFormDefinition } from '../bp_forms/bp_form_fields.js';
+import { CATEGORY_FORM_MAP, getFormCompletion, getFormDefinition, getFormContent } from '../bp_forms/bp_form_fields.js';
 import { BP_FORM_CATALOG, FORM_ENGINE, FORM_LEVEL, getFormById } from '../bp_forms/bp_form_catalog.js';
-import { countUnansweredQuestions } from '../bp_forms/bp_form_rules.js';
+import { countUnansweredQuestions, getRequiredQuestions } from '../bp_forms/bp_form_rules.js';
+import { getLineItemErrors } from './budget_financials.js';
 import { validateTitle } from './input_validation.js';
-
 export const STEP_IDS = ['details', 'questions', 'forms', 'fill', 'review'];
 
 const isCompleteLineItem = (objItem) => String(objItem.name || '').trim() !== '' && objItem.amount !== '' && objItem.amount !== null;
@@ -63,8 +63,17 @@ export function collectSubmissionIssues({ arrCatalog = BP_FORM_CATALOG, objReque
   if (arrCompleteItems.some((objItem) => Number(objItem.amount) === 0)) add('zero', 'details', 'Remove line items with a zero amount or enter an amount.');
 
   // Step 2 - questions
-  const intUnanswered = countUnansweredQuestions(objAnswers);
+  const questions = getRequiredQuestions(objContext.enabledFormIds || arrCatalog.map((form) => form.id), objContext.formConfigs, arrCatalog);
+  const intUnanswered = countUnansweredQuestions(objAnswers, objContext.common, questions);
   if (intUnanswered > 0) add('questions', 'questions', `${intUnanswered} proposal question${intUnanswered === 1 ? '' : 's'} still unanswered.`);
+  arrLineItems.filter((item) => String(item.name || '').trim() || String(item.amount ?? '').trim()).forEach((item, index) => {
+    for (const error of getLineItemErrors(item, { allowLegacy: item.category === 'TAG' })) add(`item-${index}-${error}`, 'details', error);
+  });
+  const totals = objContext.totals || {};
+  if (objAnswers.hasFinEx === 'yes' && !(totals.finexTotal > 0)) add('finex-lines', 'details', 'Add Financial Expenses line items, or correct the FinEx answer.');
+  const legacyFinex = objContext.formValues?.['bp-201-c']?.proposedFinex;
+  if (legacyFinex != null && legacyFinex !== '' && Number(legacyFinex) !== Number(totals.finexTotal || 0)) add('legacy-finex', 'details', 'The older typed FinEx form amount differs from the line items. Reconcile it explicitly before submission.');
+  if (arrRequired.some((entry) => entry.formId === 'bp-207') && !(totals.climateTotal > 0)) add('climate-lines', 'details', 'Link climate expenditure to its underlying MOOE or CO items.');
 
   // Step 4 - every request-level form filled in (agency-level forms are completed by other offices at consolidation)
   arrRequired.forEach((objEntry) => {
@@ -83,6 +92,8 @@ export function collectSubmissionIssues({ arrCatalog = BP_FORM_CATALOG, objReque
       add(`signed-${objEntry.formId}`, 'review', `Upload the signed copy of ${objForm.code}.`);
     } else if (objForm?.level === FORM_LEVEL.REQUEST && objSigned[objEntry.formId]?.formDefinition && objSigned[objEntry.formId].formDefinition !== JSON.stringify(getFormDefinition(objEntry.formId, objContext))) {
       add(`signed-${objEntry.formId}`, 'review', `${objForm.code} fields changed. Complete the updated form and replace its signed copy.`);
+    } else if (objForm?.level === FORM_LEVEL.REQUEST && objSigned[objEntry.formId] && objSigned[objEntry.formId].formContent !== getFormContent(objEntry.formId, objContext)) {
+      add(`signed-${objEntry.formId}`, 'review', `${objForm.code} content changed or its signed copy predates content tracking. Replace its signed copy.`);
     }
   });
 

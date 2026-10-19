@@ -2,6 +2,8 @@ import { resolveRequestActor } from '../services/requestActor.mjs';
 import { getCycleFormCatalog } from '../../../src/bp_forms/bp_form_catalog.js';
 import { readBudgetCycle as readCycle, validateCustomForms } from '../services/budgetCycles.mjs';
 import { validateFormConfigs } from '../../../src/bp_forms/bp_form_configuration.js';
+import { getFormDefinition } from '../../../src/bp_forms/bp_form_fields.js';
+import { OFFICIAL_SCHEMA_VERSION } from '../../../src/bp_forms/official_form_schema.js';
 
 // Team defaults until DOST confirms its own targets (same colour bands as Team 27's dashboard)
 const DEFAULT_SETTINGS = { attention_below: 90, amber_below: 75, due_soon_days: 14 };
@@ -134,6 +136,12 @@ export async function handleSettings(ctx) {
       json(res, 422, { message: strFormError });
       return true;
     }
+    // Older unconfigured custom forms keep their established requirement. New ones
+    // must have an explicit Always/Conditional configuration to become mandatory.
+    for (const form of arrCustomForms) {
+      const previous = objBefore.custom_forms.find((row) => row.id === form.id);
+      if (!previous || previous.optionalByDefault === true) form.optionalByDefault = true;
+    }
     const arrCatalog = getCycleFormCatalog({ custom_forms: arrCustomForms });
     const arrAllowedIds = arrCatalog.map((objForm) => objForm.id);
     const { configs: objFormConfigs, error: strConfigError } = validateFormConfigs(payload.form_configs ?? objBefore.form_configs, arrAllowedIds);
@@ -174,6 +182,13 @@ export async function handleSettings(ctx) {
       form_configs: objFormConfigs,
       supporting_documents: arrDocs,
       configured: true,
+      schema_version: OFFICIAL_SCHEMA_VERSION,
+      form_definitions: Object.fromEntries(arrCatalog.map((form) => [form.id, getFormDefinition(form.id, { formConfigs: objFormConfigs })])),
+      revision: Number(objBefore.revision || 0) + (arrDetails.length ? 1 : 0),
+      configuration_versions: [
+        ...(objBefore.configuration_versions || []),
+        ...(arrDetails.length && objBefore.configured ? [{ revision: Number(objBefore.revision || 0), schema_version: objBefore.schema_version || 'legacy-unversioned', form_configs: objBefore.form_configs, custom_forms: objBefore.custom_forms, enabled_form_ids: objBefore.enabled_form_ids, supporting_documents: objBefore.supporting_documents, definitions: objBefore.form_definitions || null, updated_by: objBefore.updated_by || null, updated_at: objBefore.updated_at || null }] : []),
+      ],
       updated_by: actor.usr_name,
       updated_at: new Date().toISOString(),
     });

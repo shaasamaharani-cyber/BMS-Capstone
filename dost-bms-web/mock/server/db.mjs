@@ -20,7 +20,24 @@ export function createDocumentDb({ sqlitePath, seedPath, seedScriptPath }) {
   `);
   const deleteStmt = sqlite.prepare('DELETE FROM documents WHERE resource = ? AND id = ?');
 
+  let transactionActive = false;
   const api = {
+    close() { sqlite.close(); },
+
+    transaction(callback) {
+      if (transactionActive) return callback();
+      sqlite.exec('BEGIN IMMEDIATE');
+      transactionActive = true;
+      try {
+        const result = callback();
+        sqlite.exec('COMMIT');
+        return result;
+      } catch (error) {
+        sqlite.exec('ROLLBACK');
+        throw error;
+      }
+    },
+
     rows(resource) {
       return selectStmt.all(resource).map((row) => JSON.parse(row.data));
     },
@@ -68,6 +85,10 @@ export function createDocumentDb({ sqlitePath, seedPath, seedScriptPath }) {
   };
 
   api.ensureMissingSeedResources();
+  if (!api.rows('budget-categories').some((row) => String(row.bcat_code).toUpperCase() === 'FINEX')) {
+    const id = api.nextId('budget-categories');
+    api.upsert('budget-categories', id, { id, bcat_id: id, bcat_code: 'FINEX', bcat_name: 'Financial Expenses', bcat_is_active: 1 });
+  }
 
   return api;
 }

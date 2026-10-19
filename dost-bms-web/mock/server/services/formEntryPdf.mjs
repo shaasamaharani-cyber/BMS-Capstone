@@ -3,6 +3,8 @@ import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import PDFDocument from 'pdfkit';
+import { generateBpFormPdf, writeBpTable } from './bpFormPdf.mjs';
+import { randomUUID } from 'node:crypto';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, '../../..');
@@ -80,7 +82,7 @@ function ensureSpace(doc, height = 36) {
 
 function writeKeyValue(doc, label, value) {
   ensureSpace(doc, 18);
-  doc.font('Helvetica-Bold').fontSize(9).text(`${label}: `, { continued: true });
+  doc.font('Helvetica-Bold').fontSize(9).text(`${label}: `, doc.page.margins.left, doc.y, { width: doc.page.width - doc.page.margins.left - doc.page.margins.right, continued: true, align: 'left' });
   doc.font('Helvetica').text(formatValue(value));
 }
 
@@ -90,59 +92,31 @@ function writeTable(doc, tableInfo, rows) {
   doc.font('Helvetica-Bold').fontSize(11).text(tableInfo.title);
   doc.moveDown(0.3);
 
-  const columns = (tableInfo.table.columns || []).slice(0, 8);
-  if (!columns.length) return;
+  // Performance targets cannot be totalled, or truncated to the first eight columns.
+  // This is a readable working report, not a reproduction of the official layout.
+  if (tableInfo.table.kind === 'performance') {
+    for (const [index, row] of (rows || []).entries()) {
+      writeKeyValue(doc, `Indicator row ${index + 1}`, '');
+      for (const column of tableInfo.table.columns || []) writeKeyValue(doc, column.label || column.key, row[column.key]);
+    }
+    return;
+  }
 
-  const usableWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
-  const actionlessWidth = usableWidth / columns.length;
-  const rowHeight = 18;
-
-  ensureSpace(doc, rowHeight * 2);
-  const headerY = doc.y;
-  let x = doc.page.margins.left;
-
-  doc.font('Helvetica-Bold').fontSize(7);
-  columns.forEach((column) => {
-    doc.rect(x, headerY, actionlessWidth, rowHeight).stroke();
-    doc.text(column.label || column.key, x + 3, headerY + 5, {
-      width: actionlessWidth - 6,
-      height: rowHeight - 4,
-      ellipsis: true,
-    });
-    x += actionlessWidth;
-  });
-  doc.y = headerY + rowHeight;
-
-  doc.font('Helvetica').fontSize(7);
-  (rows || []).forEach((row) => {
-    ensureSpace(doc, rowHeight);
-    const y = doc.y;
-    x = doc.page.margins.left;
-
-    columns.forEach((column) => {
-      const indent = column.indentKey ? Number(row[column.indentKey] || 0) * 7 : 0;
-      const align = column.align === 'right' || ['number', 'computed'].includes(column.type) ? 'right' : 'left';
-      doc.rect(x, y, actionlessWidth, rowHeight).stroke();
-      doc.text(formatValue(row[column.key]), x + 3 + indent, y + 5, {
-        width: Math.max(actionlessWidth - 6 - indent, 12),
-        height: rowHeight - 4,
-        ellipsis: true,
-        align,
-      });
-      x += actionlessWidth;
-    });
-
-    doc.y = y + rowHeight;
-  });
+  writeBpTable(doc, tableInfo, rows);
 }
 
 export async function generateFormEntryPdf({ entry, schemaRecord }) {
-  const schema = normalizeSchemaRecord(schemaRecord);
+  const schema = normalizeSchemaRecord(entry?.schemaSnapshot || schemaRecord);
   if (!entry || !schema) return entry;
+  if (schema.official && schema.definition) {
+    const formId = schema.official.id;
+    const context = { common: { ...entry.header, fiscalYear: entry.header?.fiscalYear || '2027' }, totals: {}, lineItems: [], formValues: { [formId]: { ...entry.header, ...entry.sections } }, formDefinitions: { [formId]: schema.definition }, preservedNativeSections: Object.fromEntries(Object.entries(entry.sections || {}).filter(([key]) => !schema.definition.fields.some((field) => field.key === key))) };
+    return { ...entry, ...await generateBpFormPdf({ formId, context }), pdfGeneratedAt: new Date().toISOString() };
+  }
 
   await mkdir(PDF_DIR, { recursive: true });
 
-  const filename = `${safeFilename(schema.id)}-${safeFilename(entry.id)}.pdf`;
+  const filename = `${safeFilename(schema.id)}-${safeFilename(entry.id)}-${randomUUID()}.pdf`;
   const filePath = resolve(PDF_DIR, filename);
   const publicUrl = `${PUBLIC_PDF_BASE.replace(/\/$/, '')}/generated/forms/${filename}`;
 
@@ -167,12 +141,20 @@ export async function generateFormEntryPdf({ entry, schemaRecord }) {
     doc.moveDown(1);
 
     (schema.headerFields || []).forEach((field) => {
-      writeKeyValue(doc, field.label || field.key, entry.header?.[field.key]);
+      const value = entry.header?.[field.key];
+      writeKeyValue(doc, field.label || field.key, schema.id === 'bp-form-b' && field.key === 'approvalDate' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value.split('-').reverse().join('/') : value);
     });
 
     collectTables(schema.sections).forEach((tableInfo) => {
       writeTable(doc, tableInfo, entry.sections?.[tableInfo.key] || []);
     });
+
+    if (schema.id === 'bp-form-b') {
+      const known = new Set(collectTables(schema.sections).map((table) => table.key));
+      for (const [key, rows] of Object.entries(entry.sections || {})) if (!known.has(key) && rows?.length) {
+        writeKeyValue(doc, `Internal: preserved legacy section ${key} (not converted to performance measures)`, JSON.stringify(rows));
+      }
+    }
 
     if (schema.footer?.notes?.length) {
       doc.moveDown(0.8);
@@ -183,6 +165,7 @@ export async function generateFormEntryPdf({ entry, schemaRecord }) {
         doc.text(note.label || '');
       });
     }
+    for (const signer of schema.footer?.signers || []) writeKeyValue(doc, signer.role || signer.key, '____________________________');
 
     doc.end();
   });

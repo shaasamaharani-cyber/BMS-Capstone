@@ -47,12 +47,15 @@ export default function BudgetRequestTotalsSummary({ totals }) {
       </p>
 
       <p className="text-muted text-uppercase mb-1 caption-xs">
-        Project Tagging (TAG)
+        Legacy TAG (classification pending)
       </p>
       <p className="fw-bold mb-3 metric-value-tag">
         {formatCurrency(totals.tagTotal)}
       </p>
 
+      <p className="text-muted text-uppercase mb-1 caption-xs">Financial Expenses (FinEx)</p>
+      <p className="fw-bold mb-3 metric-value-brand">{formatCurrency(totals.finexTotal ?? 0)}</p>
+      <p className="small text-muted">Climate expenditure included above: {formatCurrency(totals.climateTotal ?? 0)}</p>
       <hr />
       <p className="text-muted small mb-1">Grand Total</p>
       <p className="fw-bold metric-grand-total">

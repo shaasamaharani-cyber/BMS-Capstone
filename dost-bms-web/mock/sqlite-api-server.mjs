@@ -15,6 +15,7 @@ import { handleBudgetRequests } from './server/routes/budgetRequests.mjs';
 import { handleDashboard } from './server/routes/dashboard.mjs';
 import { handleForms } from './server/routes/forms.mjs';
 import { handleSpendingReports } from './server/routes/spendingReports.mjs';
+import { handleBpFormExports } from './server/routes/bpFormExports.mjs';
 
 // On a hosting service PORT is set for us and the server must listen on every interface
 const HOST = process.env.MOCK_API_HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
@@ -41,6 +42,7 @@ for (const objRequest of db.rows('budget-requests')) {
 }
 
 const routes = [
+  handleBpFormExports,
   handleAuth,
   handleSettings,
   handleReferenceData,

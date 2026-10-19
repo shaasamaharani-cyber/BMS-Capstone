@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import PDFDocument from 'pdfkit';
 import { getCycleFormCatalog } from '../../../src/bp_forms/bp_form_catalog.js';
 import { buildFormView } from '../../../src/bp_forms/bp_form_fields.js';
+import { appendOfficialBpForm } from './bpFormPdf.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, '../../..');
@@ -54,7 +55,7 @@ function ensureSpace(doc, height = 36) {
 function writeSection(doc, title) {
   ensureSpace(doc, 34);
   doc.moveDown(0.8);
-  doc.font('Helvetica-Bold').fontSize(11).fillColor('#111827').text(title);
+  doc.font('Helvetica-Bold').fontSize(11).fillColor('#111827').text(title, doc.page.margins.left, doc.y, { width: doc.page.width - doc.page.margins.left - doc.page.margins.right, align: 'left' });
   doc.moveTo(doc.page.margins.left, doc.y + 3)
     .lineTo(doc.page.width - doc.page.margins.right, doc.y + 3)
     .strokeColor('#d1d5db')
@@ -65,7 +66,7 @@ function writeSection(doc, title) {
 
 function writeKeyValue(doc, label, value) {
   ensureSpace(doc, 18);
-  doc.font('Helvetica-Bold').fontSize(9).text(`${label}: `, { continued: true });
+  doc.font('Helvetica-Bold').fontSize(9).text(`${label}: `, doc.page.margins.left, doc.y, { width: doc.page.width - doc.page.margins.left - doc.page.margins.right, continued: true, align: 'left' });
   doc.font('Helvetica').text(formatValue(value));
 }
 
@@ -132,7 +133,9 @@ function writeTotals(doc, totals = {}) {
   writeKeyValue(doc, 'PS', formatMoney(totals.psTotal));
   writeKeyValue(doc, 'MOOE', formatMoney(totals.mooeTotal));
   writeKeyValue(doc, 'CO', formatMoney(totals.coTotal));
-  writeKeyValue(doc, 'TAG', formatMoney(totals.tagTotal));
+  writeKeyValue(doc, 'FinEx', formatMoney(totals.finexTotal ?? 0));
+  writeKeyValue(doc, 'Legacy TAG (unclassified)', formatMoney(totals.tagTotal));
+  writeKeyValue(doc, 'Climate expenditure (included)', formatMoney(totals.climateTotal ?? 0));
   writeKeyValue(doc, 'Grand Total', formatMoney(totals.grandTotal));
 }
 
@@ -156,14 +159,28 @@ function writeAttachedFiles(doc, files = []) {
 
 function writeCompletedForms(doc, unified) {
   if (!unified?.requiredForms?.length) return;
-  const catalog = getCycleFormCatalog({ custom_forms: unified.customForms, form_configs: unified.formConfigs });
-  const context = { common: unified.common || {}, totals: unified.totalsAtGeneration || {}, lineItems: [], formValues: unified.formValues || {}, formConfigs: unified.formConfigs || {} };
+  const catalog = unified.formCatalog || getCycleFormCatalog({ custom_forms: unified.customForms, form_configs: unified.formConfigs });
+  const context = { common: unified.common || {}, answers: unified.answers || {}, totals: unified.totalsAtGeneration || {}, lineItems: unified.lineItems || [], formDefinitions: unified.formDefinitions, formValues: unified.formValues || {}, formConfigs: unified.formConfigs || {} };
   for (const entry of unified.requiredForms) {
     const form = catalog.find((row) => row.id === entry.formId);
     const view = buildFormView(entry.formId, context);
     if (!form || !view) continue;
+    if (view.official && appendOfficialBpForm(doc, entry.formId, context)) continue;
     writeSection(doc, `${form.code} - ${form.name}`);
-    for (const field of view.fields) writeKeyValue(doc, field.label, typeof field.value === 'boolean' ? field.value ? 'Yes' : 'No' : field.value);
+    doc.font('Helvetica').fontSize(8).text(entry.formId === 'bp-b' ? 'Performance working schedule; targets use indicator units. Layout verification and certification remain required.' : 'Internal working schedule in pesos; not an official DBM template.');
+    for (const field of view.fields) {
+      if (field.type === 'table') {
+        writeKeyValue(doc, field.label, '');
+        for (const [index, row] of field.value.entries()) {
+          if (entry.formId === 'bp-b') {
+            writeKeyValue(doc, `Indicator row ${index + 1}`, '');
+            for (const column of field.columns) writeKeyValue(doc, column.label, row[column.key] ?? 'Awaiting data');
+          } else writeKeyValue(doc, `Row ${index + 1}`, field.columns.map((column) => `${column.label}: ${row[column.key] ?? 'Awaiting data'}`).join(' | '));
+        }
+      } else writeKeyValue(doc, field.label, entry.formId === 'bp-b' && field.key === 'approvalDate' && /^\d{4}-\d{2}-\d{2}$/.test(field.value) ? field.value.split('-').reverse().join('/') : typeof field.value === 'boolean' ? field.value ? 'Yes' : 'No' : field.value);
+    }
+    if (view.table) for (const row of view.table.rows) writeKeyValue(doc, String(row.name || 'Item'), view.table.columns.map((column) => `${column.label}: ${row[column.key] ?? 'Awaiting data'}`).join(' | '));
+    for (const signer of view.signatories || []) writeKeyValue(doc, `${signer.label} - signature`, '____________________________');
   }
 }
 

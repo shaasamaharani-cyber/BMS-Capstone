@@ -1,3 +1,4 @@
+import { computeBudgetLineItemTotals, financialItemFromStored } from '../../../src/utils/budget_financials.js';
 import { budgetRequestItems } from './budgetRequests.mjs';
 import { roleForUser } from './users.mjs';
 import { generateBudgetRequestVersionPdf } from './budgetRequestVersionPdf.mjs';
@@ -19,26 +20,16 @@ function capturedAttachedFiles(request = {}) {
       size: Number(file.size) || 0,
       type: file.type ?? '',
       lastModified: file.lastModified ?? null,
+      ...(file.formId ? { formId: file.formId } : {}),
+      ...(file.formDefinition ? { formDefinition: file.formDefinition } : {}),
+      ...(file.formContent ? { formContent: file.formContent } : {}),
+      ...(file.docName ? { docName: file.docName } : {}),
       url: file.url ?? file.fileUrl ?? '',
     }));
 }
 
 function totalsForItems(db, items = []) {
-  const totals = { psTotal: 0, mooeTotal: 0, coTotal: 0, tagTotal: 0, grandTotal: 0 };
-
-  items.forEach((item) => {
-    const amount = Number(item.bri_planned_amount ?? 0);
-    const category = categoryForId(db, item.bri_category_id);
-    const code = String(category?.bcat_code || '').toUpperCase();
-
-    if (code === 'PS') totals.psTotal += amount;
-    if (code === 'MOOE') totals.mooeTotal += amount;
-    if (code === 'CO') totals.coTotal += amount;
-    if (code === 'TAG') totals.tagTotal += amount;
-    totals.grandTotal += amount;
-  });
-
-  return totals;
+  return computeBudgetLineItemTotals(items.map((item) => financialItemFromStored(item, db.rows('budget-categories'))));
 }
 
 function buildVersionSnapshot(db, request, items, versionNumber, submittedBy, submittedByRole, status) {
@@ -65,6 +56,9 @@ function buildVersionSnapshot(db, request, items, versionNumber, submittedBy, su
       bri_description: item.bri_description,
       bri_planned_amount: item.bri_planned_amount,
       bri_justification: item.bri_justification,
+      bri_climate_amount: item.bri_climate_amount ?? 0,
+      bri_climate_typology: item.bri_climate_typology || '',
+      bri_climate_type: item.bri_climate_type || '',
       bri_sort_order: item.bri_sort_order,
       categoryCode: item.categoryCode,
       categoryName: item.categoryName,

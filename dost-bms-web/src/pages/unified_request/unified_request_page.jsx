@@ -20,8 +20,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { BsArrowLeft, BsArrowRight } from 'react-icons/bs';
 import {
   createBudgetRequest,
-  createBudgetRequestItem,
-  deleteBudgetRequestItem,
   getBudgetCategories,
   getBudgetRequestById,
   getFiscalYears,
@@ -50,8 +48,8 @@ import {
 } from '../../utils/budget_request_utils';
 import { BP_FORM_CATALOG, FORM_LEVEL, getCycleFormCatalog, getFormById as findForm } from '../../bp_forms/bp_form_catalog';
 import { getBudgetCycle } from '../../api/settings_api';
-import { evaluateRequiredForms, countUnansweredQuestions } from '../../bp_forms/bp_form_rules';
-import { getFormCompletion, getFormDefinition, resolveCommonValues } from '../../bp_forms/bp_form_fields';
+import { evaluateRequiredForms, countUnansweredQuestions, getRequiredQuestions } from '../../bp_forms/bp_form_rules';
+import { getFormCompletion, getFormDefinition, getFormContent, resolveCommonValues } from '../../bp_forms/bp_form_fields';
 import { buildTotalsCheck, collectSubmissionIssues, STEP_IDS } from '../../utils/unified_request_checks';
 import { signedFromAttachedFiles } from '../../utils/unified_request_form_attachments';
 import { createEmptyLineItem, createInitialDraft, getDraftSnapshot, useUnifiedRequestDraft } from './use_unified_request_draft';
@@ -62,7 +60,7 @@ import StepPrefilledForms from './step_prefilled_forms';
 import StepReviewSubmit from './step_review_submit';
 import styles from './unified_request.module.css';
 
-const CATEGORY_KEYS = ['psTotal', 'mooeTotal', 'coTotal', 'tagTotal'];
+const CATEGORY_KEYS = ['psTotal', 'mooeTotal', 'coTotal', 'finexTotal', 'climateTotal', 'tagTotal'];
 const EDITABLE_STATUSES = ['draft', 'rejected'];
 
 const STEP_TITLES = [
@@ -79,7 +77,7 @@ const isPersistableItem = (objItem) => String(objItem.name || '').trim() !== '' 
 // Supporting documents (quotes, plans...; DOST answer 7) travel as attachments named "Supporting - <file name>",
 // or "Supporting [<document>] - <file name>" when the file is for a document the budget cycle lists
 const SUPPORTING_PREFIX = 'Supporting - ';
-const SUPPORTING_NAMED_PATTERN = /^Supporting [(.+?)] - (.+)$/;
+const SUPPORTING_NAMED_PATTERN = /^Supporting \[(.+?)\] - (.+)$/;
 const supportingFileName = (objFile) => (objFile.docName ? `Supporting [${objFile.docName}] - ${objFile.name}` : `${SUPPORTING_PREFIX}${objFile.name}`);
 function supportingFromAttachedFiles(arrFiles) {
   return (arrFiles || []).flatMap((objFile) => {
@@ -183,10 +181,19 @@ export default function UnifiedRequestPage() {
             name: objItem.bri_description || '',
             category: mapIdToCode.get(Number(objItem.bri_category_id)) || 'MOOE',
             costStructure: objItem.bri_cost_structure,
+            climateAmount: objItem.bri_climate_amount ?? '',
+            climateTypology: objItem.bri_climate_typology || '',
+            climateType: objItem.bri_climate_type || '',
             amount: objItem.bri_planned_amount === null || objItem.bri_planned_amount === undefined ? '' : String(objItem.bri_planned_amount),
             justification: objItem.bri_justification || '',
           }));
 
+        let persistedIndex = 0;
+        const reopenedItems = Array.isArray(objStored.draftLineItems) ? objStored.draftLineItems.map((raw) => {
+          if (!isPersistableItem(raw)) return { ...createEmptyLineItem(), ...raw };
+          const stored = arrItems[persistedIndex++];
+          return { ...createEmptyLineItem(), ...raw, ...(stored || {}) };
+        }) : arrItems;
         const objLoaded = {
           ...objInitial,
           intStep: Number(objStored.step) || 0,
@@ -207,7 +214,7 @@ export default function UnifiedRequestPage() {
             planningPeriodId: String(objData.br_planning_period_id || DEFAULT_PLANNING_PERIOD_ID),
             description: objData.br_description || '',
           },
-          arrLineItems: arrItems.length > 0 ? arrItems : objInitial.arrLineItems,
+          arrLineItems: reopenedItems.length > 0 ? reopenedItems : objInitial.arrLineItems,
           objAnswers: objStored.answers || {},
           objOverrides: objStored.overrides || {},
           objFormValues: objStored.formValues || {},
@@ -253,11 +260,12 @@ export default function UnifiedRequestPage() {
 
   const objTotals = useMemo(() => computeBudgetLineItemTotals(arrLineItems), [arrLineItems]);
   const strUnitName = arrRequestingUnits.find((objUnit) => String(objUnit.ru_id) === objRequest.unitId)?.ru_name || '';
+  const strAgencyName = arrRequestingUnits.find((objUnit) => String(objUnit.ru_id) === objRequest.unitId)?.agency || '';
   const strFiscalYearLabel = String(arrFiscalYears.find((objYear) => String(objYear.fy_id) === objRequest.fiscalYearId)?.fy_year || '');
 
   const objCommon = useMemo(
-    () => resolveCommonValues(objRequest, { unitName: strUnitName, fiscalYearLabel: strFiscalYearLabel }),
-    [objRequest, strUnitName, strFiscalYearLabel]
+    () => resolveCommonValues(objRequest, { unitName: strUnitName, agencyName: strAgencyName, fiscalYearLabel: strFiscalYearLabel }),
+    [objRequest, strUnitName, strAgencyName, strFiscalYearLabel]
   );
 
   // The year's budget cycle (set by the administrator): which forms apply and which documents to attach
@@ -283,7 +291,7 @@ export default function UnifiedRequestPage() {
   }, [objCurrentCycle, objDraft.arrCustomForms, objDraft.strCustomFormsYear, strFiscalYearLabel]);
   const getFormById = (strId) => findForm(strId, arrCatalog);
   const arrCustomForms = useMemo(() => arrCatalog.filter((objForm) => !BP_FORM_CATALOG.some((objBuiltIn) => objBuiltIn.id === objForm.id)), [arrCatalog]);
-  const arrCycleDocs = useMemo(() => objCurrentCycle?.supporting_documents || [], [objCurrentCycle]);
+  const arrConfiguredCycleDocs = useMemo(() => objCurrentCycle?.supporting_documents || [], [objCurrentCycle]);
   const arrEnabledFormIds = useMemo(() => objCurrentCycle?.enabled_form_ids || BP_FORM_CATALOG.map((objForm) => objForm.id), [objCurrentCycle]);
   const objFormConfigs = useMemo(() => objCurrentCycle?.form_configs || (objDraft.strCustomFormsYear === strFiscalYearLabel ? objDraft.objStoredFormConfigs || {} : {}), [objCurrentCycle, objDraft.strCustomFormsYear, objDraft.objStoredFormConfigs, strFiscalYearLabel]);
 
@@ -292,9 +300,11 @@ export default function UnifiedRequestPage() {
     [objAnswers, objTotals, objCommon, arrEnabledFormIds, objOverrides, arrCustomForms, objFormConfigs]
   );
 
+  const arrCycleDocs = useMemo(() => [...new Map([...arrConfiguredCycleDocs, ...arrRequired.flatMap((entry) => getFormDefinition(entry.formId, { formConfigs: objFormConfigs })?.requiredDocuments || [])].map((document) => [document.name, document])).values()], [arrConfiguredCycleDocs, arrRequired, objFormConfigs]);
+
   const objContext = useMemo(
-    () => ({ common: objCommon, totals: objTotals, lineItems: arrLineItems, formValues: objFormValues, formConfigs: objFormConfigs }),
-    [objCommon, objTotals, arrLineItems, objFormValues, objFormConfigs]
+    () => ({ common: objCommon, answers: objAnswers, totals: objTotals, lineItems: arrLineItems, formValues: objFormValues, formConfigs: objFormConfigs, enabledFormIds: arrEnabledFormIds }),
+    [objCommon, objAnswers, objTotals, arrLineItems, objFormValues, objFormConfigs, arrEnabledFormIds]
   );
 
   // Forms are "generated" the first time the user opens step 4 (and again on request); the totals are captured then
@@ -321,10 +331,10 @@ export default function UnifiedRequestPage() {
 
   const objHints = useMemo(() => {
     const objResult = {};
-    if (objTotals.tagTotal > 0) objResult.hasClimate = 'You entered a TAG amount in the line items, which usually means climate-related spending.';
-    if (['foreign_grant', 'foreign_loan'].includes(objRequest.fundingSource)) objResult.proposalTier = 'Foreign-funded proposals are usually Tier 2 (new or expanded).';
+    if (objTotals.climateTotal > 0) objResult.hasClimate = 'Your line items include climate expenditure within MOOE or CO.';
+
     return objResult;
-  }, [objTotals.tagTotal, objRequest.fundingSource]);
+  }, [objTotals.climateTotal]);
 
   const blnDirty = strSavedSnapshot !== null && getDraftSnapshot(objDraft, withSupporting(objSigned, arrSupporting)) !== strSavedSnapshot;
 
@@ -366,7 +376,15 @@ export default function UnifiedRequestPage() {
   });
 
   // ── handlers ──
-  const handleAnswerChange = (strKey, strValue) => updateDraft((objPrev) => ({ objAnswers: { ...objPrev.objAnswers, [strKey]: strValue } }));
+  const handleAnswerChange = (strKey, strValue) => {
+    const nextAnswers = strKey === 'fundingSource' ? objAnswers : { ...objAnswers, [strKey]: strValue };
+    const nextCommon = strKey === 'fundingSource' ? { ...objCommon, fundingSource: strValue } : objCommon;
+    const nextRequired = evaluateRequiredForms(nextAnswers, objTotals, nextCommon, arrEnabledFormIds, objOverrides, arrCustomForms, objFormConfigs).arrRequired;
+    const removedWithData = arrRequired.filter((entry) => !nextRequired.some((next) => next.formId === entry.formId) && (Object.keys(objFormValues[entry.formId] || {}).length || objSigned[entry.formId]));
+    if (removedWithData.length && !window.confirm('This answer removes forms from the required list. Their saved answers and signed copies will remain in this draft for reuse. Continue?')) return;
+    if (strKey === 'fundingSource') updateRequest({ fundingSource: strValue });
+    else updateDraft({ objAnswers: nextAnswers });
+  };
 
   const handleOverride = (strFormId, objOverride) => updateDraft((objPrev) => ({ objOverrides: { ...objPrev.objOverrides, [strFormId]: objOverride } }));
 
@@ -397,7 +415,7 @@ export default function UnifiedRequestPage() {
 
   const handleSignedChange = async (strFormId, objFile) => {
     const strDataUrl = await readFileAsDataUrl(objFile);
-    setObjSigned((objPrev) => ({ ...objPrev, [strFormId]: { id: `${strFormId}-${objFile.name}-${objFile.size}`, name: objFile.name, size: objFile.size, type: objFile.type || 'File', lastModified: objFile.lastModified, dataUrl: strDataUrl, formDefinition: JSON.stringify(getFormDefinition(strFormId, objContext)) } }));
+    setObjSigned((objPrev) => ({ ...objPrev, [strFormId]: { id: `${strFormId}-${objFile.name}-${objFile.size}`, name: objFile.name, size: objFile.size, type: objFile.type || 'File', lastModified: objFile.lastModified, dataUrl: strDataUrl, formDefinition: JSON.stringify(getFormDefinition(strFormId, objContext)), formContent: getFormContent(strFormId, objContext) } }));
   };
 
   // strDocName = one of the budget cycle's listed documents (one file each, replaced on a new upload); empty = other documents
@@ -429,12 +447,13 @@ export default function UnifiedRequestPage() {
     br_description: objRequest.description.trim() || null,
     br_requesting_unit_id: Number(objRequest.unitId),
     br_attached_files: [
-      ...Object.entries(objSigned).filter(([strFormId]) => arrRequired.some((objEntry) => objEntry.formId === strFormId)).map(([strFormId, objFile]) => ({ ...objFile, formId: strFormId, name: `Signed - ${getFormById(strFormId)?.code} - ${objFile.name}` })),
+      ...Object.entries(objSigned).map(([strFormId, objFile]) => ({ ...objFile, formId: strFormId, name: `Signed - ${getFormById(strFormId)?.code} - ${objFile.name}` })),
       ...arrSupporting.map((objFile) => ({ ...objFile, name: supportingFileName(objFile) })),
     ],
     // Everything the forms need, so a saved draft reopens exactly where it was and the backend can rebuild the forms
     br_unified_request: {
       request: objRequest,
+      draftLineItems: arrLineItems,
       step: intStep,
       snapshot: objSnapshot,
       common: objCommon,
@@ -452,6 +471,9 @@ export default function UnifiedRequestPage() {
 
   const toItemPayload = (objItem, intIndex) => ({
     bri_category_id: categoryCodeToId.get(objItem.category) || null,
+    bri_climate_amount: objItem.climateAmount === '' || objItem.climateAmount == null ? 0 : Number(objItem.climateAmount),
+    bri_climate_typology: objItem.climateTypology || '',
+    bri_climate_type: objItem.climateType || '',
     bri_cost_structure: objItem.costStructure,
     bri_description: objItem.name.trim(),
     bri_justification: String(objItem.justification || '').trim() || null,
@@ -473,6 +495,7 @@ export default function UnifiedRequestPage() {
     if (!intId) {
       const objCreated = await createBudgetRequest({ ...objHeader, items: arrPersistable.map(toItemPayload) });
       intId = objCreated?.data?.br_id;
+      setIntRequestId(intId);
       arrSavedFiles = objCreated?.data?.br_attached_files;
       // Read the stored items back so each line item knows its server id
       const objReadBack = await getBudgetRequestById(intId);
@@ -480,23 +503,12 @@ export default function UnifiedRequestPage() {
       arrSavedItems = arrLineItems.map((objItem) => (isPersistableItem(objItem) ? { ...objItem, briId: arrStored[arrPersistable.indexOf(objItem)]?.bri_id ?? null } : objItem));
       setObjRequestMeta({ referenceNo: objCreated?.data?.br_reference_no || '', status: 'draft' });
     } else {
-      // New rows first (they need a server id), then remove the rows the user deleted, then save everything else in one update
-      arrSavedItems = [];
-      for (const objItem of arrLineItems) {
-        if (isPersistableItem(objItem) && !objItem.briId) {
-          const objNewItem = await createBudgetRequestItem(intId, toItemPayload(objItem, arrPersistable.indexOf(objItem)));
-          arrSavedItems.push({ ...objItem, briId: objNewItem?.data?.bri_id ?? null });
-        } else {
-          arrSavedItems.push(objItem);
-        }
-      }
-      const arrKeptIds = arrSavedItems.map((objItem) => objItem.briId).filter(Boolean);
-      for (const intOldId of refServerItemIds.current) {
-        if (!arrKeptIds.includes(intOldId)) await deleteBudgetRequestItem(intId, intOldId);
-      }
-      const arrItemPayloads = arrSavedItems.filter(isPersistableItem).map((objItem, intIndex) => ({ ...toItemPayload(objItem, intIndex), bri_id: objItem.briId }));
-      const objUpdated = await updateBudgetRequest(intId, { ...objHeader, items: arrItemPayloads });
-      arrSavedFiles = objUpdated?.data?.br_attached_files;
+      const items = arrPersistable.map((item, index) => ({ ...toItemPayload(item, index), ...(item.briId ? { bri_id: item.briId } : {}) }));
+      const updated = await updateBudgetRequest(intId, { ...objHeader, items });
+      arrSavedFiles = updated?.data?.br_attached_files;
+      const readBack = await getBudgetRequestById(intId);
+      const stored = [...((readBack?.data ?? readBack).items || [])].sort((left, right) => Number(left.bri_sort_order) - Number(right.bri_sort_order));
+      arrSavedItems = arrLineItems.map((item) => isPersistableItem(item) ? { ...item, briId: stored[arrPersistable.indexOf(item)]?.bri_id ?? null } : item);
     }
 
     refServerItemIds.current = arrSavedItems.map((objItem) => objItem.briId).filter(Boolean);
@@ -511,7 +523,7 @@ export default function UnifiedRequestPage() {
   };
 
   const handleSaveDraft = async (blnLeaveAfter = false) => {
-    if (blnSavingDraft) return false;
+    if (blnSavingDraft || blnSubmitting) return false;
     if (!objRequest.title.trim() || !objRequest.unitId || !objRequest.fiscalYearId) {
       showToast({ message: 'To save a draft, enter a title, the requesting unit and the fiscal year first.', variant: 'warning' });
       intGoToStep('details');
@@ -539,7 +551,7 @@ export default function UnifiedRequestPage() {
   };
 
   const handleSubmit = async () => {
-    if (blnSubmitting || arrIssues.length > 0) return;
+    if (blnSubmitting || blnSavingDraft || arrIssues.length > 0) return;
     setBlnSubmitting(true);
     try {
       const intId = await persistToServer();
@@ -570,7 +582,7 @@ export default function UnifiedRequestPage() {
   }
 
   const strStepId = STEP_IDS[intStep];
-  const intUnanswered = countUnansweredQuestions(objAnswers);
+  const intUnanswered = countUnansweredQuestions(objAnswers, objCommon, getRequiredQuestions(arrEnabledFormIds, objFormConfigs, arrCatalog));
   const strStatusText = objRequestMeta.status === 'rejected' ? 'returned by the reviewer - fix it and submit again' : 'saved draft';
 
   return (
@@ -608,7 +620,7 @@ export default function UnifiedRequestPage() {
             <StepRequestDetails objRequest={objRequest} arrLineItems={arrLineItems} objOptions={objOptions} blnUnitLocked={intScopedUnitId != null} onRequestChange={updateRequest} onLineItemsChange={(arrNext) => updateDraft({ arrLineItems: arrNext })} />
           )}
           {strStepId === 'questions' && (
-            <StepProposalQuestions objAnswers={objAnswers} objHints={objHints} intRequiredCount={arrRequired.length} onAnswerChange={handleAnswerChange} />
+            <StepProposalQuestions objCommon={objCommon} objAnswers={objAnswers} objHints={objHints} intRequiredCount={arrRequired.length} onAnswerChange={handleAnswerChange} />
           )}
           {strStepId === 'forms' && (
             <StepRequiredForms arrCatalog={arrCatalog} arrRequired={arrRequired} arrNotInCycle={arrNotInCycle.filter((objEntry) => getFormById(objEntry.formId))} objOverrides={objOverrides} arrEnabledFormIds={arrEnabledFormIds} strFiscalYearLabel={strFiscalYearLabel} onOverride={handleOverride} onUndoOverride={handleUndoOverride} />
@@ -651,7 +663,7 @@ export default function UnifiedRequestPage() {
             <p className={styles.sideLabel}>BP forms</p>
             <p className={styles.sideValue}>{arrRequired.length} required</p>
             <p className={styles.sideNote}>{intCompleteForms} of {arrRequestLevel.length} request forms complete</p>
-            <p className={styles.sideNote}>{arrRequired.length - arrRequestLevel.length} agency-level, completed by other offices</p>
+            <p className={styles.sideNote}>{arrRequired.length - arrRequestLevel.length} institution / consolidation schedules; office assignment pending</p>
             {intUnanswered > 0 && <p className={styles.sideNote}>{intUnanswered} question{intUnanswered === 1 ? '' : 's'} unanswered</p>}
           </div>
           <div className={styles.sideCard}>

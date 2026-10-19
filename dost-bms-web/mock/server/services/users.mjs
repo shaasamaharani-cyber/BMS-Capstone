@@ -39,14 +39,15 @@ export function requestingUnitIdForUser(user) {
 }
 
 export function canRequesterAccessBudgetRequest(actor, request) {
+  if (!actor) return false;
   // A draft stays with its unit until submitted (as-is step 2); other roles never see it
   if (!isRequesterUser(actor)) {
-    return String(request?.br_status || '').toLowerCase() !== 'draft';
+    return ['reviewer', 'executive'].includes(String(actor.role?.role_group || '').toLowerCase()) && String(request?.br_status || '').toLowerCase() !== 'draft';
   }
 
   const intActorUnitId = requestingUnitIdForUser(actor);
   if (intActorUnitId == null) {
-    return true;
+    return false;
   }
 
   return Number(request?.br_requesting_unit_id) === intActorUnitId;

@@ -1,3 +1,4 @@
+import { cleanHeaderPayload, cleanItemPayload, validateRequestPayload, validateItemPayload } from '../services/budgetRequestValidation.mjs';
 import {
   budgetRequestItems,
   saveBudgetRequest,
@@ -87,6 +88,8 @@ export async function handleBudgetRequests(ctx) {
   const { db, json, paginate, parts, req, res, url, payload } = ctx;
 
   if (parts[0] !== 'budget-requests') return false;
+  const authenticatedActor = resolveRequestActor(db, req);
+  if (!authenticatedActor) { json(res, 401, { message: 'Authentication required.' }); return true; }
 
   if (req.method === 'GET' && parts.length === 1) {
     const actor = resolveRequestActor(db, req, payload);
@@ -102,13 +105,20 @@ export async function handleBudgetRequests(ctx) {
       return true;
     }
 
-    const createPayload = { ...payload };
+    if (!isRequesterUser(actor) || requestingUnitIdForUser(actor) == null) { json(res, 403, { message: 'Only a requester assigned to a unit can create requests.' }); return true; }
+    const createPayload = { ...cleanHeaderPayload(payload), br_unified_request: payload.br_unified_request || {}, items: payload.items ?? [] };
     const intActorUnitId = requestingUnitIdForUser(actor);
     if (isRequesterUser(actor) && intActorUnitId != null) {
       createPayload.br_requesting_unit_id = intActorUnitId;
     }
 
-    json(res, 201, { data: saveBudgetRequest(db, createPayload) });
+    const errors = validateRequestPayload(db, createPayload);
+    if (errors.length) { json(res, 422, { message: errors.join(' '), errors: { request: errors } }); return true; }
+    createPayload.items = (createPayload.items || []).map(cleanItemPayload);
+    createPayload.br_created_by_id = actor.id;
+    const created = saveBudgetRequest(db, createPayload);
+    if (Object.keys(created.br_unified_request?.overrides || {}).length) logActivity(db, created.br_id, 'form_overrides_recorded', 'draft', 'draft', actor, JSON.stringify(created.br_unified_request.overrides));
+    json(res, 201, { data: created });
     return true;
   }
 
@@ -127,6 +137,13 @@ export async function handleBudgetRequests(ctx) {
     return true;
   }
 
+  const isEdit = ['PUT', 'DELETE'].includes(req.method) || (req.method === 'POST' && ['items', 'submit'].includes(sub));
+  if (isEdit && (!isRequesterUser(actor) || requestingUnitIdForUser(actor) !== Number(request.br_requesting_unit_id))) {
+    json(res, 403, { message: 'Only a requester from this unit can change this request.' }); return true;
+  }
+  if (isEdit && !['draft', 'rejected'].includes(String(request.br_status).toLowerCase())) {
+    json(res, 409, { message: 'Only draft or returned requests can be changed or submitted.' }); return true;
+  }
   if (req.method === 'GET' && parts.length === 2) {
     json(res, 200, {
       data: {
@@ -144,11 +161,22 @@ export async function handleBudgetRequests(ctx) {
       json(res, 422, { errors: { br_fiscal_year_id: [fiscalYearError] } });
       return true;
     }
-    json(res, 200, { data: saveBudgetRequest(db, payload, request) });
+    const next = { ...cleanHeaderPayload(payload), ...(Object.hasOwn(payload, 'items') ? { items: payload.items } : {}) };
+    if (Number(next.br_requesting_unit_id ?? request.br_requesting_unit_id) !== requestingUnitIdForUser(actor)) { json(res, 403, { message: 'The requesting unit cannot be changed.' }); return true; }
+    const errors = validateRequestPayload(db, next, request);
+    if (errors.length) { json(res, 422, { message: errors.join(' '), errors: { request: errors } }); return true; }
+    if (next.items) next.items = next.items.map((item) => ({ ...cleanItemPayload(item), ...(item.bri_id != null ? { bri_id: item.bri_id } : {}) }));
+    const previousOverrides = request.br_unified_request?.overrides || {};
+    const nextOverrides = next.br_unified_request?.overrides || previousOverrides;
+    const saved = saveBudgetRequest(db, next, request);
+    if (JSON.stringify(previousOverrides) !== JSON.stringify(nextOverrides)) logActivity(db, id, 'form_overrides_updated', request.br_status, request.br_status, authenticatedActor, JSON.stringify({ before: previousOverrides, after: nextOverrides }));
+    json(res, 200, { data: saved });
     return true;
   }
 
   if (req.method === 'DELETE' && parts.length === 2) {
+    if (getVersionsForRequest(db, id).length) { json(res, 409, { message: 'Requests with submitted versions must be retained.' }); return true; }
+    for (const item of budgetRequestItems(db, id)) db.remove('budget-request-items', item.id);
     db.remove('budget-requests', id);
     json(res, 200, { message: 'Deleted' });
     return true;
@@ -160,12 +188,14 @@ export async function handleBudgetRequests(ctx) {
       json(res, 422, { message: validation.errors.join(' '), errors: { forms: validation.errors } });
       return true;
     }
-    const actor = db.find('users', payload.actor_id) ?? null;
+    const actor = authenticatedActor;
     const fromStatus = request.br_status;
     const isResubmit = fromStatus === 'rejected';
     const versionNum = nextVersionNumber(db, id);
     const updated = saveBudgetRequest(db, { br_status: 'submitted', br_current_version_number: versionNum, ...(request.br_unified_request || Object.keys(validation.unified.formConfigs).length ? { br_unified_request: validation.unified } : {}) }, request);
-    const version = await createVersionSnapshot(db, updated, versionNum, actor, 'submitted');
+    let version;
+    try { version = await createVersionSnapshot(db, updated, versionNum, actor, 'submitted'); }
+    catch (error) { db.upsert('budget-requests', request.id, request); throw error; }
     logActivity(db, id, isResubmit ? 'resubmitted' : 'submitted', fromStatus, 'submitted', actor, payload.comment ?? null, version.id);
     json(res, 200, { data: updated });
     return true;
@@ -184,7 +214,7 @@ export async function handleBudgetRequests(ctx) {
       json(res, 409, { message: `This request is ${request.br_status}; only a ${strRequiredStatus} request can be ${payload.action === 'return' ? 'returned' : 'validated'}.` });
       return true;
     }
-    const actor = db.find('users', payload.actor_id) ?? null;
+    const actor = authenticatedActor;
     const statusMap = {
       approve: 'reviewed',
       validate: 'consolidated',
@@ -197,17 +227,11 @@ export async function handleBudgetRequests(ctx) {
       reject: 'rejected',
       return: 'returned',
     };
-    const toStatus = statusMap[payload.action] || 'reviewed';
+    if (!Object.hasOwn(statusMap, payload.action)) { json(res, 422, { message: 'Choose a valid review action.' }); return true; }
+    const toStatus = statusMap[payload.action];
     const action = actionMap[payload.action] || 'validated';
     const latestVersion = getVersionsForRequest(db, id).at(-1);
 
-    if (latestVersion) {
-      latestVersion.brv_status = toStatus;
-      if (latestVersion.brv_snapshot?.overview) {
-        latestVersion.brv_snapshot.overview.status = toStatus;
-      }
-      db.upsert('budget-request-versions', latestVersion.id, latestVersion);
-    }
 
     const reviewComment = typeof payload.comment === 'string' ? payload.comment.trim() : '';
     const updated = saveBudgetRequest(db, {
@@ -223,7 +247,7 @@ export async function handleBudgetRequests(ctx) {
 
   if (req.method === 'GET' && sub === 'versions' && parts[3]) {
     const version = db.find('budget-request-versions', parts[3]);
-    if (!version) { json(res, 404, { message: 'Version not found' }); return true; }
+    if (!version || Number(version.brv_br_id) !== Number(id)) { json(res, 404, { message: 'Version not found' }); return true; }
     json(res, 200, { data: version });
     return true;
   }
@@ -244,13 +268,16 @@ export async function handleBudgetRequests(ctx) {
   }
 
   if (req.method === 'POST' && sub === 'items') {
+    const errors = validateItemPayload(db, payload);
+    if (errors.length) { json(res, 422, { message: errors.join(' ') }); return true; }
     const itemId = db.nextId('budget-request-items');
     const item = db.upsert('budget-request-items', itemId, {
       id: itemId,
       bri_id: itemId,
       bri_br_id: Number(id),
-      ...payload,
+      ...cleanItemPayload(payload),
     });
+    saveBudgetRequest(db, {}, request);
     json(res, 201, { data: item });
     return true;
   }
@@ -258,6 +285,7 @@ export async function handleBudgetRequests(ctx) {
   if (sub === 'items' && parts[3]) {
     const itemId = parts[3];
     const existing = db.find('budget-request-items', itemId);
+    if (!existing || Number(existing.bri_br_id) !== Number(id)) { json(res, 404, { message: 'Item not found in this request.' }); return true; }
 
     if (req.method === 'GET') {
       json(res, 200, { data: existing });
@@ -265,12 +293,17 @@ export async function handleBudgetRequests(ctx) {
     }
 
     if (req.method === 'PUT') {
-      json(res, 200, { data: db.upsert('budget-request-items', itemId, { ...existing, ...payload }) });
+      const errors = validateItemPayload(db, payload, existing);
+      if (errors.length) { json(res, 422, { message: errors.join(' ') }); return true; }
+      const saved = db.upsert('budget-request-items', itemId, { ...existing, ...cleanItemPayload(payload) });
+      saveBudgetRequest(db, {}, request);
+      json(res, 200, { data: saved });
       return true;
     }
 
     if (req.method === 'DELETE') {
       db.remove('budget-request-items', itemId);
+      saveBudgetRequest(db, {}, request);
       json(res, 200, { message: 'Deleted' });
       return true;
     }

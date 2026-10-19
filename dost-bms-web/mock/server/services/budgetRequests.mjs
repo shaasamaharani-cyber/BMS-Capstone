@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
 import { captureRequestFormConfiguration } from './requestFormConfiguration.mjs';
 
@@ -81,8 +81,9 @@ function saveAttachedFiles(payloadFiles, existingFiles = [], requestId = '') {
 
   return payloadFiles.map((file, index) => {
     if (file.url || file.fileUrl) {
-      const cleaned = { ...file };
-      cleaned.url = normalizeExistingAttachmentUrl(file);
+      const original = existingFiles.find((old) => old.id === file.id && String(old.url || old.fileUrl) === String(file.url || file.fileUrl)) || file;
+      const cleaned = { ...original };
+      cleaned.url = normalizeExistingAttachmentUrl(original);
       delete cleaned.dataUrl;
       delete cleaned.previewUrl;
       delete cleaned.fileUrl;
@@ -112,6 +113,8 @@ function saveAttachedFiles(payloadFiles, existingFiles = [], requestId = '') {
       lastModified: file.lastModified || null,
       ...(file.formId ? { formId: String(file.formId) } : {}),
       ...(file.formDefinition ? { formDefinition: String(file.formDefinition) } : {}),
+      ...(file.formContent ? { formContent: String(file.formContent) } : {}),
+      ...(file.docName ? { docName: String(file.docName) } : {}),
       url: publicGeneratedUrl(`/generated/attachments/${filename}`),
     };
   });
@@ -187,18 +190,21 @@ function nextBudgetRequestReference(db, fiscalYearId) {
 }
 
 export function saveBudgetRequest(db, payload, existing = null) {
+  return db.transaction ? db.transaction(() => persistBudgetRequest(db, payload, existing)) : persistBudgetRequest(db, payload, existing);
+}
+
+function persistBudgetRequest(db, payload, existing = null) {
   const now = new Date().toISOString();
   const id = existing?.id ?? db.nextId('budget-requests');
   const brId = existing?.br_id ?? id;
   const items = Array.isArray(payload.items) ? payload.items : null;
-  const totalAmount = items
-    ? items.reduce((sum, item) => sum + Number(item.bri_planned_amount || 0), 0).toFixed(2)
-    : existing?.br_total_amount ?? '0.00';
+  const totalAmount = (items || budgetRequestItems(db, brId)).reduce((sum, item) => sum + Math.round(Number(item.bri_planned_amount || 0) * 100), 0) / 100;
 
   const storagePayload = withoutEmbeddedRelations(payload);
   const storageExisting = withoutEmbeddedRelations(existing);
-  if (payload.br_unified_request && typeof payload.br_unified_request === 'object') {
-    storagePayload.br_unified_request = captureRequestFormConfiguration(db, payload.br_unified_request, payload.br_fiscal_year_id ?? existing?.br_fiscal_year_id);
+  const unifiedPayload = payload.br_unified_request ?? (payload.br_fiscal_year_id != null ? existing?.br_unified_request : null);
+  if (unifiedPayload && typeof unifiedPayload === 'object') {
+    storagePayload.br_unified_request = captureRequestFormConfiguration(db, unifiedPayload, payload.br_fiscal_year_id ?? existing?.br_fiscal_year_id);
   }
   storagePayload.br_attached_files = saveAttachedFiles(
     payload.br_attached_files,
@@ -214,7 +220,7 @@ export function saveBudgetRequest(db, payload, existing = null) {
     br_reference_no: existing?.br_reference_no ?? nextBudgetRequestReference(db, payload.br_fiscal_year_id),
     br_status: payload.br_status ?? existing?.br_status ?? 'draft',
     br_current_version_number: payload.br_current_version_number ?? existing?.br_current_version_number ?? 1,
-    br_total_amount: totalAmount,
+    br_total_amount: totalAmount.toFixed(2),
     br_created_at: existing?.br_created_at ?? now,
     br_updated_at: now,
   };
@@ -222,8 +228,11 @@ export function saveBudgetRequest(db, payload, existing = null) {
   db.upsert('budget-requests', id, saved);
 
   if (items) {
+    let nextItemId = db.nextId('budget-request-items');
+    const keep = new Set(items.map((item) => String(item.bri_id)));
+    for (const old of budgetRequestItems(db, brId)) if (!keep.has(String(old.bri_id))) db.remove('budget-request-items', old.id ?? old.bri_id);
     items.forEach((item, index) => {
-      const itemId = item.bri_id ?? db.nextId('budget-request-items');
+      const itemId = item.bri_id ?? nextItemId++;
       db.upsert('budget-request-items', itemId, {
         id: itemId,
         bri_id: itemId,
@@ -235,4 +244,9 @@ export function saveBudgetRequest(db, payload, existing = null) {
   }
 
   return withBudgetRequestRelations(db, saved);
+}
+
+export function isStoredRequestAttachment(file) {
+  const match = String(file?.url || '').match(/\/generated\/attachments\/([a-zA-Z0-9._-]+)(?:$|[?#])/);
+  return Boolean(match && existsSync(resolve(GENERATED_ATTACHMENTS_DIR, match[1])));
 }

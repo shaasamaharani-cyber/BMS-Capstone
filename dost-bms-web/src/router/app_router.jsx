@@ -58,13 +58,14 @@ export default function AppRouter() {
           <Route path="budget-requests" element={
             <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS}><BudgetRequestsPage /></PermissionRoute>
           } />
-          {/* Team 27's one-page form is replaced by the wizard, so there is only one way to prepare and submit a request */}
-          <Route path="budget-requests/new" element={<Navigate to="/budget-requests/unified/new" replace />} />
+          <Route path="budget-requests/new" element={
+            <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS} requireRequester><Navigate to="/budget-requests/unified/new" replace /></PermissionRoute>
+          } />
           <Route path="budget-requests/unified/new" element={
-            <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS}><UnifiedRequestPage /></PermissionRoute>
+            <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS} requireRequester><UnifiedRequestPage /></PermissionRoute>
           } />
           <Route path="budget-requests/unified/:id" element={
-            <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS}><UnifiedRequestPage /></PermissionRoute>
+            <PermissionRoute permission={PERMISSIONS.BUDGET_REQUESTS} requireRequester><UnifiedRequestPage /></PermissionRoute>
           } />
           <Route path="budget-requests/:id/edit" element={<EditInWizard />} />
           {/* Read-only view stays open to reviewers: the consolidation form links to the source request */}

@@ -19,13 +19,14 @@ import { useAuth } from '../context/auth_context';
 import { useHasPermission } from '../hooks/use_permissions';
 import { canActAsDivision } from '../utils/permissions';
 
-export default function PermissionRoute({ permission, requireDivision = false, redirectTo = '/dashboard', children }) {
+export default function PermissionRoute({ permission, requireDivision = false, requireRequester = false, redirectTo = '/dashboard', children }) {
   const { isLoading, user } = useAuth();
   const hasAccess = useHasPermission(permission);
 
   // Wait for auth hydration (initial load OR post-login /me flight)
   if (isLoading || !user) return null;
   // Pages that change data in the budget flow also need the division's role, not only view access
+  if (requireRequester && user.role?.role_group !== 'requester') return <Navigate to={redirectTo} replace />;
   if (!hasAccess || (requireDivision && !canActAsDivision(user))) return <Navigate to={redirectTo} replace />;
   return children;
 }
@@ -33,6 +34,7 @@ export default function PermissionRoute({ permission, requireDivision = false, r
 PermissionRoute.propTypes = {
   permission: PropTypes.oneOfType([PropTypes.string, PropTypes.arrayOf(PropTypes.string)]).isRequired,
   requireDivision: PropTypes.bool,
+  requireRequester: PropTypes.bool,
   redirectTo: PropTypes.string,
   children:   PropTypes.node.isRequired,
 };

@@ -73,7 +73,7 @@ export default function StepReviewSubmit({ arrCatalog = BP_FORM_CATALOG, arrIssu
             </tbody>
           </table>
         </div>
-        <p className={styles.cardHint}>TAG amounts are mapped to BP Form 207 as a working assumption. DOST has not yet said what TAG means.</p>
+        <p className={styles.cardHint}>Climate amounts are included in MOOE or CO and are not added again. Legacy TAG entries retain their historical amount pending classification.</p>
       </section>
 
       <section className={styles.card}>

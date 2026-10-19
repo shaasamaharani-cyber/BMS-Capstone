@@ -27,7 +27,7 @@ const CATEGORY_OPTIONS = [
   { value: 'PS', label: 'PS - Personnel Services' },
   { value: 'MOOE', label: 'MOOE' },
   { value: 'CO', label: 'CO - Capital Outlay' },
-  { value: 'TAG', label: 'TAG - Project Tagging' },
+  { value: 'FINEX', label: 'FinEx - Financial Expenses' },
 ];
 
 const COST_STRUCTURE_DROPDOWN = COST_STRUCTURE_OPTIONS.map((strOption) => ({ value: strOption, label: strOption }));
@@ -54,7 +54,7 @@ export default function StepRequestDetails({ objRequest, arrLineItems, objOption
         <h3 className={styles.cardTitle}>General information</h3>
         <div className={styles.fieldGrid}>
           <FormField label="Title" required className={styles.spanTwo}>
-            <Input value={objRequest.title} onChange={(objEvent) => onRequestChange({ title: objEvent.target.value })} placeholder="e.g. FY2027 Central Office Operations Budget" maxLength={255} />
+            <Input value={objRequest.title} onChange={(objEvent) => onRequestChange({ title: objEvent.target.value })} placeholder="e.g. Central Office Operations Budget" maxLength={255} />
           </FormField>
           <FormField label="Requesting unit" required>
             <Dropdown options={objOptions.units} value={objRequest.unitId} onChange={(value) => onRequestChange({ unitId: value })} placeholder="Select unit" disabled={blnUnitLocked} searchable />
@@ -86,6 +86,10 @@ export default function StepRequestDetails({ objRequest, arrLineItems, objOption
             <Dropdown options={FUNDING_SOURCE_OPTIONS} value={objRequest.fundingSource} onChange={(value) => onRequestChange({ fundingSource: value })} placeholder="Select funding source" />
             <UsedInNote strCanonical="fundingSource" />
           </FormField>
+          {[
+            ['implementingAgency', 'Implementing agency'], ['operatingUnit', 'Operating unit'],
+            ['appropriationSource', 'Appropriation source (from Finance)'], ['prexcCode', 'P/A/P UACS / PREXC code (verified reference)'],
+          ].map(([key, label]) => <FormField key={key} label={label} hint="Leave blank if awaiting confirmation from the responsible office."><Input value={objRequest[key] || ''} onChange={(event) => onRequestChange({ [key]: event.target.value })} /><UsedInNote strCanonical={key} /></FormField>)}
           <FormField label="Implementation location">
             <Input value={objRequest.location} onChange={(objEvent) => onRequestChange({ location: objEvent.target.value })} placeholder="e.g. Taguig City, Metro Manila" />
             <UsedInNote strCanonical="location" />
@@ -111,7 +115,7 @@ export default function StepRequestDetails({ objRequest, arrLineItems, objOption
           <Button variant="outline" size="sm" leftIcon={<BsPlusCircle />} onClick={handleAddItem}>Add item</Button>
         </div>
         <p className={styles.cardHint}>
-          Amounts cannot be negative in a budget request. BP Forms A, 201-A, 201-B and 201-D are generated from these lines.
+          Amounts cannot be negative in a budget request. BP Forms A and 201 schedules A-D are generated from these lines.
         </p>
         <div className={styles.tableWrap}>
           <table className={`${styles.itemTable} ${styles.lineItemTable}`}>
@@ -121,7 +125,7 @@ export default function StepRequestDetails({ objRequest, arrLineItems, objOption
                 <th>Cost structure</th>
                 <th>Category</th>
                 <th className={styles.numericCell}>Amount (PHP)</th>
-                <th>Justification</th>
+                <th>Climate expenditure</th><th>Justification</th>
                 <th aria-label="Remove" />
               </tr>
             </thead>
@@ -132,10 +136,18 @@ export default function StepRequestDetails({ objRequest, arrLineItems, objOption
                   <tr key={objItem.id}>
                     <td><Input value={objItem.name} onChange={(objEvent) => handleItemChange(objItem.id, 'name', objEvent.target.value)} placeholder="Item name" /></td>
                     <td><Dropdown options={COST_STRUCTURE_DROPDOWN} value={objItem.costStructure} onChange={(value) => handleItemChange(objItem.id, 'costStructure', value)} /></td>
-                    <td><Dropdown options={CATEGORY_OPTIONS} value={objItem.category} onChange={(value) => handleItemChange(objItem.id, 'category', value)} /></td>
+                    <td><Dropdown options={objItem.category === 'TAG' ? [...CATEGORY_OPTIONS, { value: 'TAG', label: 'Legacy TAG - classification pending' }] : CATEGORY_OPTIONS} value={objItem.category} onChange={(value) => handleItemChange(objItem.id, 'category', value)} /></td>
                     <td className={styles.numericCell}>
                       <Input type="number" value={objItem.amount} onChange={(objEvent) => handleItemChange(objItem.id, 'amount', objEvent.target.value)} placeholder="0.00" error={blnNegative ? 'Cannot be negative' : undefined} />
                       {blnNegative && <span className={styles.errorText}>Cannot be negative</span>}
+                    </td>
+                    <td>
+                      <label className="small" htmlFor={`climate-${objItem.id}`}>Climate amount (PHP, included above)</label>
+                      <Input id={`climate-${objItem.id}`} type="number" min="0" max={objItem.amount || 0} step="0.01" disabled={!['MOOE', 'CO'].includes(objItem.category)} value={objItem.climateAmount ?? ''} onChange={(event) => handleItemChange(objItem.id, 'climateAmount', event.target.value)} />
+                      {Number(objItem.climateAmount) > 0 && <>
+                        <Input aria-label="Climate typology code and description" value={objItem.climateTypology || ''} onChange={(event) => handleItemChange(objItem.id, 'climateTypology', event.target.value)} placeholder="Verified typology code and description" />
+                        <select aria-label="Climate classification" className="form-select" value={objItem.climateType || ''} onChange={(event) => handleItemChange(objItem.id, 'climateType', event.target.value)}><option value="">Select</option><option value="adaptation">Adaptation</option><option value="mitigation">Mitigation</option></select>
+                      </>}
                     </td>
                     <td><Input value={objItem.justification} onChange={(objEvent) => handleItemChange(objItem.id, 'justification', objEvent.target.value)} placeholder="Why is this needed?" /></td>
                     <td>
@@ -149,7 +161,7 @@ export default function StepRequestDetails({ objRequest, arrLineItems, objOption
               <tr>
                 <td colSpan={3}>Total requested</td>
                 <td className={styles.numericCell}>{formatBudgetRequestCurrency(arrLineItems.reduce((numSum, objItem) => numSum + (Number(objItem.amount) || 0), 0))}</td>
-                <td colSpan={2} />
+                <td colSpan={3} />
               </tr>
             </tfoot>
           </table>

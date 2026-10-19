@@ -95,7 +95,7 @@ const initialLineItems = [
   {
     id: 4,
     name: '',
-    category: 'TAG',
+    category: 'FINEX',
     costStructure: DEFAULT_COST_STRUCTURE,
     amount: '',
     justification: '',
@@ -297,7 +297,7 @@ export default function NewBudgetRequest() {
     return () => { isMounted = false; };
   }, [strFormSchemaId]);
 
-  const { psTotal, mooeTotal, coTotal, tagTotal, grandTotal } = useMemo(
+  const { psTotal, mooeTotal, finexTotal, coTotal, tagTotal, climateTotal, grandTotal } = useMemo(
     () => computeBudgetLineItemTotals(arrLineItems),
     [arrLineItems]
   );
@@ -688,7 +688,7 @@ export default function NewBudgetRequest() {
         onAttachForm={handleAttachForm}
         onDetachForm={handleDetachForm}
         lineItems={arrLineItems}
-        totals={{ psTotal, mooeTotal, coTotal, tagTotal, grandTotal }}
+        totals={{ psTotal, mooeTotal, finexTotal, coTotal, tagTotal, climateTotal, grandTotal }}
         workflowSteps={workflowSteps}
         actions={[
           {
