@@ -16,6 +16,7 @@
 import { useState } from 'react';
 import { formatTimestamp, formatCurrency } from '../../utils/formatters';
 import { formatAttachmentFileSize, getGeneratedFileUrl } from '../../utils/attachments';
+import UnifiedRequestFormsSummary from './unified_request_forms_summary';
 
 const STATUS_BADGE = {
   pending: { bg: 'bg-warning text-dark', label: 'Pending' },
@@ -128,6 +129,12 @@ function VersionCard({ version }) {
           )}
 
           <SnapshotSectionTitle>Overview Snapshot</SnapshotSectionTitle>
+          {version.reviewComment && <p className="small"><strong>Decision remarks:</strong> {version.reviewComment}</p>}
+          {(snap.sourceRequestForms || []).map((source) => <section className="border rounded p-3 my-3" key={source.requestId}>
+            <h6>Source request #{source.requestId}, submitted version {source.versionNumber ?? 'not captured'}</h6>
+            <UnifiedRequestFormsSummary unified={source.unifiedRequest} />
+            {(source.attachedFiles || []).map((file, index) => <div key={file.id || index}><a href={getGeneratedFileUrl(file.url)} target="_blank" rel="noreferrer">{file.name || 'Source attachment'}</a></div>)}
+          </section>)}
           {snap.title && (
             <p className="small mb-1">
               <span className="text-muted">Title:</span> <strong>{snap.title}</strong>

@@ -1,11 +1,12 @@
 import PropTypes from 'prop-types';
 import { getFieldValueError, getDerivedValues } from '../../bp_forms/bp_form_fields';
 import { isRepeatingField, isNumericField, isFieldVisible, resolveEntryFields, formatPesos } from '../../bp_forms/form_schema';
+import { laterStageOwner } from '../../bp_forms/field_ownership';
 
 export default function GuidedFieldInput({ field, value, onChange, context = {}, inputId }) {
   const id = inputId || `field-${field.key}`;
   const error = getFieldValueError(field, value, context);
-  const readonly = !onChange || field.outputOnly || field.calculation || ['canonical', 'derived'].includes(field.source);
+  const readonly = !onChange || laterStageOwner(field) || field.outputOnly || field.calculation || ['canonical', 'derived'].includes(field.source);
   const label = field.label;
   const props = { id, 'aria-label': label, 'aria-invalid': Boolean(error), 'aria-describedby': `${id}-help${error ? ` ${id}-error` : ''}`, required: Boolean(field.required) };
   let control;

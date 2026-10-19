@@ -1,6 +1,7 @@
 import { createWriteStream } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import PDFDocument from 'pdfkit';
 import { getCycleFormCatalog } from '../../../src/bp_forms/bp_form_catalog.js';
@@ -188,7 +189,7 @@ export async function generateBudgetRequestVersionPdf({ version, snapshot }) {
   await mkdir(PDF_DIR, { recursive: true });
 
   const referenceNo = snapshot?.overview?.referenceNo || snapshot?.br_reference_no || `BR-${version.brv_br_id}`;
-  const filename = `${safeFilename(referenceNo)}-v${safeFilename(version.brv_version_number)}.pdf`;
+  const filename = `${safeFilename(referenceNo)}-v${safeFilename(version.brv_version_number)}-${randomUUID()}.pdf`;
   const filePath = resolve(PDF_DIR, filename);
   const publicUrl = `${PUBLIC_PDF_BASE.replace(/\/$/, '')}/generated/budget-request-versions/${filename}`;
 

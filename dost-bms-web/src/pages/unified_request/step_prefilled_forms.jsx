@@ -27,6 +27,8 @@ import { formatBudgetRequestCurrency } from '../../utils/budget_request_utils';
 import { useHasPermission } from '../../hooks/use_permissions';
 import { PERMISSIONS } from '../../utils/permissions';
 import { exportToPdf } from '../../forms/utils/export_pdf';
+import { hasEnteredValue } from '../../bp_forms/form_schema';
+import { signatoryHelp } from '../../bp_forms/field_ownership';
 import styles from './unified_request.module.css';
 
 const formatLockedValue = (objField) => {
@@ -62,7 +64,8 @@ export default function StepPrefilledForms({ arrCatalog = BP_FORM_CATALOG, arrRe
   const arrLockedFields = objView ? objView.fields.filter((objField) => objField.locked) : [];
   const arrUserFields = objView ? objView.fields.filter((objField) => !objField.locked) : [];
   const objUserValues = objContext.formValues?.[strActiveId] || {};
-  const intAutoCount = arrLockedFields.length;
+  const intAutoCount = arrLockedFields.filter((field) => !field.laterStage && hasEnteredValue(field.value)).length;
+  const completion = objView ? getFormCompletion(strActiveId, objContext) : null;
 
   return (
     <>
@@ -89,7 +92,7 @@ export default function StepPrefilledForms({ arrCatalog = BP_FORM_CATALOG, arrRe
                   ? <span className={styles.statusMuted}>Other office</span>
                   : (
                     <span className={objCompletion.complete ? styles.statusDone : styles.statusOpen}>
-                      {objCompletion.complete ? 'Complete' : `${objCompletion.filled}/${objCompletion.total}`}
+                      {objCompletion.complete ? 'Requester checks passed' : `${objCompletion.filled}/${objCompletion.total}`}
                     </span>
                   )}
               </button>
@@ -110,14 +113,15 @@ export default function StepPrefilledForms({ arrCatalog = BP_FORM_CATALOG, arrRe
 
             {objView ? (
               <>
-                <div className={styles.autoSummary}>{intAutoCount} field{intAutoCount === 1 ? '' : 's'} filled in for you. {arrUserFields.length > 0 ? `${arrUserFields.filter((objField) => objField.required).length} required field(s) need your input.` : 'Nothing else is needed.'}</div>
+                <div className={styles.autoSummary}>{intAutoCount} field{intAutoCount === 1 ? '' : 's'} have automatic values. {completion.missing} missing required requester field(s), including required entries within sections. {completion.errors.length > 0 && 'Correct the validation issues shown below.'} Optional sections and office certification may still need completion; this is not a declaration of official form completeness.</div>
+                <p className={styles.cardHint}>{signatoryHelp}</p>
 
-                <h4 className={styles.subTitle}>Filled in for you</h4>
+                <h4 className={styles.subTitle}>Shared values and later-office fields</h4>
                 <dl className={styles.lockedGrid}>
                   {arrLockedFields.map((objField) => (
                     <div key={objField.key} className={styles.lockedField}>
                       <dt>{objField.label}</dt>
-                      <dd style={{ whiteSpace: objField.preserved ? 'pre-wrap' : undefined }}>{formatLockedValue(objField)}<span className={styles.chipAuto}>{objField.preserved ? 'Preserved' : objField.source === FIELD_SOURCE.DERIVED ? 'Calculated' : 'From request'}</span></dd>
+                      <dd style={{ whiteSpace: objField.preserved ? 'pre-wrap' : undefined }}>{formatLockedValue(objField)}<span className={styles.chipAuto}>{objField.laterStage ? `Completed by the ${objField.laterStage}` : objField.preserved ? 'Preserved' : objField.source === FIELD_SOURCE.DERIVED ? 'Calculated' : 'From request'}</span>{objField.laterStage && <span className="d-block small">Not required at requester submission. Office assignment and timing await DOST confirmation. Existing typed names are retained as metadata, not approval.</span>}</dd>
                     </div>
                   ))}
                 </dl>

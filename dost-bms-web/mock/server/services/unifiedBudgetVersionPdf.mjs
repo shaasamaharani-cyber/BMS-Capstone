@@ -1,6 +1,7 @@
 import { createWriteStream } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import PDFDocument from 'pdfkit';
 
@@ -113,7 +114,7 @@ export async function generateUnifiedBudgetVersionPdf({ version, snapshot }) {
   await mkdir(PDF_DIR, { recursive: true });
 
   const referenceNo = snapshot?.overview?.referenceNo || `UB-${snapshot?.overview?.id || 'budget'}`;
-  const filename = `${safeFilename(referenceNo)}-v${safeFilename(version.version)}.pdf`;
+  const filename = `${safeFilename(referenceNo)}-v${safeFilename(version.version)}-${randomUUID()}.pdf`;
   const filePath = resolve(PDF_DIR, filename);
   const publicUrl = `${PUBLIC_PDF_BASE.replace(/\/$/, '')}/generated/unified-budget-versions/${filename}`;
 

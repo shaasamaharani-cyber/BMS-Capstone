@@ -19,6 +19,7 @@ import {
 } from '../services/users.mjs';
 import { sortItems } from '../utils.mjs';
 import { validateConfiguredSubmission } from '../services/requestFormConfiguration.mjs';
+import { serializeWorkflowWrite } from '../services/workflowWrites.mjs';
 
 function filteredBudgetRequests(db, params, actor = null) {
   let items = db.rows('budget-requests').map((row) => withBudgetRequestRelations(db, row));
@@ -85,6 +86,11 @@ function validateBudgetRequestFiscalYear(db, fiscalYearId) {
 }
 
 export async function handleBudgetRequests(ctx) {
+  if (ctx.parts[0] !== 'budget-requests') return false;
+  return ctx.req.method === 'GET' ? handleBudgetRequestOperation(ctx) : serializeWorkflowWrite(ctx.db, () => handleBudgetRequestOperation(ctx));
+}
+
+async function handleBudgetRequestOperation(ctx) {
   const { db, json, paginate, parts, req, res, url, payload } = ctx;
 
   if (parts[0] !== 'budget-requests') return false;
@@ -209,7 +215,13 @@ export async function handleBudgetRequests(ctx) {
       return true;
     }
     // Follow the flow (Security Standard 6.17): only a submitted request can be validated or returned
-    const strRequiredStatus = payload.action === 'validate' ? 'reviewed' : 'submitted';
+    if (!['approve', 'validate', 'reject', 'return'].includes(payload.action)) {
+      json(res, 422, { message: 'Choose a valid review action.' }); return true;
+    }
+    if (['reject', 'return'].includes(payload.action) && !String(payload.comment || '').trim()) {
+      json(res, 422, { message: 'Remarks are required when returning a request.' }); return true;
+    }
+    const strRequiredStatus = 'submitted';
     if (String(request.br_status).toLowerCase() !== strRequiredStatus) {
       json(res, 409, { message: `This request is ${request.br_status}; only a ${strRequiredStatus} request can be ${payload.action === 'return' ? 'returned' : 'validated'}.` });
       return true;
@@ -217,13 +229,13 @@ export async function handleBudgetRequests(ctx) {
     const actor = authenticatedActor;
     const statusMap = {
       approve: 'reviewed',
-      validate: 'consolidated',
+      validate: 'reviewed',
       reject: 'rejected',
       return: 'rejected',
     };
     const actionMap = {
       approve: 'validated',
-      validate: 'consolidated',
+      validate: 'validated',
       reject: 'rejected',
       return: 'returned',
     };

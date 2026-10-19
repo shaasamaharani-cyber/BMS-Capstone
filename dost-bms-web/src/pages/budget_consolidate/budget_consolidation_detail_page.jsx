@@ -26,12 +26,9 @@ import { getUnifiedBudgetById, getPlanningPeriods } from '../../api';
 import { approveUnifiedBudget, rejectUnifiedBudget } from '../../api/budget_consolidation_api';
 import { ALLOWED_FISCAL_YEARS, MAX_LENGTHS } from '../../utils/input_validation';
 import {
-  formatUnifiedWorkflowActionText,
   getActiveApprovalVersion,
   getUnifiedBudgetWorkflowSteps,
-  getWorkflowActorNameFromUser,
 } from '../../utils/workflow_utils';
-import { splitUnifiedWorkflowStepsByLane } from '../../utils/unified_budget_workflow_lanes';
 import { buildConsolidationLineRows } from '../../utils/consolidation_line_rows';
 import { DEFAULT_COST_STRUCTURE, normalizeCostStructure } from '../../utils/cost_structure';
 import {
@@ -89,7 +86,6 @@ export default function BudgetConsolidationDetailPage() {
   const [strActiveTab, setStrActiveTab] = useState('overview');
   const [strApproverComment, setStrApproverComment] = useState('');
   const [blnIsSubmitting, setBlnIsSubmitting] = useState(false);
-  const [blnIsLocallyApproved, setBlnIsLocallyApproved] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -138,40 +134,6 @@ export default function BudgetConsolidationDetailPage() {
     [objRecord?.status, objRecord?.lastUpdated, objRecord?.approvalWorkflow, objRecord?.approvalVersions, objRecord?.currentVersion]
   );
 
-  const displayedWorkflowSteps = useMemo(() => {
-    if (!blnIsLocallyApproved) return workflowSteps;
-
-    const { internalSteps, externalSteps } = splitUnifiedWorkflowStepsByLane(workflowSteps);
-
-    const approvedInternal = new Map(
-      internalSteps.map((step) => [
-        step.stepKey,
-        {
-          ...step,
-          status: 'done',
-          statusText: formatUnifiedWorkflowActionText({
-            ...step,
-            status: 'done',
-            actionText: step.statusText || step.actionText || 'Approved',
-            actorName: step.actorName || getWorkflowActorNameFromUser(user),
-          }),
-        },
-      ])
-    );
-    const updatedExternal = new Map(
-      externalSteps.map((step, idx) => [
-        step.stepKey,
-        idx === 0
-          ? { ...step, status: 'current', statusText: 'Pending Approval' }
-          : { ...step, status: 'locked', statusText: '' },
-      ])
-    );
-
-    return workflowSteps.map(
-      (step) => approvedInternal.get(step.stepKey) ?? updatedExternal.get(step.stepKey) ?? step
-    );
-  }, [blnIsLocallyApproved, workflowSteps, user]);
-
   const fiscalYearOptions = useMemo(
     () => [{ value: '', label: 'Select fiscal year' }, ...ALLOWED_FISCAL_YEARS.map((y) => ({ value: y, label: y }))],
     []
@@ -201,42 +163,24 @@ export default function BudgetConsolidationDetailPage() {
   // The division edits a draft or a budget the director returned (as-is step 7); directors only approve or reject
   const canEdit = canActAsDivision(user) && ['DRAFT', 'REJECTED'].includes(recordStatus);
 
-  const handleApprove = async () => {
+  const decide = async (returning) => {
+    if (returning && !strApproverComment.trim()) {
+      showToast({ message: 'Enter remarks before returning the budget.', variant: 'danger' });
+      return;
+    }
     setBlnIsSubmitting(true);
     try {
-      const res = await approveUnifiedBudget(id, {
-        comment: strApproverComment,
-        actor_id: user?.id ?? user?.usr_id ?? null,
-      });
-      const updated = res?.data ?? res;
-      if (updated?.status) {
-        setObjRecord(updated);
-      } else {
-        setObjRecord((prev) => ({ ...prev, status: 'APPROVED' }));
-      }
-    } catch {
-      setObjRecord((prev) => ({ ...prev, status: 'APPROVED' }));
-    }
-    setBlnIsLocallyApproved(true);
-    showToast({ message: 'Budget consolidation approved successfully.', variant: 'success' });
-    setBlnIsSubmitting(false);
+      const response = await (returning ? rejectUnifiedBudget : approveUnifiedBudget)(id, { comment: strApproverComment.trim() });
+      const updated = response?.data ?? response;
+      if (!updated?.status) throw new Error('The server did not confirm the decision.');
+      setObjRecord(updated);
+      showToast({ message: returning ? 'Budget returned for revision.' : 'Director approval saved. Awaiting the DBM stage; no transmission has been made.', variant: 'success' });
+    } catch (error) {
+      showToast({ message: error.response?.data?.message || error.message || 'The decision could not be saved.', variant: 'danger' });
+    } finally { setBlnIsSubmitting(false); }
   };
-
-  const handleReject = async () => {
-    setBlnIsSubmitting(true);
-    try {
-      await rejectUnifiedBudget(id, {
-        comment: strApproverComment,
-        actor_id: user?.id ?? user?.usr_id ?? null,
-      });
-    } catch {
-      // optimistic only
-    }
-    setObjRecord((prev) => ({ ...prev, status: 'REJECTED' }));
-    showToast({ message: 'Budget consolidation rejected.', variant: 'success' });
-    setBlnIsSubmitting(false);
-    navigate('/budget-consolidation');
-  };
+  const handleApprove = () => decide(false);
+  const handleReject = () => decide(true);
 
   const approverPanel = canApprove ? (
     <div className="card border rounded-3 p-3">
@@ -388,7 +332,7 @@ export default function BudgetConsolidationDetailPage() {
           lineItemsFetchError=""
           lineItemsLoading={false}
           totals={totals}
-          workflowSteps={displayedWorkflowSteps}
+          workflowSteps={workflowSteps}
           approverPanel={approverPanel}
           actions={canApprove ? [] : [
             ...(canEdit ? [{ label: 'Edit', onClick: () => navigate(`/budget-consolidation/${id}/edit`) }] : []),

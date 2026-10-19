@@ -1,16 +1,30 @@
 // Shared schema behavior for cycle configuration, guided entry and PDF preparation.
 // Calculations are declarative; neither administrator settings nor workbook formulas execute code.
 import { matchesRequirement } from './bp_form_conditions.js';
+import { laterStageOwner } from './field_ownership.js';
 
 export const ENTRY_TYPES = ['text', 'textarea', 'number', 'currency', 'date', 'select', 'radio', 'checkbox', 'attachment', 'table', 'group'];
 export const isRepeatingField = (field) => ['table', 'group'].includes(field.type);
 export const isNumericField = (field) => ['number', 'currency'].includes(field.type);
+export function hasEnteredValue(value) {
+  if (value == null) return false;
+  if (typeof value === 'string') return value.trim() !== '' && !/^(?:-+|select(?: an option)?|awaiting data|.*awaiting confirmation|tbd|placeholder)$/i.test(value.trim());
+  if (Array.isArray(value)) return value.some(hasEnteredValue);
+  if (typeof value === 'object') return Object.values(value).some(hasEnteredValue);
+  return true; // Includes a confirmed numeric zero and a boolean false.
+}
 export const isFieldVisible = (field, context = {}) => field.enabled !== false && (!field.visibleWhen || matchesRequirement(field.visibleWhen, { answers: context.answers || {}, common: context.common || {}, totals: context.totals || {} }));
+export function hasRepeatingEntry(field, row, context = {}) {
+  return row && typeof row === 'object' && !Array.isArray(row) && (field.columns || []).some((column) => {
+    if (!isFieldVisible(column, context) || column.calculation || column.outputOnly || laterStageOwner(column)) return false;
+    return isRepeatingField(column) ? Array.isArray(row[column.key]) && row[column.key].some((entry) => hasRepeatingEntry(column, entry, context)) : hasEnteredValue(row[column.key]);
+  });
+}
 export const formatPesos = (value, divisor = 1) => value === '' || value == null ? '' : !Number.isFinite(Number(value)) ? 'Invalid amount' : (Number(value) / divisor).toLocaleString('en-PH', { minimumFractionDigits: divisor === 1000 ? 3 : 2, maximumFractionDigits: divisor === 1000 ? 5 : 2 });
 
 export function calculateValue(field, row) {
   const values = (field.operands || []).map((key) => row[key]);
-  if (!values.length || values.some((value) => value === '' || value == null || !Number.isFinite(Number(value)))) return null;
+  if (!values.length || values.some((value) => !hasEnteredValue(value) || !Number.isFinite(Number(value)))) return null;
   const numbers = values.map(Number);
   const amount = field.calculation === 'multiply' ? numbers.reduce((a, b) => a * b, 1)
     : field.calculation === 'difference' ? numbers.slice(1).reduce((a, b) => a - b, numbers[0]) : numbers.reduce((a, b) => a + b, 0);
@@ -19,9 +33,10 @@ export function calculateValue(field, row) {
 }
 
 export function resolveEntryFields(fields, values = {}, context = {}) {
+  if (!values || typeof values !== 'object' || Array.isArray(values)) return values;
   const row = { ...values };
   for (const field of fields) {
-    if (isRepeatingField(field)) row[field.key] = (Array.isArray(values[field.key]) ? values[field.key] : []).map((entry) => resolveEntryFields(field.columns, entry, context));
+    if (isRepeatingField(field)) row[field.key] = values[field.key] == null ? [] : Array.isArray(values[field.key]) ? values[field.key].map((entry) => resolveEntryFields(field.columns, entry, context)) : values[field.key];
     else if (field.source === 'canonical') row[field.key] = context.common?.[field.canonical] ?? '';
     else if (field.source === 'derived') row[field.key] = context.derived?.[field.derived] ?? '';
     else if (field.calculation) row[field.key] = calculateValue(field, row);

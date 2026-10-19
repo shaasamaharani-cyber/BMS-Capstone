@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { generateFormEntryPdf } from '../services/formEntryPdf.mjs';
 import { sortItems } from '../utils.mjs';
+import { resolveRequestActor } from '../services/requestActor.mjs';
 
 function listRows(db, resource, params) {
   let rows = db.rows(resource);
@@ -28,6 +29,14 @@ export async function handleForms(ctx) {
   const resource = parts[0];
 
   if (!['form_schemas', 'form_entries'].includes(resource)) return false;
+  const actor = resolveRequestActor(db, req);
+  if (!actor) { json(res, 401, { message: 'Authentication required.' }); return true; }
+  const group = actor.role?.role_group;
+  // Requester working schedules are accessed through their unit-scoped request,
+  // not the unscoped institutional Forms library. Directors have read access only.
+  if (!['admin', 'reviewer', 'executive'].includes(group) || (req.method !== 'GET' && group === 'executive')) {
+    json(res, 403, { message: 'Insufficient permissions.' }); return true;
+  }
 
   if (req.method === 'GET' && parts.length === 1) {
     json(res, 200, ctx.paginate(listRows(db, resource, url.searchParams), url.searchParams));

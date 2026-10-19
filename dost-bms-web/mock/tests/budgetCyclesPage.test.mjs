@@ -239,14 +239,14 @@ test('Add BP form works without randomUUID, saves to any open year, and keeps cl
     for (const [label, value] of [['2025 GAA targets', '80%'], ['2025 actual accomplishments', '85%'], ['2026 GAA targets', '90%'], ['2027 NEP targets — Tier 1', '92%'], ['2027 NEP targets — Tier 2', '95%']]) await fill(performanceInput(label), value);
     await fill('#field-budgetOfficer', 'Budget name');
     await fill('#field-planningOfficer', 'Planning name');
-    await fill('#field-agencyHead', 'Agency name');
-    await fill('#field-approvalDate', '2026-10-14');
+    assert.equal(document.querySelector('input#field-agencyHead'), null, 'Requester cannot enter approval metadata');
+    assert.equal(document.querySelector('input#field-approvalDate'), null, 'Approval date belongs to the approving office');
     assert.equal(performanceValues.performance[0].proposedTier2, '95%');
     await click(button('Generate government-style PDF'));
     const printed = document.querySelector('#request-form-print-area');
     assert.match(printed.textContent, /Prepared by — Budget officer/);
     assert.match(printed.textContent, /Approved by — Agency head/);
-    assert.match(printed.textContent, /14\/10\/2026/);
+    assert.match(printed.textContent, /Not required at requester submission/);
     assert.equal(exports[0].context.formValues['bp-b'].performance[0].proposedTier2, '95%');
     assert.equal(document.querySelector('a[href="/generated/forms/test-draft.pdf"]').textContent, 'Download draft PDF');
     const performanceSaved = structuredClone(performanceValues);

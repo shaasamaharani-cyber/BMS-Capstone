@@ -25,12 +25,19 @@ export async function handleDashboard(ctx)
 
   // A requester only ever sees their own unit, whatever filter the browser sends
   const objActor = resolveRequestActor(db, req);
+  if (!objActor) { json(res, 401, { message: 'Authentication required.' }); return true; }
+  if (!['requester', 'reviewer', 'executive', 'admin'].includes(String(objActor.role?.role_group || '').toLowerCase())) {
+    json(res, 403, { message: 'Insufficient permissions.' }); return true;
+  }
   // Least privilege: an administrator without full access (technical administrator) sees no amounts
   if (String(objActor?.role?.role_group || '').toLowerCase() === 'admin' && !permissionsForUser(objActor).includes('route:budget-review')) {
     json(res, 403, { message: 'Unauthorized. Insufficient permissions.' });
     return true;
   }
   const intActorUnitId = isRequesterUser(objActor) ? requestingUnitIdForUser(objActor) : null;
+  if (isRequesterUser(objActor) && intActorUnitId == null) {
+    json(res, 403, { message: 'A requester must be assigned to a unit.' }); return true;
+  }
   if (intActorUnitId != null) objFilters.requestingUnitId = String(intActorUnitId);
 
   json(res, 200, { data: buildDashboardData(db, objFilters) });

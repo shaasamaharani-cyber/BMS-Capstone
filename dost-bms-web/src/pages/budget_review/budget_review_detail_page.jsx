@@ -263,21 +263,8 @@ export default function BudgetReviewDetailPage() {
     setBlnIsReturnModalOpen(true);
   };
 
-  const handleValidate = async () => {
-    setBlnIsProcessing(true);
-    try {
-      await reviewBudgetRequest(Number(id), {
-        action: 'validate',
-        comment: strReviewComment.trim(),
-        actor_id: user?.usr_id ?? user?.id ?? null,
-      });
-      navigate(`/budget-review/${id}`, { replace: true });
-    } catch {
-      window.alert('Cannot perform transaction. Error encountered.');
-    } finally {
-      setBlnIsProcessing(false);
-      setBlnIsConsolidateModalOpen(false);
-    }
+  const handleValidate = () => {
+    navigate('/budget-consolidation/new', { state: { selectedRequestIds: [Number(id)] } });
   };
 
   const latestReviewComment = useMemo(() => {
@@ -538,7 +525,7 @@ export default function BudgetReviewDetailPage() {
         )}
       >
         <p className="mb-0">
-          Validate <strong>{objBudgetRequest?.br_title}</strong> for consolidation? This will mark the request as consolidated and ready for the next stage.
+          Validate <strong>{objBudgetRequest?.br_title}</strong> for consolidation? The division can combine this reviewed request with other eligible requests. It is marked consolidated only when that budget is submitted.
         </p>
         <label className="form-label small fw-semibold mt-3 mb-1">
           Remark

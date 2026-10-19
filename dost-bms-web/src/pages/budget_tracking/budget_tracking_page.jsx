@@ -36,17 +36,10 @@ import {
   splitUnifiedWorkflowStepsByLane,
 } from '../../utils/unified_budget_workflow_lanes';
 import {
-  applyUnifiedBudgetWorkflowAction,
-  createApprovalVersionEntry,
-  deriveUnifiedWorkflowStage,
   getActiveApprovalVersion,
-  getUnifiedBudgetWorkflowActionForStep,
   getUnifiedBudgetWorkflowSteps,
-  isUnifiedBudgetTerminalApprovalAction,
-  getWorkflowActorNameFromUser,
-  stripWorkflowStepsNotes,
 } from '../../utils/workflow_utils';
-import { getCurrentTimestamp, getFiscalYear, readFileAsDataUrl } from '../../utils/helpers';
+import { getFiscalYear, readFileAsDataUrl } from '../../utils/helpers';
 import { formatTimestamp, getBadgeStatus } from '../../utils/formatters';
 
 
@@ -139,6 +132,7 @@ const TABLE_COLUMNS = [
 function BudgetTrackingListView() {
   const navigate = useNavigate();
 
+  const [loadError, setLoadError] = useState('');
   const [arrBudgets, setArrBudgets]           = useState([]);
   const [objSummaryStats, setObjSummaryStats] = useState(null);
   const [blnIsLoading, setBlnIsLoading]       = useState(true);
@@ -173,7 +167,7 @@ function BudgetTrackingListView() {
       setArrStageOptions(Array.isArray(stages) ? stages : []);
       setArrStatusOptions(Array.isArray(statuses) ? statuses : []);
       setArrFiscalYearOptions(Array.isArray(years) ? years : []);
-    }).finally(() => {
+    }).catch((error) => { if (isMounted) setLoadError(error.response?.data?.message || error.message); }).finally(() => {
       if (isMounted) setBlnIsOptionsLoading(false);
     });
     return () => { isMounted = false; };
@@ -265,6 +259,7 @@ function BudgetTrackingListView() {
   return (
     <div>
       <PageHeader title="Budget Tracking" />
+      {loadError && <div className="alert alert-danger" role="alert">{loadError}</div>}
 
       <div className="row g-3 mb-4">
         {metricCards.map((card) => (
@@ -504,50 +499,14 @@ function BudgetTrackingDetailView() {
       return;
     }
     const decision = strStatusDecision === 'approved' ? 'approve' : 'reject';
-    const actionType = getUnifiedBudgetWorkflowActionForStep(strSelectedStageKey, decision);
-    if (!actionType) {
-      showToast({ message: 'Cannot perform that action for the selected stage.', variant: 'error' });
-      return;
+    const selected = externalSteps.find((step) => step.title === strSelectedStageKey);
+    if (!selected || selected.status !== 'current') {
+      showToast({ message: 'Select the current external stage.', variant: 'error' }); return;
     }
-
     setBlnIsSubmitting(true);
-    const actionAt = getCurrentTimestamp();
-    const strActorName = getWorkflowActorNameFromUser(user);
-    const nextWorkflow = stripWorkflowStepsNotes(
-      applyUnifiedBudgetWorkflowAction(activeWorkflow, actionType, actionAt, strActorName)
-    );
-    const resolvedStatus = String(actionType).endsWith('_reject') ? 'REJECTED' : 'APPROVED';
-    const strResolvedStage = strSelectedStageKey;
-
-    const nextApprovalVersions = approvalVersions.map((versionEntry) => {
-      if (Number(versionEntry?.version) !== currentVersion) return versionEntry;
-      return {
-        ...versionEntry,
-        status: resolvedStatus,
-        stage: strResolvedStage,
-        endedAt: resolvedStatus === 'APPROVED' && isUnifiedBudgetTerminalApprovalAction(actionType) ? actionAt : '',
-        rejectedAtStage: resolvedStatus === 'REJECTED' ? strSelectedStageKey : '',
-        actionNote: strOfficialRemarks.trim(),
-        workflow: nextWorkflow,
-        snapshot: versionEntry.snapshot ? {
-          ...versionEntry.snapshot,
-          overview: versionEntry.snapshot.overview ? {
-            ...versionEntry.snapshot.overview,
-            status: resolvedStatus,
-            stage: strResolvedStage,
-          } : undefined
-        } : undefined
-      };
-    });
-
     try {
       const response = await updateUnifiedBudget(objRecord.id, {
-        actor_id: user?.id ?? user?.usr_id ?? null,
-        status: resolvedStatus,
-        stage: strResolvedStage,
-        approvalWorkflow: nextWorkflow,
-        approvalVersions: nextApprovalVersions,
-        lastUpdated: actionAt,
+        externalDecision: { stageKey: selected.stepKey, action: decision, comment: strOfficialRemarks.trim() },
       });
       const updated = response?.data;
       if (updated) {
@@ -650,7 +609,7 @@ function BudgetTrackingDetailView() {
                 <div>
                   <label className="form-label small fw-semibold text-uppercase text-muted mb-1">Target Entity</label>
                   <Dropdown
-                    options={externalSteps.map((step) => ({ value: step.title, label: step.title }))}
+                    options={externalSteps.filter((step) => step.status === 'current').map((step) => ({ value: step.title, label: step.title }))}
                     value={strSelectedStageKey}
                     onChange={setStrSelectedStageKey}
                     disabled={blnWorkflowFullyApproved || blnIsSubmitting}

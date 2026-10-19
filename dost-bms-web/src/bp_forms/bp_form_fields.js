@@ -21,7 +21,8 @@ import { DEFAULT_FORM_SCHEMAS } from '../forms/schemas/default_schemas.js';
 import { PERFORMANCE_COLUMNS, PERFORMANCE_SIGNATORIES, performanceYearLabel, upgradeLegacyPerformanceFields } from './bp_form_b.js';
 import { OFFICIAL_WORKBOOK_FORMS } from './official_workbook_manifest.js';
 import { extendOfficialDefinition, applyOfficialConfiguration } from './official_form_schema.js';
-import { isRepeatingField, isNumericField, isFieldVisible, resolveEntryFields } from './form_schema.js';
+import { isRepeatingField, isNumericField, isFieldVisible, resolveEntryFields, hasEnteredValue, hasRepeatingEntry } from './form_schema.js';
+import { laterStageOwner } from './field_ownership.js';
 import { applyRecordSources } from './official_form_values.js';
 
 export const FIELD_SOURCE = {
@@ -60,7 +61,7 @@ const FUNDING_LABELS = {
 
 // ── field builders (keep the definitions below short and readable) ──
 const canonical = (strKey, strCanonical) => ({ key: strKey, label: CANONICAL_FIELD_LABELS[strCanonical], source: FIELD_SOURCE.CANONICAL, canonical: strCanonical });
-const derived = (strKey, strLabel, strDerived) => ({ key: strKey, label: strLabel, source: FIELD_SOURCE.DERIVED, derived: strDerived, type: 'number' });
+const derived = (strKey, strLabel, strDerived) => ({ key: strKey, label: strLabel, source: FIELD_SOURCE.DERIVED, derived: strDerived, type: ['financingType', 'climateTypologies', 'climateClassifications'].includes(strDerived) ? 'text' : 'number' });
 const user = (strKey, strLabel, strType = 'text', blnRequired = false, arrOptions = null) => ({ key: strKey, label: strLabel, source: FIELD_SOURCE.USER, type: strType, required: blnRequired, options: arrOptions });
 
 const HEADER = [canonical('department', 'department'), canonical('agency', 'agency'), canonical('fiscalYear', 'fiscalYear')];
@@ -327,6 +328,8 @@ export function buildFormView(strFormId, objContext) {
   const displayFields = objDefinition.fields.filter((field) => isFieldVisible(field, objContext) && (!field.legacy || field.required || (objUserValues[field.key] !== undefined && objUserValues[field.key] !== '' && (!Array.isArray(objUserValues[field.key]) || objUserValues[field.key].length))) && !(strFormId === 'bp-204' && usesStaffingRows(objDefinition, objUserValues) && LEGACY_STAFFING_KEYS.has(field.key)));
   const arrFields = displayFields.map((definitionField) => {
     const objField = { ...definitionField, label: performanceYearLabel(definitionField.label, objContext.common?.fiscalYear) };
+    const owner = laterStageOwner(objField);
+    if (owner) return { ...objField, required: false, laterStage: owner, value: objUserValues[objField.key] ?? '', locked: true };
     if (isRepeatingField(objField)) objField.columns = objField.columns
       .filter((column) => !column.legacy || (Array.isArray(objUserValues[objField.key]) && objUserValues[objField.key].some((row) => row?.[column.key] !== undefined && row?.[column.key] !== '')))
       .map((column) => ({ ...column, label: performanceYearLabel(column.label, objContext.common?.fiscalYear), ...(column.section ? { section: performanceYearLabel(column.section, objContext.common?.fiscalYear) } : {}) }));
@@ -348,14 +351,15 @@ export function buildFormView(strFormId, objContext) {
 }
 
 export function getFieldValueError(field, value, context = {}) {
-  if (!isFieldVisible(field, context) || field.calculation || field.outputOnly) return '';
+  if (!isFieldVisible(field, context) || field.calculation || field.outputOnly || laterStageOwner(field)) return '';
   if (isRepeatingField(field)) {
     if (value == null || value === '') return field.required ? 'Add at least one row.' : '';
     if (!Array.isArray(value)) return 'Provide a list of entries.';
-    if (field.required && !value.length) return 'Add at least one row.';
+    if (field.required && !value.some((row) => hasRepeatingEntry(field, row, context))) return 'Add at least one completed row.';
     for (const [index, row] of value.entries()) {
       if (!row || typeof row !== 'object' || Array.isArray(row)) return 'Provide valid rows.';
-      for (const column of field.columns.filter((column) => !column.calculation && column.source !== FIELD_SOURCE.CANONICAL)) {
+      if (!hasRepeatingEntry(field, row, context) && !field.required) continue;
+      for (const column of field.columns.filter((column) => !column.calculation && (column.source !== FIELD_SOURCE.CANONICAL || column.required))) {
         const error = getFieldValueError(column, row[column.key], context);
         if (error) return `Row ${index + 1}, ${column.label}: ${error}`;
       }
@@ -363,7 +367,7 @@ export function getFieldValueError(field, value, context = {}) {
     }
     return '';
   }
-  const filled = value !== undefined && value !== null && String(value).trim() !== '';
+  const filled = hasEnteredValue(value);
   if (field.type === 'attachment') {
     if (!filled) return field.required ? 'Attach the requested file.' : '';
     if (!value || typeof value !== 'object' || typeof value.name !== 'string' || !value.name || !/^data:[a-zA-Z0-9.+/-]+;base64,[a-zA-Z0-9+/=\r\n]+$/.test(value.dataUrl || '') || Number(value.size) > 10 * 1024 * 1024) return 'Attach a valid file up to 10 MB.';
@@ -393,14 +397,24 @@ export function getFormCompletion(strFormId, objContext) {
     return { total: 1, filled: objUserValues.__done ? 1 : 0, complete: Boolean(objUserValues.__done), manual: true };
   }
 
-  const arrUserFields = objDefinition.fields.filter((field) => field.source === FIELD_SOURCE.USER && isFieldVisible(field, objContext) && !(strFormId === 'bp-204' && usesStaffingRows(objDefinition, objUserValues) && LEGACY_STAFFING_KEYS.has(field.key)));
-  const arrRequired = arrUserFields.filter((objField) => objField.required);
-  const errors = arrUserFields.flatMap((field) => {
-    const error = getFieldValueError(field, objUserValues[field.key], objContext);
+  const resolved = resolveEntryFields(objDefinition.fields, objUserValues, { ...objContext, derived: getDerivedValues(objContext) });
+  const arrUserFields = objDefinition.fields.filter((field) => !laterStageOwner(field) && isFieldVisible(field, objContext) && !(strFormId === 'bp-204' && usesStaffingRows(objDefinition, objUserValues) && LEGACY_STAFFING_KEYS.has(field.key)));
+  const requirements = [];
+  const count = (field, value, path = field.key) => {
+    if (!isFieldVisible(field, objContext) || field.calculation || field.outputOnly || laterStageOwner(field)) return;
+    if (field.required) requirements.push({ path, valid: isRepeatingField(field) ? Array.isArray(value) && value.some((row) => hasRepeatingEntry(field, row, objContext)) : !getFieldValueError(field, value, objContext) });
+    if (isRepeatingField(field) && Array.isArray(value)) value.forEach((row, index) => {
+      if (!row || typeof row !== 'object' || (!field.required && !hasRepeatingEntry(field, row, objContext))) return;
+      for (const child of field.columns) count(child, row[child.key], `${path}[${index}].${child.key}`);
+    });
+  };
+  for (const field of arrUserFields) count(field, resolved[field.key]);
+  const errors = arrUserFields.filter((field) => field.source === FIELD_SOURCE.USER || field.required).flatMap((field) => {
+    const error = getFieldValueError(field, resolved[field.key], objContext);
     return error ? [{ key: field.key, label: field.label, message: error }] : [];
   });
   if (strFormId === 'bp-202' && Array.isArray(objUserValues.fundingRequirements) && objContext.totals) {
-    const current = objUserValues.fundingRequirements.filter((row) => Number(row.year) === Number(objContext.common?.fiscalYear));
+    const current = objUserValues.fundingRequirements.filter((row) => row && Number(row.year) === Number(objContext.common?.fiscalYear));
     const keys = { PS: 'psTotal', MOOE: 'mooeTotal', FINEX: 'finexTotal', CO: 'coTotal' };
     if (current.length && Object.entries(keys).some(([code, key]) => current.filter((row) => row.expenseClass === code).reduce((sum, row) => sum + Math.round(Number(row.amount || 0) * 100), 0) !== Math.round(Number(objContext.totals[key] || 0) * 100))) {
       errors.push({ key: 'fundingRequirements', label: 'Funding requirements', message: 'Current-year requirements by expense class must reconcile with the underlying line items.' });
@@ -414,14 +428,14 @@ export function getFormCompletion(strFormId, objContext) {
     if (Math.round(actual * 100) !== Math.round(Number(expected || 0) * 100)) errors.push({ key, label, message: 'Reconcile this proposed schedule with the underlying budget line items.' });
   };
   if (strFormId === 'bp-a' && objContext.totals && Array.isArray(objUserValues.programHistory)) {
-    const proposed = objUserValues.programHistory.filter((row) => row.period === 'Proposed program');
+    const proposed = objUserValues.programHistory.filter((row) => row?.period === 'Proposed program');
     if (proposed.length) for (const [key, totalKey] of Object.entries({ ps: 'psTotal', mooe: 'mooeTotal', finex: 'finexTotal', co: 'coTotal' })) reconcile('programHistory', proposed.reduce((sum, row) => sum + Number(row[key] || 0), 0), objContext.totals[totalKey], 'Proposed program');
   }
-  const allocationsKnown = (rows, keys) => rows?.length && rows.every((row) => keys.every((key) => row[key] !== '' && row[key] != null && Number.isFinite(Number(row[key]))));
+  const allocationsKnown = (rows, keys) => Array.isArray(rows) && rows.length && rows.every((row) => row && keys.every((key) => row[key] !== '' && row[key] != null && Number.isFinite(Number(row[key]))));
   if (strFormId === 'bp-202' && objContext.totals && allocationsKnown(objUserValues.official_papFunding, ['col_B', 'col_C'])) reconcile('official_papFunding', objUserValues.official_papFunding.reduce((sum, row) => sum + Number(row.col_B) + Number(row.col_C), 0), DERIVED_RESOLVERS.expenseTotal(objContext.totals), 'P/A/P attribution');
   if (strFormId === 'bp-207' && objContext.totals && allocationsKnown(objUserValues.official_climateProposed, ['col_D', 'col_E', 'col_G', 'col_H'])) reconcile('official_climateProposed', objUserValues.official_climateProposed.reduce((sum, row) => sum + ['col_D', 'col_E', 'col_G', 'col_H'].reduce((amount, key) => amount + Number(row[key]), 0), 0), objContext.totals.climateTotal, 'Proposed climate expenditure');
-  const intFilled = arrRequired.filter((field) => !getFieldValueError(field, objUserValues[field.key], objContext)).length;
-  return { total: arrRequired.length, filled: intFilled, complete: errors.length === 0, manual: false, errors };
+  const intFilled = requirements.filter((entry) => entry.valid).length;
+  return { total: requirements.length, filled: intFilled, missing: requirements.length - intFilled, complete: errors.length === 0, manual: false, errors };
 }
 
 /** Which expense-class forms carry which category, used by the totals check in step 5. */

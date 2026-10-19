@@ -178,11 +178,9 @@ export function isExternalStageUpdatePanelVisible(
     return false;
   }
 
-  if (!isUnifiedBudgetSecretaryStageApproved(arrWorkflow)) {
-    return false;
-  }
-
-  return isUnifiedBudgetInternallyApproved(arrWorkflow, arrStageDefinitions);
+  const director = findWorkflowStepByKey(arrWorkflow, 'finance_planning_director', 'finance / planning director');
+  const { externalSteps } = splitUnifiedWorkflowStepsByLane(arrWorkflow, arrStageDefinitions);
+  return director?.status === 'done' && externalSteps.some((step) => step.status === 'current');
 }
 
 /**

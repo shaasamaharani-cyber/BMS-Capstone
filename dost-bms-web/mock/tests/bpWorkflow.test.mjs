@@ -195,11 +195,14 @@ test('Form B draft targets and signers reopen unchanged; target edits invalidate
   const { db, request, create, sign } = fixture(t, ['bp-b']);
   const fields = getDefaultFormDefinition('bp-b').fields;
   db.upsert('budget-cycles', '2027', { id: '2027', enabled_form_ids: ['bp-b'], custom_forms: [], form_configs: { 'bp-b': config([], { fields, requirement: { mode: 'always', match: 'any', conditions: [] } }) }, supporting_documents: [] });
-  const values = { performance: [{ outcome: 'Outcome A', program: 'Research', indicatorType: 'Outcome indicator', indicator: 'Service quality', actualTarget: '80%', actualAccomplishment: '85%', currentTarget: '90%', baseline: '% satisfaction', proposedTier1: '92%', proposedTier2: '95%', proposedTarget: 100 }], budgetOfficer: 'Prepared name', planningOfficer: 'Planning name', agencyHead: 'Approved name', approvalDate: '2026-10-14' };
+  const values = { performance: [{ outcome: 'Outcome A', program: 'Research', indicatorType: 'Outcome indicator', indicator: 'Service quality', actualTarget: '80%', actualAccomplishment: '85%', currentTarget: '90%', baseline: '% satisfaction', proposedTier1: '92%', proposedTier2: '95%', proposedTarget: 100 }], budgetOfficer: 'Prepared name', planningOfficer: 'Planning name' };
   const draft = await create({ br_unified_request: { request: { fundingSource: 'national_government' }, answers: {}, formValues: { 'bp-b': values } } });
+  // Simulate preexisting typed signatory metadata; requesters cannot create or change it.
+  values.agencyHead = 'Historical printed name'; values.approvalDate = '2026-10-14';
+  db.upsert('budget-requests', 1, { ...draft, br_unified_request: { ...draft.br_unified_request, formValues: { 'bp-b': values } } });
   const reopened = await request('GET', 'budget-requests/1');
   assert.deepEqual(reopened.data.br_unified_request.formValues['bp-b'], values);
-  assert.deepEqual(validateConfiguredSubmission(db, sign(draft, 'bp-b')).errors, []);
+  assert.deepEqual(validateConfiguredSubmission(db, sign(db.find('budget-requests', 1), 'bp-b')).errors, []);
   const changed = structuredClone(values);
   changed.performance[0].proposedTier2 = '97%';
   await request('PUT', 'budget-requests/1', { br_unified_request: { ...draft.br_unified_request, formValues: { 'bp-b': changed } } });
@@ -386,7 +389,7 @@ test('consolidation retains FinEx, climate subsets and immutable institution for
   const reduced = structuredClone(payload);
   reduced.consolidatedLineItems[0].items[0].amount = 10;
   await call(3, reduced);
-  assert.equal(response.status, 422, 'Adjustment cannot silently shrink the original climate attribution');
+  assert.equal(response.status, 409, 'An already consolidated request cannot be submitted into a second budget');
 });
 
 test('SQLite upgrade adds FinEx without changing TAG or historical totals and rolls back failed writes', async () => {

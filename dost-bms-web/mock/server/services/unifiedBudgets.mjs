@@ -172,15 +172,13 @@ function budgetRequestCodeForId(db, brId) {
 
 
 function resolveDeclaredBudgetRequestItemId(item) {
-  const rowId = item?.id ?? item?.ubi_id;
   const fromFields = item?.budgetRequestItemId ??
     item?.sourceItemId ??
     item?.ubi_budget_request_item_id;
 
   if (
     fromFields != null &&
-    fromFields !== '' &&
-    String(fromFields) !== String(rowId)
+    fromFields !== ''
   ) {
     const parsed = Number(fromFields);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
@@ -513,6 +511,7 @@ export function withUnifiedBudgetRelations(db, budget) {
     title: budget.ub_title,
     description: budget.ub_description ?? '',
     reviewComment: budget.ub_review_comment ?? '',
+    comment: budget.ub_division_comment ?? '',
     // "Approved" only once every external stage is done; before that the directors have approved it
     statusLabel: String(status).toLowerCase() === 'approved'
       && workflowSteps(db, ubId).some((step) => EXTERNAL_STEP_TYPES.has(String(step.type || '').toLowerCase()) && step.status !== 'done')
@@ -863,6 +862,7 @@ export async function saveUnifiedBudget(db, payload, existing = null) {
     ub_created_by: payload.ub_created_by ?? existing?.ub_created_by ?? 2,
     ub_title: payload.ub_title ?? payload.title ?? existing?.ub_title ?? 'Untitled Consolidated Budget',
     ub_description: payload.ub_description ?? payload.description ?? existing?.ub_description ?? '',
+    ub_division_comment: payload.divisionComment ?? existing?.ub_division_comment ?? '',
     ub_current_version_number: payload.ub_current_version_number ?? payload.currentVersion ?? existing?.ub_current_version_number ?? 1,
     ub_current_status: requestedStatus,
     ub_current_stage: requestedStage,
@@ -914,25 +914,15 @@ export function applyApproveToWorkflow(steps, strActorName = '') {
   const approvedAt = nowLocaleString();
   const strPerson = String(strActorName || '').trim();
   const strApproveLabel = strPerson ? `Approved by ${strPerson}` : 'Approved';
-  let firstExternal = true;
-
   return steps.map((step) => {
-    const isExternal = EXTERNAL_STEP_TYPES.has(String(step.type || '').toLowerCase());
-    if (!isExternal) {
-      return {
-        ...step,
-        status: 'done',
-        actionText: strApproveLabel,
-        actionAt: step.actionAt || approvedAt,
-        actorRole: step.actorRole || step.title || '',
-        actorName: strPerson,
-      };
-    }
-    if (firstExternal) {
-      firstExternal = false;
-      return { ...step, status: 'current', actionText: 'Pending Approval' };
-    }
-    return { ...step, status: 'locked', actionText: '' };
+    if (step.stepKey === 'draft') return { ...step };
+    if (step.stepKey === 'finance_planning_director') return {
+      ...step, status: 'done', actionText: strApproveLabel, actionAt: approvedAt,
+      actorRole: 'Finance / Planning Director', actorName: strPerson,
+    };
+    if (step.stepKey === 'dbm') return { ...step, status: 'current', actionText: 'Awaiting external result', actionAt: '', actorName: '' };
+    // USEC/Secretary have no authenticated decision in this implementation.
+    return { ...step, status: 'locked', actionText: '', actionAt: '', actorRole: '', actorName: '' };
   });
 }
 

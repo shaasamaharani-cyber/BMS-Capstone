@@ -3,7 +3,7 @@
  * Module Name: API Layer
  *
  * Purpose of this file:
- * Fetch unified budget tracking list, summary statistics, and filter options (stages, statuses, fiscal years).
+ * Fetch persisted budget tracking records, summary statistics and filter options.
  *
  * Author(s): QUT Group 27
  *
@@ -13,127 +13,39 @@
  * All rights reserved.
  */
 
-// TODO: replace mock imports with real axios/fetch calls when the backend is ready.
-import { mockTrackingBudgets, mockTrackingSummaryStats } from './mock/budget_tracking.mock.js';
+import { getUnifiedBudgets } from './budget_consolidation_api';
+import { isUnifiedBudgetWorkflowFullyApproved } from '../utils/unified_budget_workflow_lanes';
 
-const API_DELAY_MS = 120;
-const TRACKING_STORAGE_KEY = 'bms.budgetTracking.store.v1';
-const ALLOWED_STATUSES = new Set(['PENDING', 'COMPLETED']);
-
-const wait = (ms = API_DELAY_MS) => new Promise((resolve) => { setTimeout(resolve, ms); });
-
-const getFiscalYearFromPeriod = (periodStart) => {
-  const match = String(periodStart || '').match(/\d{4}/);
-  return match ? match[0] : '';
-};
-
-const readTrackingStore = () => {
-  try {
-    const raw = localStorage.getItem(TRACKING_STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(TRACKING_STORAGE_KEY, JSON.stringify(mockTrackingBudgets));
-      return [...mockTrackingBudgets];
-    }
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) {
-      localStorage.setItem(TRACKING_STORAGE_KEY, JSON.stringify(mockTrackingBudgets));
-      return [...mockTrackingBudgets];
-    }
-
-    // Merge: add any mock records missing from the persisted store.
-    const existingIds = new Set(parsed.map((item) => String(item.id)));
-    const missing = mockTrackingBudgets.filter((item) => !existingIds.has(String(item.id)));
-    const merged = [...parsed, ...missing];
-    localStorage.setItem(TRACKING_STORAGE_KEY, JSON.stringify(merged));
-    return merged;
-  } catch {
-    return [...mockTrackingBudgets];
-  }
-};
-
-let trackingStore = readTrackingStore();
-
-/**
- * Fetch tracking budgets (PENDING and COMPLETED only).
- * Optionally filters by stage, status, and fiscal year.
- *
- * @param {{ stage?: string, status?: string, fiscalYear?: string }} [filters={}]
- * @returns {Promise<{ data: object[], total: number }>}
- */
-export async function getTrackingBudgets(filters = {}) {
-  await wait();
-
-  const filtered = trackingStore.filter((item) => {
-    const status = String(item.status || '').toUpperCase();
-    if (!ALLOWED_STATUSES.has(status)) return false;
-    if (filters.stage && item.stage !== filters.stage) return false;
-    if (filters.status && status !== String(filters.status).toUpperCase()) return false;
-    if (filters.fiscalYear) {
-      const fy = item.fiscalYear || getFiscalYearFromPeriod(item.periodStart);
-      if (fy !== filters.fiscalYear) return false;
-    }
-    return true;
+// Tracking uses the same persisted budgets as consolidation and Director views.
+// A Director-approved budget still awaits external results; it is not completed.
+async function trackingRows() {
+  const response = await getUnifiedBudgets({ per_page: 10000 });
+  const rows = Array.isArray(response?.data) ? response.data : [];
+  return rows.filter((row) => String(row.status).toUpperCase() !== 'DRAFT').map((row) => {
+    const completed = isUnifiedBudgetWorkflowFullyApproved(row.approvalWorkflow);
+    return { ...row, status: completed ? 'COMPLETED' : row.status,
+      statusLabel: completed ? 'External stages recorded complete' : row.statusLabel };
   });
-
-  return { data: filtered, total: filtered.length };
 }
 
-/**
- * Fetch unique stage values from tracking records.
- *
- * @returns {Promise<string[]>}
- */
+export async function getTrackingBudgets(filters = {}) {
+  const data = (await trackingRows()).filter((row) => (!filters.stage || row.stage === filters.stage)
+    && (!filters.status || row.status === filters.status)
+    && (!filters.fiscalYear || String(row.fiscalYear) === String(filters.fiscalYear)));
+  return { data, total: data.length };
+}
 export async function getTrackingStageOptions() {
-  await wait();
-  const stages = trackingStore
-    .filter((item) => ALLOWED_STATUSES.has(String(item.status || '').toUpperCase()))
-    .map((item) => String(item.stage || '').trim())
-    .filter(Boolean);
-  return [...new Set(stages)].sort((a, b) => a.localeCompare(b));
+  return [...new Set((await trackingRows()).map((row) => row.stage).filter(Boolean))].sort();
 }
-
-/**
- * Fetch unique fiscal year values from tracking records.
- *
- * @returns {Promise<string[]>}
- */
 export async function getTrackingFiscalYearOptions() {
-  await wait();
-  const years = trackingStore
-    .filter((item) => ALLOWED_STATUSES.has(String(item.status || '').toUpperCase()))
-    .map((item) => item.fiscalYear || getFiscalYearFromPeriod(item.periodStart))
-    .filter(Boolean);
-  return [...new Set(years)].sort((a, b) => a.localeCompare(b));
+  return [...new Set((await trackingRows()).map((row) => String(row.fiscalYear)).filter(Boolean))].sort();
 }
-
-/**
- * Status options are fixed for the tracking page.
- *
- * @returns {Promise<string[]>}
- */
 export async function getTrackingStatusOptions() {
-  await wait();
-  return ['PENDING', 'COMPLETED'];
+  return [...new Set((await trackingRows()).map((row) => row.status))].sort();
 }
-
-/**
- * Summary statistics for the Budget Tracking dashboard.
- * Counts are derived from the live store; budget totals come from the mock.
- *
- * @returns {Promise<{ inProgress: number, completed: number, ps: string, mooe: string }>}
- */
 export async function getTrackingSummaryStats() {
-  await wait();
-  const inProgress = trackingStore.filter(
-    (item) => String(item.status || '').toUpperCase() === 'PENDING'
-  ).length;
-  const completed = trackingStore.filter(
-    (item) => String(item.status || '').toUpperCase() === 'COMPLETED'
-  ).length;
-  return {
-    inProgress,
-    completed,
-    ps: mockTrackingSummaryStats.ps,
-    mooe: mockTrackingSummaryStats.mooe,
-  };
+  const rows = await trackingRows();
+  const peso = (key) => 'PHP ' + rows.reduce((sum, row) => sum + Number(row.totals?.[key] || 0), 0).toLocaleString('en-PH', { minimumFractionDigits: 2 });
+  return { inProgress: rows.filter((row) => row.status !== 'COMPLETED' && row.status !== 'REJECTED').length,
+    completed: rows.filter((row) => row.status === 'COMPLETED').length, ps: peso('psTotal'), mooe: peso('mooeTotal') };
 }

@@ -1,4 +1,4 @@
-import { getLineItemErrors } from '../../../src/utils/budget_financials.js';
+import { prepareDivisionSave, requireDirectorDecision, prepareExternalDecision, storedVersions } from '../services/unifiedBudgetLifecycle.mjs';
 import { unique } from '../utils.mjs';
 import {
   saveUnifiedBudget,
@@ -9,8 +9,14 @@ import {
   applyRejectToWorkflow,
 } from '../services/unifiedBudgets.mjs';
 import { actorDisplayNameFromUser, resolveRequestActor } from '../services/requestActor.mjs';
+import { serializeWorkflowWrite } from '../services/workflowWrites.mjs';
 
 export async function handleUnifiedBudgets(ctx) {
+  if (ctx.parts[0] !== 'unified-budgets') return false;
+  return ctx.req.method === 'GET' ? handleUnifiedBudgetOperation(ctx) : serializeWorkflowWrite(ctx.db, () => handleUnifiedBudgetOperation(ctx));
+}
+
+async function handleUnifiedBudgetOperation(ctx) {
   const { db, json, paginate, parts, req, res, url, payload } = ctx;
 
   if (parts[0] !== 'unified-budgets') return false;
@@ -18,14 +24,6 @@ export async function handleUnifiedBudgets(ctx) {
   if (!actor) { json(res, 401, { message: 'Authentication required.' }); return true; }
   if (!['reviewer', 'executive'].includes(String(actor.role?.role_group || '').toLowerCase())) { json(res, 403, { message: 'Insufficient permissions.' }); return true; }
   payload.actor_id = actor.id;
-  if (Array.isArray(payload.consolidatedLineItems)) {
-    const errors = payload.consolidatedLineItems.flatMap((section) => (section.items || []).flatMap((item) => {
-      const source = db.rows('budget-request-items').find((row) => Number(row.bri_id) === Number(item.budgetRequestItemId || item.sourceItemId));
-      return getLineItemErrors({ ...item, climateAmount: source?.bri_climate_amount ?? item.climateAmount ?? 0, climateTypology: source?.bri_climate_typology || item.climateTypology || '', climateType: source?.bri_climate_type || item.climateType || '' }, { allowLegacy: item.category === 'TAG' });
-    }));
-    if (errors.length) { json(res, 422, { message: errors.join(' ') }); return true; }
-  }
-
   if (req.method === 'GET' && parts[1] === 'summary-stats') {
     json(res, 200, unifiedBudgetSummary(db));
     return true;
@@ -55,8 +53,8 @@ export async function handleUnifiedBudgets(ctx) {
   }
 
   // Who may change a consolidated budget (as-is lanes; Security Standards 6.15, 6.17): the division
-  // prepares it and records external results, the directors approve or reject; the main administrator
-  // only views. The login token decides.
+  // prepares it and records external results; the directors approve or return.
+  // Administrators have no budget access. The login token decides.
   if (req.method !== 'GET') {
     const strGroup = String(resolveRequestActor(db, req)?.role?.role_group || '').toLowerCase();
     const blnDirectorAction = req.method === 'POST' && ['approve', 'reject'].includes(parts[2]);
@@ -68,7 +66,10 @@ export async function handleUnifiedBudgets(ctx) {
   }
 
   if (req.method === 'POST' && parts.length === 1) {
-    json(res, 201, { data: await saveUnifiedBudget(db, payload) });
+    try {
+      const trusted = prepareDivisionSave(db, payload, null, actor);
+      json(res, 201, { data: await saveUnifiedBudget(db, trusted) });
+    } catch (error) { json(res, error.status || 500, { message: error.message }); }
     return true;
   }
 
@@ -85,68 +86,43 @@ export async function handleUnifiedBudgets(ctx) {
     return true;
   }
 
-  if (req.method === 'POST' && parts[2] === 'approve') {
-    const ubId = existing.ub_id ?? existing.id;
-    const currentSteps = db.rows('unified-budget-workflow-steps')
-      .filter((s) => Number(s.ubws_unified_budget_id) === Number(ubId))
-      .sort((a, b) => Number(a.ubws_sort_order) - Number(b.ubws_sort_order))
-      .map((s) => s.ubws_payload);
-    const objActor = resolveRequestActor(db, req, payload);
-    const strActorName = actorDisplayNameFromUser(objActor);
-    const updatedSteps = applyApproveToWorkflow(currentSteps, strActorName);
-    const existingVersions = db.rows('unified-budget-versions')
-      .filter((v) => Number(v.ubv_unified_budget_id) === Number(ubId))
-      .map((v) => v.ubv_payload);
-    const updatedVersions = existingVersions.map((v) =>
-      Number(v.version) === Number(existing.ub_current_version_number)
-        ? { ...v, workflow: updatedSteps }
-        : v
-    );
-    const updated = await saveUnifiedBudget(db, {
-      status: 'approved',
-      // The stage it now waits at (the first external step, e.g. DBM), not a fixed "Secretary"
-      stage: updatedSteps.find((step) => step.status === 'current')?.title ?? updatedSteps.at(-1)?.title ?? 'Secretary',
-      approvalWorkflow: updatedSteps,
-      approvalVersions: updatedVersions.length ? updatedVersions : undefined,
-      reviewComment: payload?.comment ?? '',
-    }, existing);
-    json(res, 200, { data: updated });
-    return true;
-  }
-
-  if (req.method === 'POST' && parts[2] === 'reject') {
-    const ubId = existing.ub_id ?? existing.id;
-    const currentSteps = db.rows('unified-budget-workflow-steps')
-      .filter((s) => Number(s.ubws_unified_budget_id) === Number(ubId))
-      .sort((a, b) => Number(a.ubws_sort_order) - Number(b.ubws_sort_order))
-      .map((s) => s.ubws_payload);
-    const objActor = resolveRequestActor(db, req, payload);
-    const strActorName = actorDisplayNameFromUser(objActor);
-    const updatedSteps = applyRejectToWorkflow(currentSteps, strActorName);
-    const existingVersions = db.rows('unified-budget-versions')
-      .filter((v) => Number(v.ubv_unified_budget_id) === Number(ubId))
-      .map((v) => v.ubv_payload);
-    const updatedVersions = existingVersions.map((v) =>
-      Number(v.version) === Number(existing.ub_current_version_number)
-        ? { ...v, workflow: updatedSteps }
-        : v
-    );
-    const updated = await saveUnifiedBudget(db, {
-      status: 'rejected',
-      approvalWorkflow: updatedSteps,
-      approvalVersions: updatedVersions.length ? updatedVersions : undefined,
-      reviewComment: payload?.comment ?? '',
-    }, existing);
-    json(res, 200, { data: updated });
+  if (req.method === 'POST' && ['approve', 'reject'].includes(parts[2])) {
+    try {
+      const returning = parts[2] === 'reject';
+      const currentSteps = requireDirectorDecision(db, existing, payload.comment, returning);
+      const actorName = actorDisplayNameFromUser(actor);
+      const updatedSteps = returning ? applyRejectToWorkflow(currentSteps, actorName) : applyApproveToWorkflow(currentSteps, actorName);
+      const comment = String(payload.comment || '').trim();
+      const versions = storedVersions(db, existing.ub_id ?? existing.id).map((version) =>
+        Number(version.version) === Number(existing.ub_current_version_number)
+          ? { ...version, workflow: updatedSteps, reviewComment: comment, decidedBy: actor.id, decidedAt: new Date().toISOString() } : version);
+      const trusted = { status: returning ? 'rejected' : 'approved',
+        stage: updatedSteps.find((step) => step.status === 'current')?.title || 'DBM',
+        approvalWorkflow: updatedSteps, approvalVersions: versions, reviewComment: comment, actor_id: actor.id };
+      json(res, 200, { data: await saveUnifiedBudget(db, trusted, existing) });
+    } catch (error) { json(res, error.status || 500, { message: error.message }); }
     return true;
   }
 
   if (req.method === 'PUT') {
-    json(res, 200, { data: await saveUnifiedBudget(db, payload, existing) });
+    try {
+      const attachmentsOnly = Object.keys(payload).every((key) => ['attachedFiles', 'actor_id'].includes(key)) && Array.isArray(payload.attachedFiles);
+      const trusted = attachmentsOnly
+        ? { attachedFiles: payload.attachedFiles, actor_id: actor.id }
+        : payload.externalDecision
+        ? prepareExternalDecision(db, existing, payload.externalDecision, actor)
+        : prepareDivisionSave(db, payload, existing, actor, withUnifiedBudgetRelations(db, existing).consolidatedLineItems);
+      json(res, 200, { data: await saveUnifiedBudget(db, trusted, existing) });
+    } catch (error) { json(res, error.status || 500, { message: error.message }); }
     return true;
   }
 
   if (req.method === 'DELETE') {
+    if (String(existing.ub_current_status).toLowerCase() !== 'draft' || storedVersions(db, id).length) {
+      json(res, 409, { message: 'Only an unsubmitted draft can be deleted.' }); return true;
+    }
+    db.removeWhere('unified-budget-items', (row) => Number(row.ubi_unified_budget_id) === Number(id));
+    db.removeWhere('unified-budget-workflow-steps', (row) => Number(row.ubws_unified_budget_id) === Number(id));
     db.remove('unified-budgets', id);
     json(res, 200, { message: 'Deleted' });
     return true;

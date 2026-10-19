@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
 import { captureRequestFormConfiguration } from './requestFormConfiguration.mjs';
+import { preserveSignoffValues } from '../../../src/bp_forms/field_ownership.js';
 
 const GENERATED_ATTACHMENTS_DIR = resolve('mock/generated/attachments');
 const PUBLIC_FILE_BASE = process.env.MOCK_PUBLIC_BASE_URL
@@ -204,7 +205,8 @@ function persistBudgetRequest(db, payload, existing = null) {
   const storageExisting = withoutEmbeddedRelations(existing);
   const unifiedPayload = payload.br_unified_request ?? (payload.br_fiscal_year_id != null ? existing?.br_unified_request : null);
   if (unifiedPayload && typeof unifiedPayload === 'object') {
-    storagePayload.br_unified_request = captureRequestFormConfiguration(db, unifiedPayload, payload.br_fiscal_year_id ?? existing?.br_fiscal_year_id);
+    const preserved = { ...unifiedPayload, formValues: preserveSignoffValues(unifiedPayload.formValues, existing?.br_unified_request?.formValues) };
+    storagePayload.br_unified_request = captureRequestFormConfiguration(db, preserved, payload.br_fiscal_year_id ?? existing?.br_fiscal_year_id);
   }
   storagePayload.br_attached_files = saveAttachedFiles(
     payload.br_attached_files,
