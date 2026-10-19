@@ -81,7 +81,7 @@ export const STATUS_LABELS = {
   pending: 'Pending',
   approved: 'Approved',
   reviewed: 'Reviewed',
-  rejected: 'Rejected',
+  rejected: 'Returned', // requests and consolidated budgets sent back for changes; external rejections pass their own label
   consolidated: 'Consolidated',
   completed: 'Completed',
   cancelled: 'Cancelled',

@@ -17,6 +17,7 @@ import { useState } from 'react';
 import { formatTimestamp, formatCurrency } from '../../utils/formatters';
 import { formatAttachmentFileSize, getGeneratedFileUrl } from '../../utils/attachments';
 import UnifiedRequestFormsSummary from './unified_request_forms_summary';
+import { getUnifiedBudgetStatusLabel } from '../../utils/unified_budget_workflow_lanes';
 
 const STATUS_BADGE = {
   pending: { bg: 'bg-warning text-dark', label: 'Pending' },
@@ -25,10 +26,11 @@ const STATUS_BADGE = {
   draft: { bg: 'bg-secondary', label: 'Draft' },
 };
 
-function StatusBadge({ status = '' }) {
+function StatusBadge({ status = '', workflow = [] }) {
   const key = String(status).toLowerCase();
   const { bg = 'bg-secondary', label = status } = STATUS_BADGE[key] ?? {};
-  return <span className={`badge ${bg} text-capitalize`}>{label}</span>;
+  const strLabel = ['approved', 'rejected'].includes(key) ? getUnifiedBudgetStatusLabel(key, workflow) : label;
+  return <span className={`badge ${bg}`}>{strLabel}</span>;
 }
 
 function SnapshotSectionTitle({ children }) {
@@ -61,7 +63,7 @@ function VersionCard({ version }) {
           <span className="badge bg-secondary-subtle text-secondary-emphasis fw-semibold" style={{ fontSize: '0.75rem' }}>
             v{version.version}
           </span>
-          <StatusBadge status={version.status} />
+          <StatusBadge status={version.status} workflow={version.workflow} />
           {hasPdfSnapshot ? (
             <span className="badge rounded-pill text-bg-light border">PDF Snapshot</span>
           ) : null}

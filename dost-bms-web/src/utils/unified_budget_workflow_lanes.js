@@ -212,3 +212,28 @@ export function isUnifiedBudgetWorkflowFullyApproved(arrWorkflow = [], arrStageD
     (objStep) => String(objStep?.status || '').toLowerCase() === 'done'
   );
 }
+
+/**
+ * Status words for a consolidated budget, shared by the server and the pages.
+ * "Director approved" until every external stage is done; "Returned" when the director
+ * sends it back to the division; "Rejected by DBM" (etc.) when an external stage rejects it.
+ *
+ * @param {string} strStatus  stored status (draft, pending, approved, rejected)
+ * @param {object[]} arrWorkflow
+ * @returns {string}
+ */
+export function getUnifiedBudgetStatusLabel(strStatus, arrWorkflow = [])
+{
+  const strKey = String(strStatus || '').toLowerCase();
+  const arrSteps = Array.isArray(arrWorkflow) ? arrWorkflow : [];
+  const isExternal = (objStep) => EXTERNAL_TYPES.has(normalizeType(objStep?.type));
+
+  if (strKey === 'approved') {
+    return arrSteps.some((objStep) => isExternal(objStep) && objStep.status !== 'done') ? 'Director approved' : 'Approved';
+  }
+  if (strKey === 'rejected') {
+    const objRejected = arrSteps.find((objStep) => objStep?.status === 'rejected');
+    return objRejected && isExternal(objRejected) ? `Rejected by ${objRejected.title}` : 'Returned';
+  }
+  return String(strStatus || '').toUpperCase();
+}

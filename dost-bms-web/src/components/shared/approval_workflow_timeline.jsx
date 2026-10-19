@@ -16,6 +16,7 @@
 import PropTypes from 'prop-types';
 import { BsCheck, BsClock, BsLock, BsXCircleFill } from 'react-icons/bs';
 import { getWorkflowStatusClass } from '../../utils/budget_request_workflow_utils';
+import { formatTimestamp } from '../../utils/formatters';
 
 const stepPropType = PropTypes.shape({
   title: PropTypes.string.isRequired,
@@ -62,7 +63,7 @@ function StepMeta({ step }) {
         </p>
       ) : null}
       {showTimestamp ? (
-        <p className="text-muted mb-0 workflow-meta">{step.actionAt}</p>
+        <p className="text-muted mb-0 workflow-meta">{formatTimestamp(step.actionAt)}</p>
       ) : null}
       {(step.actorRole && !blnActorRoleMatchesTitle && !blnActorNamedInAction) ? (
         <p className="text-muted mb-0 workflow-actor">

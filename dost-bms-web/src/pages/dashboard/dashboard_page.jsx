@@ -231,7 +231,7 @@ function normalizeDashboardPayload(objRaw)
       statusSummary: [
         { status: 'pending',      label: 'Pending',      value: Number(objStatusSummary.pending || objStatusSummary.submitted || 0), color: 'pending'      },
         { status: 'reviewed',     label: 'Reviewed',     value: Number(objStatusSummary.reviewed     || 0),                          color: 'reviewed'     },
-        { status: 'rejected',     label: 'Rejected',     value: Number(objStatusSummary.rejected     || 0),                          color: 'rejected'     },
+        { status: 'rejected',     label: 'Returned',     value: Number(objStatusSummary.rejected     || 0),                          color: 'rejected'     },
         { status: 'consolidated', label: 'Consolidated', value: Number(objStatusSummary.consolidated || 0),                          color: 'consolidated' },
       ],
       budgetByCategory: {
