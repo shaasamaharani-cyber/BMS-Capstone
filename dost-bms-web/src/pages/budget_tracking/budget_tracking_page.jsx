@@ -566,7 +566,7 @@ function BudgetTrackingDetailView() {
             </div>
             <div className="col-md-2">
               <p className="text-muted small mb-1">Status</p>
-              <p className="fw-semibold mb-0">{objRecord.status}</p>
+              <p className="fw-semibold mb-0">{objRecord.statusLabel || objRecord.status}</p>
             </div>
             <div className="col-md-5">
               <p className="text-muted small mb-1">Stage</p>

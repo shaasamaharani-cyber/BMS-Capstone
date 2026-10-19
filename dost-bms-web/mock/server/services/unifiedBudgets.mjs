@@ -1,4 +1,5 @@
 import { computeBudgetLineItemTotals } from '../../../src/utils/budget_financials.js';
+import { getUnifiedBudgetStatusLabel } from '../../../src/utils/unified_budget_workflow_lanes.js';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
 import { money, sortItems } from '../utils.mjs';
@@ -512,11 +513,8 @@ export function withUnifiedBudgetRelations(db, budget) {
     description: budget.ub_description ?? '',
     reviewComment: budget.ub_review_comment ?? '',
     comment: budget.ub_division_comment ?? '',
-    // "Approved" only once every external stage is done; before that the directors have approved it
-    statusLabel: String(status).toLowerCase() === 'approved'
-      && workflowSteps(db, ubId).some((step) => EXTERNAL_STEP_TYPES.has(String(step.type || '').toLowerCase()) && step.status !== 'done')
-      ? 'Director approved'
-      : String(status).toUpperCase(),
+    // "Director approved" until every external stage is done; "Returned" or "Rejected by <stage>" when sent back
+    statusLabel: getUnifiedBudgetStatusLabel(status, workflowSteps(db, ubId)),
     changeLog: db.rows('unified-budget-change-logs')
       .filter((row) => Number(row.ubcl_unified_budget_id) === Number(ubId))
       .sort((a, b) => String(a.ubcl_created_at).localeCompare(String(b.ubcl_created_at))),
@@ -899,7 +897,6 @@ export async function saveUnifiedBudget(db, payload, existing = null) {
   return withUnifiedBudgetRelations(db, saved);
 }
 
-const EXTERNAL_STEP_TYPES = new Set(['external_approval', 'review']);
 
 function nowLocaleString() {
   return new Date().toLocaleString('en-US', {

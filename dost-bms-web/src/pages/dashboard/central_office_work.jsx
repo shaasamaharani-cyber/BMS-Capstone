@@ -178,7 +178,7 @@ export default function CentralOfficeWork({ strView }) {
           </div>
         )}
         <table className={styles.table}>
-          <thead><tr><th>Consolidated budget</th><th>Fiscal year</th><th>Last stage acted on</th><th aria-label="Tracking" /></tr></thead>
+          <thead><tr><th>Consolidated budget</th><th>Fiscal year</th><th>Current stage</th><th aria-label="Tracking" /></tr></thead>
           <tbody>
             {arrBudgets.map((objBudget) => (
               <tr key={objBudget.id}>
