@@ -14,7 +14,7 @@
 
 import PropTypes from 'prop-types';
 import { Line } from 'react-chartjs-2';
-import { formatCurrency, formatShortPeso } from '../../utils/formatters';
+import { formatCurrency, formatRate, formatShortPeso, getRateClassName } from '../../utils/formatters';
 import { ProposalTag } from './proposal_sections';
 import styles from './execution_insights.module.css';
 
@@ -35,7 +35,7 @@ function percentOf(dblPart, dblWhole)
   return dblWhole > 0 ? (dblPart / dblWhole) * 100 : 0;
 }
 
-export function ExecutionAmountCards({ summaryCards, title = 'Budget Execution Amount', tag = <ProposalTag section="overview" /> })
+export function ExecutionAmountCards({ summaryCards, title = 'Financial Overview', tag = <ProposalTag section="overview" /> })
 {
   const objByKey = Object.fromEntries((summaryCards || []).map((objCard) => [objCard.key, Number(objCard.value) || 0]));
   const { appropriation = 0, allotment = 0, obligation = 0, disbursement = 0 } = objByKey;
@@ -72,31 +72,77 @@ export function ExecutionAmountCards({ summaryCards, title = 'Budget Execution A
 
 ExecutionAmountCards.propTypes = { summaryCards: PropTypes.array, title: PropTypes.string, tag: PropTypes.node };
 
-export function FinancialOverview({ summaryCards, projectedYearEnd, projectedVariance })
+// The money by expense class, led by the class with the highest allocation (DOST written answer 1)
+export function ExpenseClassInsight({ rows, legend })
 {
-  const objByKey = Object.fromEntries((summaryCards || []).map((objCard) => [objCard.key, Number(objCard.value) || 0]));
-  const dblUtilisation = percentOf(objByKey.obligation || 0, objByKey.allotment || 0);
+  const arrRows = (rows || [])
+    .filter((objRow) => objRow.appropriation || objRow.allotment || objRow.obligation || objRow.disbursement)
+    .sort((objA, objB) => objB.allotment - objA.allotment);
+  const dblTotalAllotment = arrRows.reduce((dblSum, objRow) => dblSum + objRow.allotment, 0);
+  const objTop = arrRows[0];
+  const nameOf = (strCode) => (legend?.[strCode] ? `${legend[strCode]} (${strCode})` : strCode);
+
+  return (
+    <section className={`${styles.panel} ${styles.section}`} aria-labelledby="expense-class-heading">
+      <h3 id="expense-class-heading" className={styles.panelTitle}>By Expense Class <ProposalTag section="overview" /></h3>
+      {!objTop || objTop.allotment <= 0
+        ? <p className={styles.panelSubtitle}>No allotment recorded for the selected filters.</p>
+        : (
+          <>
+            <p className={styles.panelSubtitle}>
+              <strong>Highest allocation: {nameOf(objTop.category)}</strong>, {formatCurrency(objTop.allotment)} or {percentOf(objTop.allotment, dblTotalAllotment).toFixed(1)}% of the total allotment.
+            </p>
+            <div className="table-responsive">
+              <table className="table table-sm align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Expense class</th>
+                    <th className="text-end">Allotment</th>
+                    <th className="text-end">Share</th>
+                    <th className="text-end">Obligation</th>
+                    <th className="text-end">Committed</th>
+                    <th className="text-end">Disbursement</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {arrRows.map((objRow) => (
+                    <tr key={objRow.category}>
+                      <td>{nameOf(objRow.category)}</td>
+                      <td className="text-end">{formatCurrency(objRow.allotment)}</td>
+                      <td className="text-end">{percentOf(objRow.allotment, dblTotalAllotment).toFixed(1)}%</td>
+                      <td className="text-end">{formatCurrency(objRow.obligation)}</td>
+                      <td className={`text-end ${getRateClassName(percentOf(objRow.obligation, objRow.allotment))}`}>{formatRate(percentOf(objRow.obligation, objRow.allotment))}</td>
+                      <td className="text-end">{formatCurrency(objRow.disbursement)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+    </section>
+  );
+}
+
+ExpenseClassInsight.propTypes = { rows: PropTypes.array, legend: PropTypes.object };
+
+// Sample until DOST agrees a forecasting method
+export function YearEndProjection({ projectedYearEnd, projectedVariance })
+{
   const blnOverspend = projectedVariance > 0;
 
   return (
-    <section className={styles.section} aria-labelledby="fin-overview-heading">
-      <SectionTitle id="fin-overview-heading" title="Financial Overview" tag={<ProposalTag section="overview" />} />
+    <section className={styles.section} aria-labelledby="year-end-heading">
+      <SectionTitle id="year-end-heading" title="Year-End Projection" tag={<ProposalTag section="forecast" />} />
       <div className="row g-3">
-        <div className="col-md-4">
-          <div className={`${styles.card} ${styles.card_green}`}>
-            <span className={styles.cardLabel}>Budget Utilisation</span>
-            <div className={styles.bigValue}>{dblUtilisation.toFixed(1)}%</div>
-            <div className={styles.cardNoteOk}>Within Expected Range</div>
-          </div>
-        </div>
-        <div className="col-md-4">
+        <div className="col-md-6">
           <div className={`${styles.card} ${styles.card_blue}`}>
             <span className={styles.cardLabel}>Projected Year-End</span>
             <div className={styles.bigValue}>{formatShortPeso(projectedYearEnd)}</div>
             <div className={styles.cardNoteInfo}>Based on current spending</div>
           </div>
         </div>
-        <div className="col-md-4">
+        <div className="col-md-6">
           <div className={`${styles.card} ${blnOverspend ? styles.card_red : styles.card_green}`}>
             <span className={styles.cardLabel}>Projected Variance</span>
             <div className={`${styles.bigValue} ${blnOverspend ? styles.textDanger : ''}`}>
@@ -112,8 +158,7 @@ export function FinancialOverview({ summaryCards, projectedYearEnd, projectedVar
   );
 }
 
-FinancialOverview.propTypes = {
-  summaryCards: PropTypes.array,
+YearEndProjection.propTypes = {
   projectedYearEnd: PropTypes.number.isRequired,
   projectedVariance: PropTypes.number.isRequired,
 };

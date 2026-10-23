@@ -39,10 +39,11 @@ import TechAdminDashboard from './admin_cards';
 import DrillDown from './drill_down';
 import {
   ExecutionAmountCards,
+  ExpenseClassInsight,
   FinancialAlerts,
-  FinancialOverview,
   PlanningInsight,
   ProjectedExpenditureChart,
+  YearEndProjection,
 } from './execution_insights';
 import { SAMPLE_INSIGHTS } from './execution_insights_sample';
 import { FiguresAsOf, SampleDataNote } from './proposal_sections';
@@ -621,10 +622,11 @@ function OrganisationDashboard({ strCentralView })
           <FiguresAsOf asOf={strFiscalYearLabel ? `fiscal year ${strFiscalYearLabel}` : 'all fiscal years'} source="BMS budget execution records (mock database in Phase 1)" />
           <ExecutionAmountCards summaryCards={objDashboardData?.monitoring?.summaryCards} />
 
+          <ExpenseClassInsight rows={objDashboardData?.monitoring?.byCategory} legend={objDashboardData?.planning?.categoryLegend} />
+
           <SampleDataNote>Projected year-end, projected variance, the expenditure projection{strCentralView ? '' : ', the alerts'} and the planning insight below use fixed sample figures until the forecasting method is agreed with DOST.</SampleDataNote>
 
-          <FinancialOverview
-            summaryCards={objDashboardData?.monitoring?.summaryCards}
+          <YearEndProjection
             projectedYearEnd={SAMPLE_INSIGHTS.projectedYearEnd}
             projectedVariance={SAMPLE_INSIGHTS.projectedVariance}
           />

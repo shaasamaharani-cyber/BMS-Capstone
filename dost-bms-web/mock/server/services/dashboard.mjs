@@ -283,6 +283,7 @@ function buildVarianceByCategory(db, arrAppropriations, arrExecutions, intDiviso
   const objApprop = { PS: 0, MOOE: 0, FINEX: 0, CO: 0, TAG: 0 };
   const objAllot  = { PS: 0, MOOE: 0, FINEX: 0, CO: 0, TAG: 0 };
   const objOblig  = { PS: 0, MOOE: 0, FINEX: 0, CO: 0, TAG: 0 };
+  const objDisb   = { PS: 0, MOOE: 0, FINEX: 0, CO: 0, TAG: 0 };
 
   arrAppropriations.forEach((objRow) => {
     const strCode = CAT_CODE[objRow.appr_category_id];
@@ -295,11 +296,16 @@ function buildVarianceByCategory(db, arrAppropriations, arrExecutions, intDiviso
     {
       objAllot[strCode] += toNumber(objRow.be_allotment_amount);
       objOblig[strCode] += toNumber(objRow.be_obligation_amount);
+      objDisb[strCode]  += toNumber(objRow.be_disbursement_amount);
     }
   });
 
   return ['PS', 'MOOE', 'FINEX', 'CO', 'TAG'].map((strCode) => ({
     category:          strCode,
+    appropriation:     r2(objApprop[strCode] / intDivisor),
+    allotment:         r2(objAllot[strCode]  / intDivisor),
+    obligation:        r2(objOblig[strCode]  / intDivisor),
+    disbursement:      r2(objDisb[strCode]   / intDivisor),
     releasedVariance:  r2((objApprop[strCode] - objAllot[strCode]) / intDivisor),
     executionVariance: r2((objAllot[strCode]  - objOblig[strCode]) / intDivisor),
   }));
@@ -460,6 +466,10 @@ export function buildDashboardData(db, objFilters)
         values: arrVarianceRows.map((r) => r.executionVariance),
       },
       performanceRows: buildPerformanceRows(db, objFilters, intDivisor),
+      // Amounts per expense class, for the "which class had the highest allocation" insight (DOST written answer 1)
+      byCategory: arrVarianceRows.map(({ category, appropriation, allotment, obligation, disbursement }) => ({
+        category, appropriation, allotment, obligation, disbursement,
+      })),
     },
   };
 }
