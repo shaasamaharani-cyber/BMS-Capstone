@@ -104,7 +104,7 @@ test('Add BP form works without randomUUID, saves to any open year, and keeps cl
     assert.equal(writes[0].payload.form_configs[custom.id].requirement.conditions.length, 2);
     assert.ok(document.querySelector(`#form-${custom.id}`).checked);
     assert.equal(messages.length, 1);
-    await click(button('FY2028'));
+    await choose('#cycle-year', '2028');
     assert.equal(document.querySelector(`#form-${custom.id}`), null, 'Adding a form must not change other years');
 
     // A failed save must retain the editor and its data so the admin can retry.
@@ -119,7 +119,7 @@ test('Add BP form works without randomUUID, saves to any open year, and keeps cl
     await click(button('Add BP form'));
     assert.equal(document.querySelector('[role="dialog"]'), null);
     assert.equal(writes[1].year, '2028');
-    await click(button('FY2027'));
+    await choose('#cycle-year', '2027');
     await click(document.querySelector('[aria-label="Edit BP Form 999"]'));
     assert.ok(document.querySelector('[data-condition-question="hasClimate"][data-condition-answer="yes"]').checked);
     assert.ok(document.querySelector('[data-condition-question="proposalTier"][data-condition-answer="tier2"]').checked);
@@ -142,7 +142,7 @@ test('Add BP form works without randomUUID, saves to any open year, and keeps cl
     assert.equal(writes[3].payload.form_configs['bp-202'].completedBy, 'Institution planning contributors (provisional)');
     assert.equal(writes[3].payload.form_configs['bp-202'].requirement.conditions[0].value, 'tier1');
     assert.equal(cycles[0].form_configs['bp-202'], undefined, 'Editing existing fields must not affect other fiscal years');
-    await click(button('FY2026 (closed)'));
+    await choose('#cycle-year', '2026');
     assert.equal(button('Save FY2026').disabled, true);
     assert.ok(button('+ Add BP form').matches(':disabled'));
     await click(button('+ Add BP form'));

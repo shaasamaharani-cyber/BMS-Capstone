@@ -13,15 +13,53 @@
  * All rights reserved.
  */
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { getBudgetRequests, getUnifiedBudgets, getUsers } from '../../api';
 import { useAuth } from '../../context/auth_context';
 import { useClickOutside } from '../../hooks/use_click_outside';
+import { usePermissions } from '../../hooks/use_permissions';
+import { extractApiRows } from '../../utils/budget_request_utils';
 import { formatRoleName, getInitials } from '../../utils/helpers';
+import { PERMISSIONS } from '../../utils/permissions';
 import SearchBar from '../ui/search_bar/search_bar';
+import { ALL_NAV_ITEMS } from './nav_items';
 import styles from './topbar.module.css';
 
 const MOCK_NOTIFICATIONS = [];
+
+// Records the signed-in role may open, each with where it lives ("Budget request › BR-2027-005 · NCR").
+// The server already limits every list to what this role may see.
+async function loadSearchRecords(arrPermissions) {
+  const can = (strPermission) => arrPermissions.includes(strPermission);
+  const quietly = (promise) => promise.then(extractApiRows).catch(() => []);
+  const strRequestPath = can(PERMISSIONS.BUDGET_REVIEW) ? '/budget-review' : '/budget-requests';
+  const [arrRequests, arrBudgets, arrUsers] = await Promise.all([
+    can(PERMISSIONS.BUDGET_REQUESTS) || can(PERMISSIONS.BUDGET_REVIEW) ? quietly(getBudgetRequests({ per_page: 200 })) : [],
+    can(PERMISSIONS.BUDGET_CONSOLIDATION) ? quietly(getUnifiedBudgets({ per_page: 200 })) : [],
+    can(PERMISSIONS.USERS) ? quietly(getUsers(1, 200)) : [],
+  ]);
+  return [
+    ...arrRequests.map((objRequest) => ({
+      id: `request-${objRequest.id}`,
+      label: objRequest.br_title,
+      hint: `Budget request › ${objRequest.br_reference_no} · ${objRequest.requesting_unit?.ru_name || ''}`,
+      path: `${strRequestPath}/${objRequest.id}`,
+    })),
+    ...arrBudgets.map((objBudget) => ({
+      id: `budget-${objBudget.id}`,
+      label: objBudget.title,
+      hint: `Consolidated budget › ${objBudget.code} · FY${objBudget.fiscalYear}`,
+      path: `/budget-consolidation/${objBudget.id}`,
+    })),
+    ...arrUsers.map((objUser) => ({
+      id: `user-${objUser.id}`,
+      label: objUser.usr_name,
+      hint: `User › ${objUser.usr_email}`,
+      path: '/users',
+    })),
+  ];
+}
 
 export default function Topbar() {
   const { user, logout } = useAuth();
@@ -31,6 +69,22 @@ export default function Topbar() {
   const [blnNotifOpen, setBlnNotifOpen] = useState(false);
   const [blnAvatarOpen, setBlnAvatarOpen] = useState(false);
   const [arrNotifications, setArrNotifications] = useState(MOCK_NOTIFICATIONS);
+  const arrPermissions = usePermissions();
+  const [arrSearchRecords, setArrSearchRecords] = useState([]);
+  const strPermissionKey = arrPermissions.join(',');
+
+  useEffect(() => {
+    let blnMounted = true;
+    if (!user) return undefined;
+    loadSearchRecords(strPermissionKey.split(',')).then((arrRows) => { if (blnMounted) setArrSearchRecords(arrRows); });
+    return () => { blnMounted = false; };
+  }, [user, strPermissionKey]);
+
+  const arrSearchItems = [
+    ...ALL_NAV_ITEMS.filter((objItem) => arrPermissions.includes(objItem.permission))
+      .map((objItem) => ({ id: objItem.path, label: objItem.label, hint: 'Page', path: objItem.path })),
+    ...arrSearchRecords,
+  ];
 
   const notifRef = useRef(null);
   const avatarRef = useRef(null);
@@ -74,7 +128,12 @@ export default function Topbar() {
 
       <div className={styles.center}>
         <div className={styles.searchWrapper}>
-          <SearchBar placeholder="Search globally..." />
+          <SearchBar
+            placeholder="Search pages, requests, budgets..."
+            suggestions={arrSearchItems}
+            maxSuggestions={8}
+            onSuggestionSelect={(objItem) => navigate(objItem.path)}
+          />
         </div>
       </div>
 
@@ -149,15 +208,7 @@ export default function Topbar() {
           )}
         </div>
 
-        {/* ── Help ── */}
-        <button className={styles.iconBtn} aria-label="Help">
-          <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-            <circle cx="8" cy="8" r="6.5" />
-            <path d="M6.25 6a1.75 1.75 0 1 1 2.98 1.24c-.58.58-.98.9-.98 1.76" />
-            <circle cx="8" cy="11.6" r="0.6" fill="currentColor" stroke="none" />
-          </svg>
-        </button>
-
+        {/* Help lives in the sidebar's Help Center only (DOST, 20 Oct: the icon was duplicated) */}
         <div className={styles.divider} />
 
         {/* ── Avatar ── */}
@@ -207,16 +258,6 @@ export default function Topbar() {
                       <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" />
                     </svg>
                     Settings
-                  </button>
-                </li>
-                <li>
-                  <button className={styles.menuItem} role="menuitem">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                      <line x1="12" y1="17" x2="12.01" y2="17" />
-                    </svg>
-                    Help & Support
                   </button>
                 </li>
               </ul>
