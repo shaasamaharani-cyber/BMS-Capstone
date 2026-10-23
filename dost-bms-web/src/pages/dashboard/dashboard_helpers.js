@@ -12,10 +12,9 @@
  * All rights reserved.
  */
 
-import { getBudgetRequestActivity } from '../../api';
-
-// Set by the administrator on the Settings page (defaults: 90% and 14 days, until DOST confirms its targets)
-export { ATTENTION_BELOW, DUE_SOON_DAYS } from '../../utils/app_settings';
+// Set by the administrator on the Settings page (defaults: 90%, 14 days and a 25% per quarter pace, until DOST confirms its targets)
+export { ATTENTION_BELOW, DUE_SOON_DAYS, PACE_PER_QUARTER } from '../../utils/app_settings';
+export { expectedPaceForPeriod } from '../../utils/spending_pace';
 
 export function sortByUpdated(arrRequests) {
   return [...arrRequests].sort((objA, objB) => new Date(objB.br_updated_at || 0) - new Date(objA.br_updated_at || 0));
@@ -24,17 +23,6 @@ export function sortByUpdated(arrRequests) {
 // The current spending-report period is the one with the latest due date
 export function newestReportFirst(arrReports) {
   return [...arrReports].sort((objA, objB) => String(objB.sr_due_date).localeCompare(String(objA.sr_due_date)));
-}
-
-// Recent actions across the given requests, newest first
-export async function loadRecentActivity(arrRequests, intCount) {
-  const arrLogs = await Promise.all(arrRequests.map(async (objRequest) => {
-    const objResponse = await getBudgetRequestActivity(objRequest.id);
-    return (objResponse?.data || []).map((objLog) => ({ ...objLog, strTitle: objRequest.br_title, strUnit: objRequest.requesting_unit?.ru_name }));
-  }));
-  return arrLogs.flat()
-    .sort((objA, objB) => new Date(objB.bral_created_at) - new Date(objA.bral_created_at))
-    .slice(0, intCount);
 }
 
 export function daysUntil(strDate) {

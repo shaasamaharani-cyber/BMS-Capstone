@@ -6,7 +6,8 @@ import { getFormDefinition } from '../../../src/bp_forms/bp_form_fields.js';
 import { OFFICIAL_SCHEMA_VERSION } from '../../../src/bp_forms/official_form_schema.js';
 
 // Team defaults until DOST confirms its own targets (same colour bands as Team 27's dashboard)
-const DEFAULT_SETTINGS = { attention_below: 90, amber_below: 75, due_soon_days: 14 };
+// pace_per_quarter: share of the allotment expected to be committed per quarter (team default, awaiting DOST)
+const DEFAULT_SETTINGS = { attention_below: 90, amber_below: 75, due_soon_days: 14, pace_per_quarter: 25 };
 
 // Internal Consolidation and the directors' approval are the core of the as-is flow, so they stay on
 const LOCKED_STAGE_KEYS = ['draft', 'finance_planning_director'];
@@ -78,8 +79,9 @@ export async function handleSettings(ctx) {
       attention_below: Number(payload.attention_below),
       amber_below: Number(payload.amber_below),
       due_soon_days: Number(payload.due_soon_days),
+      pace_per_quarter: payload.pace_per_quarter === undefined ? readSettings(db).pace_per_quarter : Number(payload.pace_per_quarter),
     };
-    if (![objNext.attention_below, objNext.amber_below, objNext.due_soon_days].every(Number.isInteger)) {
+    if (![objNext.attention_below, objNext.amber_below, objNext.due_soon_days, objNext.pace_per_quarter].every(Number.isInteger)) {
       json(res, 422, { message: 'Enter whole numbers.' });
       return true;
     }
@@ -89,6 +91,10 @@ export async function handleSettings(ctx) {
     }
     if (objNext.due_soon_days < 1 || objNext.due_soon_days > 90) {
       json(res, 422, { message: 'Due soon must be between 1 and 90 days.' });
+      return true;
+    }
+    if (objNext.pace_per_quarter < 1 || objNext.pace_per_quarter > 100) {
+      json(res, 422, { message: 'The spending pace must be between 1 and 100% per quarter.' });
       return true;
     }
     const objBefore = readSettings(db);

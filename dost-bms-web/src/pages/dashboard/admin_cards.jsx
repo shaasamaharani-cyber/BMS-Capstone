@@ -21,7 +21,7 @@ import { fetchAllSchemas, getFiscalYears, getUserChanges, getUsers } from '../..
 import { getBudgetCycles, getSettingsChanges } from '../../api/settings_api';
 import { extractApiRows } from '../../utils/budget_request_utils';
 import { formatTimestamp, toTitleCase } from '../../utils/formatters';
-import { ATTENTION_BELOW, DUE_SOON_DAYS } from './dashboard_helpers';
+import { ATTENTION_BELOW, DUE_SOON_DAYS, PACE_PER_QUARTER } from './dashboard_helpers';
 import { ProposalTag } from './proposal_sections';
 import styles from './requester_dashboard.module.css';
 
@@ -147,6 +147,7 @@ export default function TechAdminDashboard() {
           <thead><tr><th>Rule</th><th>Value in use</th><th>Status</th></tr></thead>
           <tbody>
             <tr><td>Flag a unit or class whose committed rate is below</td><td>{ATTENTION_BELOW}%</td><td>Awaiting DOST</td></tr>
+            <tr><td>Flag a unit whose committed rate is behind the expected pace</td><td>{PACE_PER_QUARTER}% per quarter</td><td>Awaiting DOST</td></tr>
             <tr><td>Flag a spending report as due soon within</td><td>{DUE_SOON_DAYS} days</td><td>Awaiting DOST</td></tr>
             <tr><td>Require a justification when obligations exceed the allotment</td><td>Any amount over</td><td>Awaiting DOST</td></tr>
           </tbody>

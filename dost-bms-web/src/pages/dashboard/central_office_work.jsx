@@ -3,9 +3,9 @@
  * Module Name: Dashboard Module
  *
  * Purpose of this file:
- * Central Office dashboard cards. Budget officer: a "My work" block above the dashboard tabs
- * (spending monitoring across units, review queue, alerts, deadlines and stages, recent activity).
- * Directors: "Approvals waiting for me" above the tabs, the other cards (no review queue) below them.
+ * Central Office dashboard cards. Budget officer: "My work" (to review, to consolidate, returned, external result
+ * to record), Follow-ups (spending reports and spending pace, one line per unit) and Deadlines above the tabs.
+ * Directors: "Approvals waiting for me" above the tabs, Follow-ups and Deadlines below them.
  *
  * Author(s): QUT Group T214
  *
@@ -19,26 +19,29 @@ import PropTypes from 'prop-types';
 import { Link } from 'react-router-dom';
 import { getBudgetRequests, getDashboardData, getSpendingReports, getUnifiedBudgets } from '../../api';
 import { extractApiRows } from '../../utils/budget_request_utils';
-import { formatCurrency, formatRate, formatTimestamp, getRateClassName, toTitleCase } from '../../utils/formatters';
-import { ATTENTION_BELOW, DUE_SOON_DAYS, daysUntil, formatDay, loadRecentActivity, newestReportFirst, sortByUpdated } from './dashboard_helpers';
+import { formatCurrency, formatRate, formatTimestamp } from '../../utils/formatters';
+import { DUE_SOON_DAYS, PACE_PER_QUARTER, daysUntil, expectedPaceForPeriod, formatDay, newestReportFirst, sortByUpdated } from './dashboard_helpers';
 import { ProposalTag } from './proposal_sections';
 import styles from './requester_dashboard.module.css';
 
-const RECENT_ACTIVITY_COUNT = 10;
-
-// Card order per role, from the dashboard proposal's visibility table (review queue is the budget officer's own)
+// Card order per role (draft v3, 24 Oct). The work queue is the division's own; directors see Follow-ups view only.
+// Activity History was removed: each request and consolidated budget keeps its full history (decision 24 Oct).
 const CARD_ORDER = {
-  officer: ['monitoring', 'queue', 'alerts', 'calendar', 'activity'],
-  director: ['alerts', 'monitoring', 'calendar', 'activity'],
+  officer: ['work', 'followups', 'calendar'],
+  director: ['followups', 'calendar'],
 };
+
+const LONG_WAIT_DAYS = 30;
+
+const statusOf = (objRow, strKey) => String(objRow?.[strKey] || '').toLowerCase();
+const daysWaiting = (objRequest) => Math.max(0, -daysUntil(String(objRequest.br_updated_at).slice(0, 10)));
 
 export default function CentralOfficeWork({ strView }) {
   const [arrReports, setArrReports] = useState([]);
-  const [arrQueue, setArrQueue] = useState([]);
+  const [arrRequests, setArrRequests] = useState([]);
   const [arrUnitRows, setArrUnitRows] = useState([]);
   const [strYearLabel, setStrYearLabel] = useState('');
   const [arrBudgets, setArrBudgets] = useState([]);
-  const [arrActivity, setArrActivity] = useState([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnFailed, setBlnFailed] = useState(false);
 
@@ -48,23 +51,17 @@ export default function CentralOfficeWork({ strView }) {
       try {
         const [arrAllReports, objRequests, objBudgets] = await Promise.all([
           getSpendingReports(),
-          getBudgetRequests({ per_page: 100 }),
+          getBudgetRequests({ per_page: 200 }),
           getUnifiedBudgets({ per_page: 100 }),
         ]);
-        const arrRequests = extractApiRows(objRequests);
         const objCurrent = newestReportFirst(arrAllReports)[0];
-        const [objDashboard, arrLogs] = await Promise.all([
-          objCurrent ? getDashboardData({ fiscal_year_id: objCurrent.sr_fiscal_year_id, period: 'annually' }) : Promise.resolve(null),
-          loadRecentActivity(sortByUpdated(arrRequests).slice(0, RECENT_ACTIVITY_COUNT), RECENT_ACTIVITY_COUNT),
-        ]);
+        const objDashboard = objCurrent ? await getDashboardData({ fiscal_year_id: objCurrent.sr_fiscal_year_id, period: 'annually' }) : null;
         if (!blnMounted) return;
         setArrReports(objCurrent ? arrAllReports.filter((objReport) => objReport.sr_period_label === objCurrent.sr_period_label) : []);
-        // Oldest first: the request that has waited longest is reviewed first
-        setArrQueue(sortByUpdated(arrRequests.filter((objRequest) => String(objRequest.br_status).toLowerCase() === 'submitted')).reverse());
+        setArrRequests(extractApiRows(objRequests));
         setArrUnitRows(objDashboard?.monitoring?.performanceRows || []);
         setStrYearLabel(objDashboard?.filters?.fiscalYears?.find((objYear) => String(objYear.value) === String(objCurrent?.sr_fiscal_year_id))?.label || '');
         setArrBudgets(extractApiRows(objBudgets));
-        setArrActivity(arrLogs);
       } catch {
         if (blnMounted) setBlnFailed(true);
       } finally {
@@ -76,94 +73,154 @@ export default function CentralOfficeWork({ strView }) {
 
   const objPeriod = arrReports[0];
   const intDaysLeft = objPeriod ? daysUntil(objPeriod.sr_due_date) : null;
+  const intPace = objPeriod ? expectedPaceForPeriod(objPeriod.sr_period_label, PACE_PER_QUARTER) : null;
+
+  // My work: the division's four jobs in the as-is workflow (steps 3-5, 6-7, 10 and 14, 12-16)
+  const arrToReview = sortByUpdated(arrRequests.filter((objRequest) => statusOf(objRequest, 'br_status') === 'submitted')).reverse();
+  const objByYear = arrRequests
+    .filter((objRequest) => statusOf(objRequest, 'br_status') === 'reviewed')
+    .reduce((objGroups, objRequest) => {
+      const strYear = String(objRequest.fiscal_year?.fy_year || '-');
+      return { ...objGroups, [strYear]: [...(objGroups[strYear] || []), objRequest] };
+    }, {});
+  const arrToConsolidate = Object.entries(objByYear).sort(([strA], [strB]) => strA.localeCompare(strB));
+  const arrReturned = arrBudgets.filter((objBudget) => statusOf(objBudget, 'status') === 'rejected');
+  const arrExternal = arrBudgets.filter((objBudget) => statusOf(objBudget, 'status') === 'approved' && objBudget.statusLabel === 'Director approved');
+  const draftFor = (strYear) => arrBudgets.find((objBudget) => String(objBudget.fiscalYear) === strYear && statusOf(objBudget, 'status') === 'draft');
+
+  // Follow-ups: one line per unit, every reason together (late, missing justification, behind the expected pace)
+  const objUnits = {};
+  const unitEntry = (strUnit) => {
+    objUnits[strUnit] = objUnits[strUnit] || { strUnit, arrReasons: [], blnUrgent: false };
+    return objUnits[strUnit];
+  };
+  arrReports.forEach((objReport) => {
+    if (objReport.is_late && objReport.sr_status !== 'submitted') {
+      const objEntry = unitEntry(objReport.unit_name);
+      objEntry.blnUrgent = true;
+      objEntry.arrReasons.push(`Late (report ${objReport.sr_status === 'draft' ? 'in draft' : 'not started'})`);
+    }
+    if (objReport.missing_justification_count > 0) {
+      unitEntry(objReport.unit_name).arrReasons.push(`${objReport.missing_justification_count} class${objReport.missing_justification_count === 1 ? '' : 'es'} over allotment, no justification`);
+    }
+  });
+  if (intPace != null) {
+    arrUnitRows.filter((objRow) => objRow.executionRate < intPace).forEach((objRow) => {
+      unitEntry(objRow.requestingUnit).arrReasons.push(`${formatRate(objRow.executionRate)} committed, behind the ${intPace}% pace`);
+    });
+  }
+  const arrFollowUps = Object.values(objUnits).sort((objA, objB) => Number(objB.blnUrgent) - Number(objA.blnUrgent) || objA.strUnit.localeCompare(objB.strUnit));
   const arrCounts = [
     { label: 'Units', value: arrReports.length },
     { label: 'Submitted', value: arrReports.filter((objReport) => objReport.sr_status === 'submitted').length },
-    { label: 'Not submitted', value: arrReports.filter((objReport) => objReport.sr_status !== 'submitted').length },
-    { label: 'Late', value: arrReports.filter((objReport) => objReport.is_late).length },
-    { label: 'Missing justification', value: arrReports.filter((objReport) => objReport.missing_justification_count > 0).length },
+    { label: 'Late', value: arrReports.filter((objReport) => objReport.is_late && objReport.sr_status !== 'submitted').length },
+    { label: 'No justification', value: arrReports.filter((objReport) => objReport.missing_justification_count > 0).length },
   ];
 
-  const arrAlerts = [
-    ...arrUnitRows.filter((objRow) => objRow.executionRate < ATTENTION_BELOW).map((objRow) => ({
-      strKey: `rate-${objRow.requestingUnit}`,
-      node: <>{objRow.requestingUnit}: <span className={getRateClassName(objRow.executionRate)}>{formatRate(objRow.executionRate)}</span> of its allotment is committed, below {ATTENTION_BELOW}%.</>,
-    })),
-    ...arrReports.filter((objReport) => objReport.is_late && objReport.sr_status !== 'submitted').map((objReport) => ({
-      strKey: `late-${objReport.id}`,
-      node: <>{objReport.unit_name}: the {objReport.sr_period_label} spending report is late (due {formatDay(objReport.sr_due_date)}).</>,
-    })),
-    ...arrReports.filter((objReport) => objReport.missing_justification_count > 0).map((objReport) => ({
-      strKey: `missing-${objReport.id}`,
-      node: <>{objReport.unit_name}: obligations are over the allotment in {objReport.missing_justification_count} expense class{objReport.missing_justification_count === 1 ? '' : 'es'} with no justification yet.</>,
-    })),
+  const arrWorkCounts = [
+    { label: 'To review', value: arrToReview.length },
+    { label: 'To consolidate', value: arrToConsolidate.length },
+    { label: 'Returned for revision', value: arrReturned.length },
+    { label: 'External result to record', value: arrExternal.length },
   ];
+
+  const renderCounts = (arrRows) => (
+    <div className={styles.pipeline}>
+      {arrRows.map((objCount) => (
+        <div key={objCount.label} className={styles.pipelineStep}>
+          <span className={styles.pipelineCount}>{objCount.value}</span>
+          <span className={styles.pipelineLabel}>{objCount.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderGroup = (strTitle, strHint, arrRows, strEmpty) => (
+    <div className="mt-3">
+      <p className="small fw-semibold mb-1">{strTitle} <span className="text-muted fw-normal">{strHint}</span></p>
+      {arrRows.length > 0 ? arrRows : <p className={styles.muted}>{strEmpty}</p>}
+    </div>
+  );
 
   const objCards = {
-    monitoring: (
+    work: (
       <section className={`dashboard-panel ${styles.card}`}>
-        <h3 className={`dashboard-section__title ${styles.cardTitle}`}>Spending Monitoring - all units <ProposalTag section="monitoring" /></h3>
+        <h3 className={`dashboard-section__title ${styles.cardTitle}`}>My work</h3>
+        {blnLoading && <p className={styles.muted}>Loading...</p>}
+        {renderCounts(arrWorkCounts)}
+        {renderGroup('To review', '- oldest first', arrToReview.map((objRequest) => (
+          <div key={objRequest.id} className={styles.actionRow}>
+            <div>
+              <strong>{objRequest.br_title}</strong>
+              <span className={styles.muted}>{objRequest.br_reference_no} - {objRequest.requesting_unit?.ru_name || '-'} - waiting since {formatTimestamp(objRequest.br_updated_at)}</span>
+            </div>
+            <div className="text-end">
+              <span className={daysWaiting(objRequest) > LONG_WAIT_DAYS ? 'text-danger' : styles.muted}>{daysWaiting(objRequest)} days</span>
+              <div><Link to={`/budget-review/${objRequest.id}`}>Review</Link></div>
+            </div>
+          </div>
+        )), 'No requests are waiting for review.')}
+        {renderGroup('To consolidate', '- reviewed requests by fiscal year', arrToConsolidate.map(([strYear, arrYearRequests]) => {
+          const objDraft = draftFor(strYear);
+          return (
+            <div key={strYear} className={styles.actionRow}>
+              <div>
+                <strong>FY{strYear}</strong>
+                <span className={styles.muted}>{arrYearRequests.length} reviewed request{arrYearRequests.length === 1 ? '' : 's'}: {arrYearRequests.map((objRequest) => `${objRequest.br_title} (${objRequest.requesting_unit?.ru_name || '-'})`).join(', ')}</span>
+              </div>
+              {objDraft
+                ? <Link to={`/budget-consolidation/${objDraft.id}/edit`}>Continue draft {objDraft.code}</Link>
+                : <Link to="/budget-consolidation/new">Start consolidation</Link>}
+            </div>
+          );
+        }), 'No reviewed requests are waiting to be consolidated.')}
+        {renderGroup('Returned for revision', '- by a director or an external body', arrReturned.map((objBudget) => (
+          <div key={objBudget.id} className={styles.actionRow}>
+            <div>
+              <strong>{objBudget.title}</strong>
+              <span className={styles.muted}>{objBudget.code} - {objBudget.statusLabel || 'Returned'}</span>
+              {objBudget.reviewComment && <span className={styles.remark}>Remark: {objBudget.reviewComment}</span>}
+            </div>
+            <Link to={`/budget-consolidation/${objBudget.id}/edit`}>Fix and resubmit</Link>
+          </div>
+        )), 'Nothing has been returned.')}
+        {renderGroup('External result to record', '- DBM to President', arrExternal.map((objBudget) => (
+          <div key={objBudget.id} className={styles.actionRow}>
+            <div>
+              <strong>{objBudget.title}</strong>
+              <span className={styles.muted}>{objBudget.code} - waiting on {objBudget.stage}</span>
+            </div>
+            <Link to={`/budget-tracking/${objBudget.id}`}>Record result</Link>
+          </div>
+        )), 'No budget is waiting on an external decision.')}
+      </section>
+    ),
+    followups: (
+      <section className={`dashboard-panel ${styles.card}`}>
+        <h3 className={`dashboard-section__title ${styles.cardTitle}`}>Follow-ups <ProposalTag section="monitoring" /></h3>
         {blnLoading && <p className={styles.muted}>Loading...</p>}
         {!blnLoading && !objPeriod && <p className={styles.muted}>No spending report period has been set up yet.</p>}
         {objPeriod && (
           <>
-            <p className={styles.muted}>{objPeriod.sr_period_label} - due {formatDay(objPeriod.sr_due_date)}{intDaysLeft >= 0 ? ` (${intDaysLeft} day${intDaysLeft === 1 ? '' : 's'} left)` : ''}</p>
-            <div className={styles.pipeline}>
-              {arrCounts.map((objCount) => (
-                <div key={objCount.label} className={styles.pipelineStep}>
-                  <span className={styles.pipelineCount}>{objCount.value}</span>
-                  <span className={styles.pipelineLabel}>{objCount.label}</span>
+            <p className={styles.muted}>As of the {objPeriod.sr_period_label} spending reports - due {formatDay(objPeriod.sr_due_date)}{intDaysLeft < 0 ? ' (overdue)' : ` (${intDaysLeft} day${intDaysLeft === 1 ? '' : 's'} left)`}</p>
+            {renderCounts(arrCounts)}
+            {arrFollowUps.map((objUnit) => (
+              <div key={objUnit.strUnit} className={styles.actionRow}>
+                <div>
+                  <strong>{objUnit.strUnit}</strong>
+                  <span className={`${styles.muted}${objUnit.blnUrgent ? ' text-danger' : ''}`}>{objUnit.arrReasons.join(' - ')}</span>
                 </div>
-              ))}
-            </div>
-            <div className={styles.linkRow}><Link to="/spending-monitoring">Open Spending Monitoring</Link></div>
+                <Link to="/spending-monitoring">Open</Link>
+              </div>
+            ))}
+            {arrFollowUps.length === 0 && <p className={styles.muted}>No unit needs a follow-up.</p>}
+            <p className={styles.footnote}>
+              {intPace != null
+                ? `Spending pace: ${intPace}% of the allotment committed by the end of this quarter (${PACE_PER_QUARTER}% per quarter, the team default until DOST sets its own). Committed = obligation / allotment, FY${strYearLabel}.`
+                : 'No quarter found in the report period, so the spending pace is not checked.'}
+            </p>
           </>
         )}
-      </section>
-    ),
-    queue: (
-      <section className={`dashboard-panel ${styles.card}`}>
-        <h3 className={`dashboard-section__title ${styles.cardTitle}`}>Review queue</h3>
-        {/* Consolidated budgets a director returned come back to the division first (as-is step 10) */}
-        {arrBudgets.filter((objBudget) => String(objBudget.status).toUpperCase() === 'REJECTED').map((objBudget) => (
-          <div key={objBudget.id} className={styles.actionRow}>
-            <div>
-              <strong>{objBudget.title}</strong>
-              <span className={styles.muted}>{objBudget.code} - returned by the director</span>
-              {objBudget.reviewComment && <span className={styles.remark}>Director&apos;s remark: {objBudget.reviewComment}</span>}
-            </div>
-            <Link to={`/budget-consolidation/${objBudget.id}/edit`}>Fix and resubmit</Link>
-          </div>
-        ))}
-        <table className={styles.table}>
-          <thead><tr><th>Request</th><th>Unit</th><th>Waiting since</th><th className={styles.numeric}>Days waiting</th></tr></thead>
-          <tbody>
-            {arrQueue.map((objRequest) => (
-              <tr key={objRequest.id}>
-                <td><Link to={`/budget-review/${objRequest.id}`}>{objRequest.br_title}</Link><span className={styles.muted}>{objRequest.br_reference_no}</span></td>
-                <td>{objRequest.requesting_unit?.ru_name || '-'}</td>
-                <td>{formatTimestamp(objRequest.br_updated_at)}</td>
-                <td className={styles.numeric}>{Math.max(0, -daysUntil(String(objRequest.br_updated_at).slice(0, 10)))}</td>
-              </tr>
-            ))}
-            {!blnLoading && arrQueue.length === 0 && <tr><td colSpan={4} className={styles.muted}>No requests are waiting for review.</td></tr>}
-          </tbody>
-        </table>
-        <div className={styles.linkRow}><Link to="/budget-review">Open Budget Review</Link></div>
-      </section>
-    ),
-    alerts: (
-      <section className={`dashboard-panel ${styles.card}`}>
-        <h3 className={`dashboard-section__title ${styles.cardTitle}`}>Alerts <ProposalTag section="alerts" /></h3>
-        {!blnLoading && arrAlerts.length === 0 && <p className={styles.muted}>No alerts right now.</p>}
-        {arrAlerts.length > 0 && (
-          <ul className={styles.attentionList}>
-            {arrAlerts.map((objAlert) => <li key={objAlert.strKey}>{objAlert.node}</li>)}
-          </ul>
-        )}
-        <p className={styles.footnote}>
-          Committed rates are for FY{strYearLabel}, the year of the current spending report, and use the existing dashboard&apos;s {ATTENTION_BELOW}% colour band. DOST has not yet set its own thresholds.
-        </p>
       </section>
     ),
     calendar: (
@@ -192,12 +249,6 @@ export default function CentralOfficeWork({ strView }) {
             {!blnLoading && arrBudgets.length === 0 && <tr><td colSpan={4} className={styles.muted}>No consolidated budgets yet.</td></tr>}
           </tbody>
         </table>
-      </section>
-    ),
-    activity: (
-      <section className={`dashboard-panel ${styles.card}`}>
-        <h3 className={`dashboard-section__title ${styles.cardTitle}`}>Activity History <ProposalTag section="activity" /></h3>
-        <ActivityTable arrActivity={arrActivity} blnLoading={blnLoading} />
       </section>
     ),
   };
@@ -258,30 +309,4 @@ export function ApprovalsWaiting({ blnCanApprove }) {
 
 ApprovalsWaiting.propTypes = {
   blnCanApprove: PropTypes.bool.isRequired,
-};
-
-// Recent request actions (no peso amounts), shared by the Central Office and admin dashboards
-export function ActivityTable({ arrActivity, blnLoading }) {
-  if (!blnLoading && arrActivity.length === 0) return <p className={styles.muted}>No actions have been recorded on budget requests yet.</p>;
-  if (arrActivity.length === 0) return null;
-  return (
-    <table className={styles.table}>
-      <thead><tr><th>When</th><th>Request</th><th>What happened</th><th>By</th></tr></thead>
-      <tbody>
-        {arrActivity.map((objLog) => (
-          <tr key={objLog.bral_id}>
-            <td>{formatTimestamp(objLog.bral_created_at)}</td>
-            <td>{objLog.strTitle}<span className={styles.muted}>{objLog.strUnit}</span></td>
-            <td>{toTitleCase(objLog.bral_action)}{objLog.bral_comment && <span className={styles.muted}>Remark: {objLog.bral_comment}</span>}</td>
-            <td>{objLog.bral_actor_name || '-'}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
-ActivityTable.propTypes = {
-  arrActivity: PropTypes.arrayOf(PropTypes.object).isRequired,
-  blnLoading: PropTypes.bool.isRequired,
 };
