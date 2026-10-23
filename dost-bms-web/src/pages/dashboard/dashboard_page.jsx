@@ -613,42 +613,17 @@ function OrganisationDashboard({ strCentralView })
                 </div>
               </div>
             </div>
+            <p className="small text-muted mt-2 mb-0">Requested amounts are planning figures. They never enter the spending rates on the Budget Execution Monitoring tab.</p>
           </section>
         </div>
       )}
 
       {strActiveTab === 'monitoring' && (
         <div className="dashboard-tab-section">
-          <FiguresAsOf asOf={strFiscalYearLabel ? `fiscal year ${strFiscalYearLabel}` : 'all fiscal years'} source="BMS budget execution records (mock database in Phase 1)" />
+          <FiguresAsOf asOf={strFiscalYearLabel ? `fiscal year ${strFiscalYearLabel}` : 'all fiscal years'} source="BMS budget execution records (mock database in Phase 1), refreshed on each visit" />
           <ExecutionAmountCards summaryCards={objDashboardData?.monitoring?.summaryCards} />
 
           <ExpenseClassInsight rows={objDashboardData?.monitoring?.byCategory} legend={objDashboardData?.planning?.categoryLegend} />
-
-          <SampleDataNote>Projected year-end, projected variance, the expenditure projection{strCentralView ? '' : ', the alerts'} and the planning insight below use fixed sample figures until the forecasting method is agreed with DOST.</SampleDataNote>
-
-          <YearEndProjection
-            projectedYearEnd={SAMPLE_INSIGHTS.projectedYearEnd}
-            projectedVariance={SAMPLE_INSIGHTS.projectedVariance}
-          />
-
-          <section className="dashboard-section">
-            <div className="row g-3">
-              <div className={strCentralView ? 'col-12' : 'col-lg-7'}>
-                <ProjectedExpenditureChart {...SAMPLE_INSIGHTS.expenditure} />
-              </div>
-              {/* Budget officer and directors see real-data Alerts in their own cards, so the sample panel is hidden for them */}
-              {!strCentralView && (
-                <div className="col-lg-5">
-                  <FinancialAlerts
-                    alerts={SAMPLE_INSIGHTS.alerts}
-                    onView={() => document.getElementById('dashboard-monitoring-performance-heading')?.scrollIntoView({ behavior: 'smooth' })}
-                  />
-                </div>
-              )}
-            </div>
-          </section>
-
-          <PlanningInsight year={SAMPLE_INSIGHTS.planningYear} items={SAMPLE_INSIGHTS.planning} />
 
           <section className="dashboard-section" aria-labelledby="dashboard-monitoring-trend-heading">
             <div className="row">
@@ -716,6 +691,7 @@ function OrganisationDashboard({ strCentralView })
                 sortDir={strPerformanceSortDir}
                 onSort={handlePerformanceSort}
               />
+              <p className="small text-muted mt-2 mb-0">Execution rate = obligation / allotment. Disbursement rate = disbursement / obligation. Absorption rate = disbursement / allotment. Same date and source as the Financial Overview.</p>
               {/* <Pagination
               total={arrPerformanceRows.length}
               page={intPerformancePage}
@@ -728,6 +704,36 @@ function OrganisationDashboard({ strCentralView })
           <section className="dashboard-section">
             <DrillDown strFiscalYearId={String(objAppliedFilters.fiscal_year_id || '')} arrCategories={objFilterOptions.categories} />
           </section>
+
+          {/* Placeholder forecasts stay apart from the real figures, closed by default (draft v3, 24 Oct) */}
+          <details className="dashboard-section">
+            <summary className="dashboard-section__title" style={{ cursor: 'pointer' }}>Forecast (sample, method pending DOST)</summary>
+            <SampleDataNote>Projected year-end, projected variance, the expenditure projection{strCentralView ? '' : ', the alerts'} and the planning insight below use fixed sample figures until the forecasting method is agreed with DOST.</SampleDataNote>
+
+            <YearEndProjection
+              projectedYearEnd={SAMPLE_INSIGHTS.projectedYearEnd}
+              projectedVariance={SAMPLE_INSIGHTS.projectedVariance}
+            />
+
+            <section className="dashboard-section">
+              <div className="row g-3">
+                <div className={strCentralView ? 'col-12' : 'col-lg-7'}>
+                  <ProjectedExpenditureChart {...SAMPLE_INSIGHTS.expenditure} />
+                </div>
+                {/* Budget officer and directors see real-data Follow-ups in their own cards, so the sample panel is hidden for them */}
+                {!strCentralView && (
+                  <div className="col-lg-5">
+                    <FinancialAlerts
+                      alerts={SAMPLE_INSIGHTS.alerts}
+                      onView={() => document.getElementById('dashboard-monitoring-performance-heading')?.scrollIntoView({ behavior: 'smooth' })}
+                    />
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <PlanningInsight year={SAMPLE_INSIGHTS.planningYear} items={SAMPLE_INSIGHTS.planning} />
+          </details>
         </div>
       )}
 

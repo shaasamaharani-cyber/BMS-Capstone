@@ -42,9 +42,9 @@ export function ExecutionAmountCards({ summaryCards, title = 'Financial Overview
 
   const arrCards = [
     { key: 'appropriation', label: 'Appropriation', value: appropriation, note: 'Total Approved', variant: 'blue' },
-    { key: 'allotment',     label: 'Allotment',     value: allotment,     rate: percentOf(allotment, appropriation),  of: 'of Appropriation', variant: 'dark' },
-    { key: 'obligation',    label: 'Obligation',    value: obligation,    rate: percentOf(obligation, allotment),     of: 'of Allotment',     variant: 'blue' },
-    { key: 'disbursement',  label: 'Disbursement',  value: disbursement,  rate: percentOf(disbursement, obligation),  of: 'of Obligations',   variant: 'dark' },
+    { key: 'allotment',     label: 'Allotment',     value: allotment,     rate: percentOf(allotment, appropriation),  of: '= allotment / appropriation', variant: 'dark' },
+    { key: 'obligation',    label: 'Obligation',    value: obligation,    rate: percentOf(obligation, allotment),     of: '= obligation / allotment', variant: 'blue' },
+    { key: 'disbursement',  label: 'Disbursement',  value: disbursement,  rate: percentOf(disbursement, obligation),  of: '= disbursement / obligation', variant: 'dark' },
   ];
 
   return (
@@ -118,6 +118,7 @@ export function ExpenseClassInsight({ rows, legend })
                 </tbody>
               </table>
             </div>
+            <p className={styles.panelSubtitle}>Committed = obligation / allotment. Same date and source as the Financial Overview.</p>
           </>
         )}
     </section>

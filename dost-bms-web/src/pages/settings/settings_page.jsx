@@ -52,7 +52,7 @@ function Card({ title, hint, children }) {
 
 export default function SettingsPage() {
   const { showToast } = useToast();
-  const [objThresholds, setObjThresholds] = useState({ attention_below: '', amber_below: '', due_soon_days: '' });
+  const [objThresholds, setObjThresholds] = useState({ attention_below: '', amber_below: '', due_soon_days: '', pace_per_quarter: '' });
   const [arrStages, setArrStages] = useState([]);
   const [arrUnits, setArrUnits] = useState([]);
   const [arrYears, setArrYears] = useState([]);
@@ -71,6 +71,7 @@ export default function SettingsPage() {
       attention_below: String(objSettings?.attention_below ?? ''),
       amber_below: String(objSettings?.amber_below ?? ''),
       due_soon_days: String(objSettings?.due_soon_days ?? ''),
+      pace_per_quarter: String(objSettings?.pace_per_quarter ?? ''),
     });
     setArrStages(listOf(arrStageRows).sort((objA, objB) => Number(objA.aws_sequence_order) - Number(objB.aws_sequence_order)));
     setArrUnits(listOf(arrUnitRows).sort((objA, objB) => String(objA.ru_name).localeCompare(String(objB.ru_name))));
@@ -101,6 +102,7 @@ export default function SettingsPage() {
       attention_below: Number(objThresholds.attention_below),
       amber_below: Number(objThresholds.amber_below),
       due_soon_days: Number(objThresholds.due_soon_days),
+      pace_per_quarter: Number(objThresholds.pace_per_quarter),
     }), 'Alert thresholds saved.');
     // The dashboards read the new values straight away
     if (objSaved) applyAppSettings(objSaved);
@@ -127,6 +129,11 @@ export default function SettingsPage() {
           <div className="col-md-4">
             <FormField label="Spending report due soon within (days)">
               <Input type="number" value={objThresholds.due_soon_days} onChange={setThreshold('due_soon_days')} />
+            </FormField>
+          </div>
+          <div className="col-md-4">
+            <FormField label="Expected spending pace per quarter (%)" hint="25 means 25, 50, 75 and 100% of the allotment committed by the end of Q1 to Q4">
+              <Input type="number" value={objThresholds.pace_per_quarter} onChange={setThreshold('pace_per_quarter')} />
             </FormField>
           </div>
         </div>
