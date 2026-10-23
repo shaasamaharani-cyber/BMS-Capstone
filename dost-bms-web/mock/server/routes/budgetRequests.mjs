@@ -105,13 +105,14 @@ async function handleBudgetRequestOperation(ctx) {
 
   if (req.method === 'POST' && parts.length === 1) {
     const actor = resolveRequestActor(db, req, payload);
+    // Who may create comes before what was sent (Security Standard 6.5)
+    if (!isRequesterUser(actor) || requestingUnitIdForUser(actor) == null) { json(res, 403, { message: 'Only a requester assigned to a unit can create requests.' }); return true; }
     const fiscalYearError = validateBudgetRequestFiscalYear(db, payload?.br_fiscal_year_id);
     if (fiscalYearError) {
       json(res, 422, { errors: { br_fiscal_year_id: [fiscalYearError] } });
       return true;
     }
 
-    if (!isRequesterUser(actor) || requestingUnitIdForUser(actor) == null) { json(res, 403, { message: 'Only a requester assigned to a unit can create requests.' }); return true; }
     const createPayload = { ...cleanHeaderPayload(payload), br_unified_request: payload.br_unified_request || {}, items: payload.items ?? [] };
     const intActorUnitId = requestingUnitIdForUser(actor);
     if (isRequesterUser(actor) && intActorUnitId != null) {

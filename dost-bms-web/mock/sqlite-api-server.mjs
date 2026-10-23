@@ -190,7 +190,10 @@ async function handle(req, res) {
   const path = url.pathname.startsWith(API_PREFIX)
     ? url.pathname.slice(API_PREFIX.length)
     : url.pathname;
-  const parts = path.split('/').filter(Boolean);
+  // Decode each segment so ids with spaces (e.g. "bp-form-201-a obligations for ps") are found, as Laravel would
+  const parts = path.split('/').filter(Boolean).map((strPart) => {
+    try { return decodeURIComponent(strPart); } catch { return strPart; }
+  });
 
   // A deactivated account's token stops working everywhere, not only at login
   const strTokenUserId = String(req.headers.authorization || '').replace(/^Bearer\s+mock-token-uid-/i, '');

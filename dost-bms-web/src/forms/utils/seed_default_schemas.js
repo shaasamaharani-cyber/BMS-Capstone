@@ -28,6 +28,8 @@ export function seedDefaultSchemas() {
     const existingIds = existing.map((schema) => schema.id);
 
     for (const schema of DEFAULT_FORM_SCHEMAS) {
+      // Deprecated templates are removed below; re-creating them made them come and go on alternate loads
+      if (DEPRECATED_DEFAULT_SCHEMA_IDS.includes(schema.id)) continue;
       const record = toSchemaRecord(schema);
       if (!existingIds.includes(schema.id)) {
         await createSchema(record);
@@ -36,7 +38,7 @@ export function seedDefaultSchemas() {
         // customised layout or changing any saved entry data.
         const saved = existing.find((row) => row.id === schema.id);
         const savedSchema = saved?.schema || saved;
-        if (schema.official && (savedSchema?.sections?.length || savedSchema?.headerFields?.length)) continue;
+        if (savedSchema?.sections?.length || savedSchema?.headerFields?.length) continue;
         await updateSchema(schema.id, record);
       }
     }
@@ -46,7 +48,10 @@ export function seedDefaultSchemas() {
         await deleteSchema(schemaId).catch(() => {});
       }
     }
-  })();
+  })().catch((error) => {
+    seedPromise = null; // let a later page try again instead of keeping the failure
+    throw error;
+  });
 
   return seedPromise;
 }

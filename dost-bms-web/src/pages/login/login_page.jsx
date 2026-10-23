@@ -49,7 +49,6 @@ export default function LoginPage()
 
       localStorage.setItem('token', objData.token);
       localStorage.setItem('user', JSON.stringify(objData.user));
-      localStorage.setItem('role', objData.role);
       localStorage.setItem('permissions', JSON.stringify(objData.permissions || []));
 
       window.dispatchEvent(new Event('auth:login'));

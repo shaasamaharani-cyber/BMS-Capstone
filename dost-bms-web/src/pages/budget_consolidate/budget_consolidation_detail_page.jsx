@@ -201,7 +201,7 @@ export default function BudgetConsolidationDetailPage() {
           {blnIsSubmitting ? 'Processing...' : '✔ Approve'}
         </Button>
         <Button fullWidth variant="danger" onClick={handleReject} disabled={blnIsSubmitting}>
-          ⊘ Reject
+          ⊘ Return
         </Button>
         <Button fullWidth variant="secondary" onClick={() => navigate('/budget-consolidation')} disabled={blnIsSubmitting}>
           ✕ Close

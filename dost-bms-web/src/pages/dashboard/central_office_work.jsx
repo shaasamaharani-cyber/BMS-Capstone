@@ -250,7 +250,7 @@ export function ApprovalsWaiting({ blnCanApprove }) {
             {!blnLoading && arrPending.length === 0 && <tr><td colSpan={4} className={styles.muted}>{blnCanApprove ? 'Nothing is waiting for your approval.' : 'Nothing is waiting for director approval.'}</td></tr>}
           </tbody>
         </table>
-        <p className={styles.footnote}>{blnCanApprove ? 'Open a budget to approve it for the external stages or return it to the Budget Division.' : 'View only. The finance and planning directors approve or return these budgets.'}</p>
+        <p className={styles.footnote}>{blnCanApprove ? 'Open a budget to approve it for the external stages or return it to the Budget and Finance Division.' : 'View only. The finance and planning directors approve or return these budgets.'}</p>
       </section>
     </div>
   );

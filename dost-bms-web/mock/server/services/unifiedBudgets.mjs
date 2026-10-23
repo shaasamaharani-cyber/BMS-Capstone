@@ -918,8 +918,9 @@ export function applyApproveToWorkflow(steps, strActorName = '') {
       actorRole: 'Finance / Planning Director', actorName: strPerson,
     };
     if (step.stepKey === 'dbm') return { ...step, status: 'current', actionText: 'Awaiting external result', actionAt: '', actorName: '' };
-    // USEC/Secretary have no authenticated decision in this implementation.
-    return { ...step, status: 'locked', actionText: '', actionAt: '', actorRole: '', actorName: '' };
+    // USEC/Secretary have no BMS accounts, so their sign-off is not recorded here (DOST to confirm).
+    const blnOutsideBms = ['usec', 'secretary'].includes(String(step.stepKey || '').toLowerCase());
+    return { ...step, status: 'locked', actionText: blnOutsideBms ? 'Not recorded in BMS' : '', actionAt: '', actorRole: '', actorName: '' };
   });
 }
 
@@ -928,7 +929,8 @@ export function applyRejectToWorkflow(steps, strActorName = '') {
 
   const rejectedAt = nowLocaleString();
   const strPerson = String(strActorName || '').trim();
-  const strRejectLabel = strPerson ? `Rejected by ${strPerson}` : 'Rejected';
+  // A director return goes back to the Budget and Finance Division (as-is step 10), so it reads "Returned"
+  const strRejectLabel = strPerson ? `Returned by ${strPerson}` : 'Returned';
   const intCurrentIndex = steps.findIndex((step) => step.status === 'current');
   const intDraftIndex = steps.findIndex(
     (step) => String(step.stepKey || '').toLowerCase() === 'draft'

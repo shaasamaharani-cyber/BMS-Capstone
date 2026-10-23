@@ -23,7 +23,10 @@ import './styles/globals.css';
 
 export default function App() {
   useEffect(() => {
-    if (import.meta.env.MODE === 'mock') {
+    // Only roles the server lets write form templates (admin, division); before login this was a 401
+    let strGroup = '';
+    try { strGroup = String(JSON.parse(localStorage.getItem('user') || 'null')?.role?.role_group || '').toLowerCase(); } catch { /* not signed in */ }
+    if (import.meta.env.MODE === 'mock' && ['admin', 'reviewer'].includes(strGroup)) {
       seedDefaultSchemas().catch(() => {});
     }
   }, []);
