@@ -79,3 +79,9 @@
   line-height: 1.3;
 }
 
+
+/* One clear button only: hide the browser's own "x" next to ours */
+.wrap input[type="search"]::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  display: none;
+}

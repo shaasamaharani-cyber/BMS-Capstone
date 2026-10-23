@@ -122,9 +122,9 @@ export default function StepRequestDetails({ objRequest, arrLineItems, objOption
             <thead>
               <tr>
                 <th>Item</th>
+                <th>Amount (PHP)</th>
                 <th>Cost structure</th>
                 <th>Category</th>
-                <th className={styles.numericCell}>Amount (PHP)</th>
                 <th>Climate expenditure</th><th>Justification</th>
                 <th aria-label="Remove" />
               </tr>
@@ -135,12 +135,12 @@ export default function StepRequestDetails({ objRequest, arrLineItems, objOption
                 return (
                   <tr key={objItem.id}>
                     <td><Input value={objItem.name} onChange={(objEvent) => handleItemChange(objItem.id, 'name', objEvent.target.value)} placeholder="Item name" /></td>
-                    <td><Dropdown options={COST_STRUCTURE_DROPDOWN} value={objItem.costStructure} onChange={(value) => handleItemChange(objItem.id, 'costStructure', value)} /></td>
-                    <td><Dropdown options={objItem.category === 'TAG' ? [...CATEGORY_OPTIONS, { value: 'TAG', label: 'Legacy TAG - classification pending' }] : CATEGORY_OPTIONS} value={objItem.category} onChange={(value) => handleItemChange(objItem.id, 'category', value)} /></td>
-                    <td className={styles.numericCell}>
+                    <td>
                       <Input type="number" value={objItem.amount} onChange={(objEvent) => handleItemChange(objItem.id, 'amount', objEvent.target.value)} placeholder="0.00" error={blnNegative ? 'Cannot be negative' : undefined} />
                       {blnNegative && <span className={styles.errorText}>Cannot be negative</span>}
                     </td>
+                    <td><Dropdown options={COST_STRUCTURE_DROPDOWN} value={objItem.costStructure} onChange={(value) => handleItemChange(objItem.id, 'costStructure', value)} /></td>
+                    <td><Dropdown options={objItem.category === 'TAG' ? [...CATEGORY_OPTIONS, { value: 'TAG', label: 'Legacy TAG - classification pending' }] : CATEGORY_OPTIONS} value={objItem.category} onChange={(value) => handleItemChange(objItem.id, 'category', value)} /></td>
                     <td>
                       <label className="small" htmlFor={`climate-${objItem.id}`}>Climate amount (PHP, included above)</label>
                       <Input id={`climate-${objItem.id}`} type="number" min="0" max={objItem.amount || 0} step="0.01" disabled={!['MOOE', 'CO'].includes(objItem.category)} value={objItem.climateAmount ?? ''} onChange={(event) => handleItemChange(objItem.id, 'climateAmount', event.target.value)} />
@@ -159,9 +159,9 @@ export default function StepRequestDetails({ objRequest, arrLineItems, objOption
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={3}>Total requested</td>
-                <td className={styles.numericCell}>{formatBudgetRequestCurrency(arrLineItems.reduce((numSum, objItem) => numSum + (Number(objItem.amount) || 0), 0))}</td>
-                <td colSpan={3} />
+                <td>Total requested</td>
+                <td>{formatBudgetRequestCurrency(arrLineItems.reduce((numSum, objItem) => numSum + (Number(objItem.amount) || 0), 0))}</td>
+                <td colSpan={5} />
               </tr>
             </tfoot>
           </table>

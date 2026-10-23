@@ -193,13 +193,26 @@ export default function BudgetCyclesPage() {
       {blnLoading && <p role="status" className="text-muted">Loading budget cycles...</p>}
       {strLoadError && <div role="alert" className="alert alert-warning">{strLoadError} <Button size="sm" variant="outline" onClick={() => loadCycles(strYear)}>Retry</Button></div>}
       {!blnLoading && !strLoadError && arrCycles.length === 0 && <p className="text-muted">Add a fiscal year to configure its BP forms.</p>}
-      <div className="d-flex flex-wrap gap-2 mb-4">
-        {arrCycles.map((objCycle) => (
-          <Button key={objCycle.fy_year} variant={objCycle.fy_year === strYear ? 'primary' : 'outline'} size="sm" disabled={blnSaving || blnLoading} aria-pressed={objCycle.fy_year === strYear} onClick={() => setStrYear(objCycle.fy_year)}>
-            FY{objCycle.fy_year}{objCycle.fy_is_active === false ? ' (closed)' : ''}{objDrafts[objCycle.fy_year] ? ' *' : ''}
-          </Button>
-        ))}
-      </div>
+      {/* A dropdown, not a row of buttons, so years never overflow the page (DOST, 20 Oct); closed years stay viewable */}
+      {arrCycles.length > 0 && (
+        <div className="mb-4" style={{ maxWidth: '20rem' }}>
+          <label className="form-label small" htmlFor="cycle-year">Fiscal year</label>
+          <select id="cycle-year" className="form-select" value={strYear} disabled={blnSaving || blnLoading} onChange={(objEvent) => setStrYear(arrCycles.find((objCycle) => String(objCycle.fy_year) === objEvent.target.value)?.fy_year ?? '')}>
+            {[['Open', true], ['Closed', false]].map(([strGroup, blnOpen]) => {
+              const arrGroup = arrCycles.filter((objCycle) => (objCycle.fy_is_active !== false) === blnOpen);
+              return arrGroup.length > 0 && (
+                <optgroup key={strGroup} label={`${strGroup} years`}>
+                  {arrGroup.map((objCycle) => (
+                    <option key={objCycle.fy_year} value={objCycle.fy_year}>
+                      FY{objCycle.fy_year}{blnOpen ? '' : ' (closed)'}{objDrafts[objCycle.fy_year] ? ' *' : ''}
+                    </option>
+                  ))}
+                </optgroup>
+              );
+            })}
+          </select>
+        </div>
+      )}
       {objCurrent && (
         <fieldset disabled={!blnYearOpen || blnSaving || blnLoading}>
           <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
