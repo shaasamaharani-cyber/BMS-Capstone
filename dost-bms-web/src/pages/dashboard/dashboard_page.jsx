@@ -39,7 +39,6 @@ import TechAdminDashboard from './admin_cards';
 import DrillDown from './drill_down';
 import {
   ExecutionAmountCards,
-  ExpenseClassInsight,
   FinancialAlerts,
   PlanningInsight,
   ProjectedExpenditureChart,
@@ -275,12 +274,6 @@ function normalizeDashboardPayload(objRaw)
         obligation:    Number(objRow.obligation    || 0),
         disbursement:  Number(objRow.disbursement  || 0),
       })),
-      releasedVariance: {
-        labels: [], values: [],
-      },
-      executionVariance: {
-        labels: [], values: [],
-      },
       performanceRows: arrUnitPerformance.map((objRow) => ({
         requestingUnit:  objRow.requestingUnit,
         appropriation:   Number(objRow.appropriation   || 0),
@@ -422,34 +415,6 @@ function OrganisationDashboard({ strCentralView })
       ],
     };
   }, [objDashboardData]);
-
-  const objReleasedVarianceData = useMemo(() => {
-    const objVariance = objDashboardData?.monitoring?.releasedVariance;
-    return {
-      labels: objVariance?.labels || [],
-      datasets: [
-        {
-          label:           'Released Amount = Appropriation − Allotment',
-          data:            objVariance?.values || [],
-          backgroundColor: [objChartColors.ps, objChartColors.mooe, objChartColors.co , objChartColors.tag],
-        },
-      ],
-    };
-  }, [objChartColors, objDashboardData]);
-
-  const objExecutionVarianceData = useMemo(() => {
-    const objVariance = objDashboardData?.monitoring?.executionVariance;
-    return {
-      labels: objVariance?.labels || [],
-      datasets: [
-        {
-          label:           'Execution Amount = Allotment − Obligation',
-          data:            objVariance?.values || [],
-          backgroundColor: [objChartColors.ps, objChartColors.mooe, objChartColors.co, objChartColors.tag],
-        },
-      ],
-    };
-  }, [objChartColors, objDashboardData]);
 
   const renderRateCell = (value) => (
     <span className={getRateClassName(value)}>{formatRate(value)}</span>
@@ -623,7 +588,9 @@ function OrganisationDashboard({ strCentralView })
           <FiguresAsOf asOf={strFiscalYearLabel ? `fiscal year ${strFiscalYearLabel}` : 'all fiscal years'} source="BMS budget execution records (mock database in Phase 1), refreshed on each visit" />
           <ExecutionAmountCards summaryCards={objDashboardData?.monitoring?.summaryCards} />
 
-          <ExpenseClassInsight rows={objDashboardData?.monitoring?.byCategory} legend={objDashboardData?.planning?.categoryLegend} />
+          <section className="dashboard-section">
+            <DrillDown strFiscalYearId={String(objAppliedFilters.fiscal_year_id || '')} arrCategories={objFilterOptions.categories} />
+          </section>
 
           <section className="dashboard-section" aria-labelledby="dashboard-monitoring-trend-heading">
             <div className="row">
@@ -640,31 +607,6 @@ function OrganisationDashboard({ strCentralView })
             <div className="dashboard-panel">
               <div className="dashboard-chart">
                 <Line data={objTrendLineData} options={objChartOptions} />
-              </div>
-            </div>
-          </section>
-
-          <section className="dashboard-section">
-            <div className="row g-3">
-              <div className="col-md-6 d-flex flex-column">
-                <Typography variant="h4" className="mb-3 dashboard-section__title">
-                  Released Amount Variance
-                </Typography>
-                <div className="dashboard-panel flex-grow-1">
-                  <div className="dashboard-chart dashboard-chart--small">
-                    <Bar data={objReleasedVarianceData} options={objChartOptions} />
-                  </div>
-                </div>
-              </div>
-              <div className="col-md-6 d-flex flex-column">
-                <Typography variant="h4" className="mb-3 dashboard-section__title">
-                  Execution Amount Variance
-                </Typography>
-                <div className="dashboard-panel flex-grow-1">
-                  <div className="dashboard-chart dashboard-chart--small">
-                    <Bar data={objExecutionVarianceData} options={objChartOptions} />
-                  </div>
-                </div>
               </div>
             </div>
           </section>
@@ -699,10 +641,6 @@ function OrganisationDashboard({ strCentralView })
               onChange={setIntPerformancePage}
             /> */}
             </div>
-          </section>
-
-          <section className="dashboard-section">
-            <DrillDown strFiscalYearId={String(objAppliedFilters.fiscal_year_id || '')} arrCategories={objFilterOptions.categories} />
           </section>
 
           {/* Placeholder forecasts stay apart from the real figures, closed by default (draft v3, 24 Oct) */}

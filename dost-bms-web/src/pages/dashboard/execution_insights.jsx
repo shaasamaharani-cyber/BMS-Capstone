@@ -14,7 +14,7 @@
 
 import PropTypes from 'prop-types';
 import { Line } from 'react-chartjs-2';
-import { formatCurrency, formatRate, formatShortPeso, getRateClassName } from '../../utils/formatters';
+import { formatCurrency, formatShortPeso } from '../../utils/formatters';
 import { ProposalTag } from './proposal_sections';
 import styles from './execution_insights.module.css';
 
@@ -71,61 +71,6 @@ export function ExecutionAmountCards({ summaryCards, title = 'Financial Overview
 }
 
 ExecutionAmountCards.propTypes = { summaryCards: PropTypes.array, title: PropTypes.string, tag: PropTypes.node };
-
-// The money by expense class, led by the class with the highest allocation (DOST written answer 1)
-export function ExpenseClassInsight({ rows, legend })
-{
-  const arrRows = (rows || [])
-    .filter((objRow) => objRow.appropriation || objRow.allotment || objRow.obligation || objRow.disbursement)
-    .sort((objA, objB) => objB.allotment - objA.allotment);
-  const dblTotalAllotment = arrRows.reduce((dblSum, objRow) => dblSum + objRow.allotment, 0);
-  const objTop = arrRows[0];
-  const nameOf = (strCode) => (legend?.[strCode] ? `${legend[strCode]} (${strCode})` : strCode);
-
-  return (
-    <section className={`${styles.panel} ${styles.section}`} aria-labelledby="expense-class-heading">
-      <h3 id="expense-class-heading" className={styles.panelTitle}>By Expense Class <ProposalTag section="overview" /></h3>
-      {!objTop || objTop.allotment <= 0
-        ? <p className={styles.panelSubtitle}>No allotment recorded for the selected filters.</p>
-        : (
-          <>
-            <p className={styles.panelSubtitle}>
-              <strong>Highest allocation: {nameOf(objTop.category)}</strong>, {formatCurrency(objTop.allotment)} or {percentOf(objTop.allotment, dblTotalAllotment).toFixed(1)}% of the total allotment.
-            </p>
-            <div className="table-responsive">
-              <table className="table table-sm align-middle mb-0">
-                <thead>
-                  <tr>
-                    <th>Expense class</th>
-                    <th className="text-end">Allotment</th>
-                    <th className="text-end">Share</th>
-                    <th className="text-end">Obligation</th>
-                    <th className="text-end">Committed</th>
-                    <th className="text-end">Disbursement</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {arrRows.map((objRow) => (
-                    <tr key={objRow.category}>
-                      <td>{nameOf(objRow.category)}</td>
-                      <td className="text-end">{formatCurrency(objRow.allotment)}</td>
-                      <td className="text-end">{percentOf(objRow.allotment, dblTotalAllotment).toFixed(1)}%</td>
-                      <td className="text-end">{formatCurrency(objRow.obligation)}</td>
-                      <td className={`text-end ${getRateClassName(percentOf(objRow.obligation, objRow.allotment))}`}>{formatRate(percentOf(objRow.obligation, objRow.allotment))}</td>
-                      <td className="text-end">{formatCurrency(objRow.disbursement)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p className={styles.panelSubtitle}>Committed = obligation / allotment. Same date and source as the Financial Overview.</p>
-          </>
-        )}
-    </section>
-  );
-}
-
-ExpenseClassInsight.propTypes = { rows: PropTypes.array, legend: PropTypes.object };
 
 // Sample until DOST agrees a forecasting method
 export function YearEndProjection({ projectedYearEnd, projectedVariance })
