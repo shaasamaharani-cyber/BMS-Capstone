@@ -15,3 +15,12 @@ export function expectedPaceForPeriod(strPeriodLabel, intPacePerQuarter) {
   const intQuarter = Number(/Q([1-4])/i.exec(String(strPeriodLabel || ''))?.[1]);
   return intQuarter ? Math.min(100, intQuarter * Number(intPacePerQuarter)) : null;
 }
+
+// Expected committed rate today: quarters already finished this year x pace. A past fiscal year should be
+// complete (100) and a future one has not started (0).
+export function expectedPaceToDate(intFiscalYear, dateToday, intPacePerQuarter) {
+  const intThisYear = dateToday.getFullYear();
+  if (intFiscalYear && intFiscalYear < intThisYear) return 100;
+  if (intFiscalYear && intFiscalYear > intThisYear) return 0;
+  return Math.min(100, Math.floor(dateToday.getMonth() / 3) * Number(intPacePerQuarter));
+}

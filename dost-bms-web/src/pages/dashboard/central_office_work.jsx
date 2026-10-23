@@ -28,7 +28,9 @@ import styles from './requester_dashboard.module.css';
 // Activity History was removed: each request and consolidated budget keeps its full history (decision 24 Oct).
 const CARD_ORDER = {
   officer: ['work', 'followups', 'calendar'],
-  director: ['followups', 'calendar'],
+  director: ['followups'],
+  // Directors find Deadlines and stages under More detail on the Execution tab
+  directorDetail: ['calendar'],
 };
 
 const LONG_WAIT_DAYS = 30;
@@ -262,7 +264,7 @@ export default function CentralOfficeWork({ strView }) {
 }
 
 CentralOfficeWork.propTypes = {
-  strView: PropTypes.oneOf(['officer', 'director']).isRequired,
+  strView: PropTypes.oneOf(['officer', 'director', 'directorDetail']).isRequired,
 };
 
 // Directors approve or reject consolidated budgets the budget officer has sent as Pending (as-is steps 8-11)
