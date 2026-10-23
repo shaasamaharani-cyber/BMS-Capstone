@@ -25,7 +25,7 @@ import { extractApiRows, getBudgetRequestEditPath } from '../../utils/budget_req
 import { downloadCsv } from '../../utils/csv';
 import { formatCurrency, formatRate, formatTimestamp, getRateClassName } from '../../utils/formatters';
 import { FiguresAsOf, ProposalTag } from './proposal_sections';
-import { ATTENTION_BELOW, daysUntil, formatDay, newestReportFirst, sortByUpdated } from './dashboard_helpers';
+import { PACE_PER_QUARTER, daysUntil, expectedPaceToDate, formatDay, newestReportFirst, sortByUpdated } from './dashboard_helpers';
 import styles from './requester_dashboard.module.css';
 
 const UNIFIED_DRAFT_KEY = 'dost-bms.unified-request.draft';
@@ -131,11 +131,10 @@ export default function RequesterDashboard() {
   const intDaysLeft = objReport ? daysUntil(objReport.sr_due_date) : null;
   const countByStatus = (strKey) => arrRequests.filter((objRequest) => String(objRequest.br_status).toLowerCase() === strKey).length;
 
-  const arrAttention = objExecution
-    ? Object.entries(RATE_MEANINGS)
-      .map(([strKey, objMeaning]) => ({ strKey, ...objMeaning, numValue: objExecution.objRow[strKey] }))
-      .filter((objRate) => objRate.numValue < ATTENTION_BELOW)
-    : [];
+  // Same rule as the division's Follow-ups: the committed rate against the expected pace (decision 24 Oct)
+  const intExpectedPace = objExecution ? expectedPaceToDate(Number(/d{4}/.exec(objExecution.yearLabel)?.[0]) || null, new Date(), PACE_PER_QUARTER) : 0;
+  const numCommitted = Number(objExecution?.objRow?.executionRate || 0);
+  const blnBehindPace = Boolean(objExecution) && numCommitted < intExpectedPace;
 
   const arrGaps = objExecution
     ? (objExecution.objMonitoring.releasedVariance?.labels || []).map((strLabel, intIndex) => ({
@@ -146,7 +145,7 @@ export default function RequesterDashboard() {
     : [];
 
   const arrAlerts = [
-    ...arrAttention.map((objRate) => ({ strKey: objRate.strKey, node: <><span className={getRateClassName(objRate.numValue)}>{formatRate(objRate.numValue)}</span> - {objRate.label.toLowerCase()} is below {ATTENTION_BELOW}%. {objRate.help}.</> })),
+    ...(blnBehindPace ? [{ strKey: 'pace', node: <><span className={getRateClassName(numCommitted)}>{formatRate(numCommitted)}</span> committed, behind the {intExpectedPace}% expected by now ({PACE_PER_QUARTER}% per finished quarter). {RATE_MEANINGS.executionRate.help}.</> }] : []),
     ...(objReport?.over_allotment_count > 0 ? [{ strKey: 'over', node: <>{objReport.over_allotment_count} expense class{objReport.over_allotment_count === 1 ? ' is' : 'es are'} over the approved allotment in the {objReport.sr_period_label} spending report{objReport.missing_justification_count > 0 ? ', and a justification is still missing' : ''}.</> }] : []),
   ];
 
@@ -268,7 +267,7 @@ export default function RequesterDashboard() {
 
             <h4 className={styles.subTitle}>What needs attention <ProposalTag section="alerts" /></h4>
             {arrAlerts.length === 0
-              ? <p className={styles.muted}>Nothing needs attention: all three rates are at {ATTENTION_BELOW}% or above and no expense class is over its allotment.</p>
+              ? <p className={styles.muted}>Nothing needs attention: your committed rate is on pace ({intExpectedPace}% expected by now) and no expense class is over its allotment.</p>
               : <ul className={styles.attentionList}>{arrAlerts.map((objAlert) => <li key={objAlert.strKey}>{objAlert.node}</li>)}</ul>}
 
             <h4 className={styles.subTitle}>Where the gaps are, by category</h4>
