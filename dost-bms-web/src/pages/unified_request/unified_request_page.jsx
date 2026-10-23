@@ -595,7 +595,7 @@ export default function UnifiedRequestPage() {
             <p className={styles.pageSubtitle}>
               {intRequestId
                 ? `${objRequestMeta.referenceNo} - ${strStatusText}${blnDirty ? ' - unsaved changes' : ''}`
-                : 'Enter the information once. The system decides which BP forms you need and fills them in for you.'}
+                : 'Enter the information once. The system suggests which BP forms you need and pre-fills them for you.'}
             </p>
           </div>
         </div>

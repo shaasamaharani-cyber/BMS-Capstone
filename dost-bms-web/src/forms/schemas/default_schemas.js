@@ -18,7 +18,8 @@ import { createOfficialNativeSchema } from '../../bp_forms/official_form_schema.
 
 function createEmptyBPFormSchema(code) {
   return {
-    id: `bp-form-${code.toLowerCase()}`,
+    // No "/" in an id: the API splits paths on it, so "Programs/Projects" made BP 201 unreachable (404)
+    id: `bp-form-${code.toLowerCase().replaceAll('/', '-')}`,
     name: `BP FORM ${code}`,
     version: '',
     headerFields: [],
