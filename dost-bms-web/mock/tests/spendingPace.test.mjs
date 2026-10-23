@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { expectedPaceForPeriod } from '../../src/utils/spending_pace.js';
+import { expectedPaceForPeriod, expectedPaceToDate } from '../../src/utils/spending_pace.js';
 import { handleSettings } from '../server/routes/settings.mjs';
 
 test('expected spending pace follows the quarter in the report period', () => {
@@ -36,4 +36,13 @@ test('the spending pace is a setting the admin can change, kept when not sent', 
   assert.equal((await request('PUT', base)).data.pace_per_quarter, 30, 'older clients that do not send it keep the saved value');
   assert.equal((await request('PUT', { ...base, pace_per_quarter: 0 })).status, 422);
   assert.equal((await request('PUT', { ...base, pace_per_quarter: 101 })).status, 422);
+});
+
+test('expected pace to date counts the quarters already finished', () => {
+  const dateOct = new Date(2026, 9, 24);
+  assert.equal(expectedPaceToDate(2026, dateOct, 25), 75, 'three quarters finished by late October');
+  assert.equal(expectedPaceToDate(2026, new Date(2026, 1, 10), 25), 0, 'nothing expected before the first quarter ends');
+  assert.equal(expectedPaceToDate(2025, dateOct, 25), 100, 'a past year should be complete');
+  assert.equal(expectedPaceToDate(2027, dateOct, 25), 0, 'a future year has not started');
+  assert.equal(expectedPaceToDate(null, dateOct, 25), 75, 'all years: judged against this year');
 });

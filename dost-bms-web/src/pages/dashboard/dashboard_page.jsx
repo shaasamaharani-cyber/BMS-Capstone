@@ -13,7 +13,7 @@
  * All rights reserved.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Bar, Line } from 'react-chartjs-2';
 import {
   BarElement,
@@ -37,6 +37,7 @@ import RequesterDashboard from './requester_dashboard';
 import CentralOfficeWork, { ApprovalsWaiting } from './central_office_work';
 import TechAdminDashboard from './admin_cards';
 import DrillDown from './drill_down';
+import { PACE_PER_QUARTER, expectedPaceToDate } from './dashboard_helpers';
 import {
   ExecutionAmountCards,
   FinancialAlerts,
@@ -69,6 +70,52 @@ const DASHBOARD_TABS = [
 const PERFORMANCE_PAGE_SIZE = 10;
 
 const CENTRAL_VIEWS = { reviewer: 'officer', executive: 'director' };
+
+// Directors get the short Execution tab; the full unit table, trend and deadlines sit under More detail
+function MoreDetail({ children })
+{
+  return (
+    <details className="dashboard-section">
+      <summary className="dashboard-section__title" style={{ cursor: 'pointer' }}>More detail: all units, five-year trend, deadlines</summary>
+      {children}
+    </details>
+  );
+}
+
+MoreDetail.propTypes = { children: PropTypes.node };
+
+// Only the units whose committed rate is below the expected pace, furthest behind first
+function UnitsBehindPace({ rows, intExpected })
+{
+  const arrBehind = rows.filter((objRow) => objRow.executionRate < intExpected).sort((objA, objB) => objA.executionRate - objB.executionRate);
+  return (
+    <section className="dashboard-section dashboard-panel" aria-labelledby="dashboard-behind-pace-heading">
+      <Typography id="dashboard-behind-pace-heading" variant="h4" className="dashboard-section__title">Units behind pace</Typography>
+      <p className="small text-muted">Expected {intExpected}% committed by now ({PACE_PER_QUARTER}% per finished quarter, team default awaiting DOST).</p>
+      {arrBehind.length === 0
+        ? <p className="mb-0">All units are on pace.</p>
+        : (
+          <div className="table-responsive">
+            <table className="table table-sm align-middle mb-0">
+              <thead><tr><th>Unit</th><th className="text-end">Allotment</th><th className="text-end">Committed</th><th className="text-end">Gap to pace</th></tr></thead>
+              <tbody>
+                {arrBehind.map((objRow) => (
+                  <tr key={objRow.requestingUnit}>
+                    <td>{objRow.requestingUnit}</td>
+                    <td className="text-end">{formatCurrency(objRow.allotment)}</td>
+                    <td className={`text-end ${getRateClassName(objRow.executionRate)}`}>{formatRate(objRow.executionRate)}</td>
+                    <td className="text-end">{(intExpected - objRow.executionRate).toFixed(1)} pts</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+    </section>
+  );
+}
+
+UnitsBehindPace.propTypes = { rows: PropTypes.array.isRequired, intExpected: PropTypes.number.isRequired };
 
 const PASTEL_TREND_COLORS = {
   appropriation: '#AFCBFF',
@@ -288,10 +335,10 @@ function normalizeDashboardPayload(objRaw)
   };
 }
 
-function OrganisationDashboard({ strCentralView })
+function OrganisationDashboard({ strCentralView, strRoleName })
 {
   // Directors open on Budget Execution Monitoring, where the Financial Overview is (their top section in the proposal)
-  const [strActiveTab,       setStrActiveTab]       = useState(strCentralView === 'director' ? 'monitoring' : 'planning');
+  const [strActiveTab,       setStrActiveTab]       = useState(strCentralView === 'director' && strRoleName !== 'planning_director' ? 'monitoring' : 'planning');
   const [objDraftFilters,    setObjDraftFilters]    = useState(DEFAULT_FILTERS);
   const [objAppliedFilters,  setObjAppliedFilters]  = useState(DEFAULT_FILTERS);
   const [objDashboardData,   setObjDashboardData]   = useState(null);
@@ -301,6 +348,8 @@ function OrganisationDashboard({ strCentralView })
   const [strPerformanceSortKey, setStrPerformanceSortKey] = useState('requestingUnit');
   const [strPerformanceSortDir, setStrPerformanceSortDir] = useState('asc');
   const [intPerformancePage, setIntPerformancePage] = useState(1);
+  const blnDirector = strCentralView === 'director';
+  const DetailWrap = blnDirector ? MoreDetail : Fragment;
   const strFiscalYearLabel = objFilterOptions.fiscalYears.find((objYear) => String(objYear.value) === String(objAppliedFilters.fiscal_year_id))?.label;
 
   const objChartColors = useMemo(() => ({
@@ -480,6 +529,7 @@ function OrganisationDashboard({ strCentralView })
 
       {strCentralView === 'officer' && <CentralOfficeWork strView="officer" />}
       {strCentralView === 'director' && <ApprovalsWaiting blnCanApprove />}
+      {strCentralView === 'director' && <CentralOfficeWork strView="director" />}
 
       <Tabs
         tabs={DASHBOARD_TABS}
@@ -592,6 +642,15 @@ function OrganisationDashboard({ strCentralView })
             <DrillDown strFiscalYearId={String(objAppliedFilters.fiscal_year_id || '')} arrCategories={objFilterOptions.categories} />
           </section>
 
+          {blnDirector && (
+            <UnitsBehindPace
+              rows={arrPerformanceRows}
+              intExpected={expectedPaceToDate(Number(/d{4}/.exec(strFiscalYearLabel || '')?.[0]) || null, new Date(), PACE_PER_QUARTER)}
+            />
+          )}
+
+          <DetailWrap>
+
           <section className="dashboard-section" aria-labelledby="dashboard-monitoring-trend-heading">
             <div className="row">
               <div className="col-12 mb-3">
@@ -642,6 +701,8 @@ function OrganisationDashboard({ strCentralView })
             /> */}
             </div>
           </section>
+          {blnDirector && <CentralOfficeWork strView="directorDetail" />}
+          </DetailWrap>
 
           {/* Placeholder forecasts stay apart from the real figures, closed by default (draft v3, 24 Oct) */}
           <details className="dashboard-section">
@@ -675,7 +736,6 @@ function OrganisationDashboard({ strCentralView })
         </div>
       )}
 
-      {strCentralView === 'director' && <div className="mt-4"><CentralOfficeWork strView="director" /></div>}
     </div>
   );
 }
@@ -690,10 +750,13 @@ export default function DashboardPage()
   // Administrators keep the system running and see no peso amounts
   if (strGroup === 'admin') return <TechAdminDashboard />;
   const strCentralView = CENTRAL_VIEWS[strGroup] || null;
+  // The Planning Director opens on Planning, the Finance Director on Execution
+  const strRoleName = String(user?.role?.role_name || '').toLowerCase();
   // Keyed so the starting tab is set again if the role arrives after the first render
-  return <OrganisationDashboard key={strCentralView || 'none'} strCentralView={strCentralView} />;
+  return <OrganisationDashboard key={`${strCentralView}-${strRoleName}`} strCentralView={strCentralView} strRoleName={strRoleName} />;
 }
 
 OrganisationDashboard.propTypes = {
   strCentralView: PropTypes.oneOf(['officer', 'director']),
+  strRoleName: PropTypes.string,
 };

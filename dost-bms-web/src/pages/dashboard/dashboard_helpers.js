@@ -14,7 +14,7 @@
 
 // Set by the administrator on the Settings page (defaults: 90%, 14 days and a 25% per quarter pace, until DOST confirms its targets)
 export { ATTENTION_BELOW, DUE_SOON_DAYS, PACE_PER_QUARTER } from '../../utils/app_settings';
-export { expectedPaceForPeriod } from '../../utils/spending_pace';
+export { expectedPaceForPeriod, expectedPaceToDate } from '../../utils/spending_pace';
 
 export function sortByUpdated(arrRequests) {
   return [...arrRequests].sort((objA, objB) => new Date(objB.br_updated_at || 0) - new Date(objA.br_updated_at || 0));
