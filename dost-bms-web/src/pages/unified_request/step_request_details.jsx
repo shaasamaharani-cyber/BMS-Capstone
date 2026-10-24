@@ -125,7 +125,7 @@ export default function StepRequestDetails({ objRequest, arrLineItems, objOption
                 <th>Amount (PHP)</th>
                 <th>Cost structure</th>
                 <th>Category</th>
-                <th>Climate expenditure</th><th>Justification</th>
+                <th>Climate expenditure (PHP, included in amount)</th><th>Justification</th>
                 <th aria-label="Remove" />
               </tr>
             </thead>
@@ -142,8 +142,8 @@ export default function StepRequestDetails({ objRequest, arrLineItems, objOption
                     <td><Dropdown options={COST_STRUCTURE_DROPDOWN} value={objItem.costStructure} onChange={(value) => handleItemChange(objItem.id, 'costStructure', value)} /></td>
                     <td><Dropdown options={objItem.category === 'TAG' ? [...CATEGORY_OPTIONS, { value: 'TAG', label: 'Legacy TAG - classification pending' }] : CATEGORY_OPTIONS} value={objItem.category} onChange={(value) => handleItemChange(objItem.id, 'category', value)} /></td>
                     <td>
-                      <label className="small" htmlFor={`climate-${objItem.id}`}>Climate amount (PHP, included above)</label>
-                      <Input id={`climate-${objItem.id}`} type="number" min="0" max={objItem.amount || 0} step="0.01" disabled={!['MOOE', 'CO'].includes(objItem.category)} value={objItem.climateAmount ?? ''} onChange={(event) => handleItemChange(objItem.id, 'climateAmount', event.target.value)} />
+                      {/* No label above the box, so it lines up with the other inputs; the header explains the column */}
+                      <Input id={`climate-${objItem.id}`} aria-label="Climate amount (PHP, included in amount)" type="number" min="0" max={objItem.amount || 0} step="0.01" disabled={!['MOOE', 'CO'].includes(objItem.category)} placeholder={['MOOE', 'CO'].includes(objItem.category) ? '0.00' : 'MOOE or CO only'} value={objItem.climateAmount ?? ''} onChange={(event) => handleItemChange(objItem.id, 'climateAmount', event.target.value)} />
                       {Number(objItem.climateAmount) > 0 && <>
                         <Input aria-label="Climate typology code and description" value={objItem.climateTypology || ''} onChange={(event) => handleItemChange(objItem.id, 'climateTypology', event.target.value)} placeholder="Verified typology code and description" />
                         <select aria-label="Climate classification" className="form-select" value={objItem.climateType || ''} onChange={(event) => handleItemChange(objItem.id, 'climateType', event.target.value)}><option value="">Select</option><option value="adaptation">Adaptation</option><option value="mitigation">Mitigation</option></select>

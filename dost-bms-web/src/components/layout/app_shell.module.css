@@ -30,5 +30,6 @@
 .content {
   flex: 1;
   padding: var(--space-6) var(--space-8);
-  overflow-y: auto;
+  /* clip (not auto) keeps wide content contained without making this a scroll box, so sticky panels follow the window scroll */
+  overflow-x: clip;
 }

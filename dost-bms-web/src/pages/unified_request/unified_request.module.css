@@ -64,10 +64,13 @@
 	min-width: 0;
 }
 
+/* The Budget Planning panel stays beside the section being edited (e.g. the line items) while the page scrolls */
 .side
 {
 	position: sticky;
-	top: calc(var(--topbar-h) + var(--space-4));
+	top: var(--space-4);
+	max-height: calc(100vh - 2 * var(--space-4));
+	overflow-y: auto;
 }
 
 .sideCard
