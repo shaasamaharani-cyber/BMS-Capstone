@@ -17,3 +17,6 @@ services:
         value: /api/v1
       - key: MOCK_SERVE_STATIC
         value: dist
+      # Public address used in PDF and attachment download links; without it they point to 127.0.0.1 and fail in the browser
+      - key: MOCK_PUBLIC_BASE_URL
+        value: https://bms-t214-demo.onrender.com

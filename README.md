@@ -118,6 +118,9 @@ To publish it (once, by anyone on the team with a free Render account):
 1. On https://render.com choose **New -> Blueprint** and connect this GitHub repo.
 2. Render reads `render.yaml`. Confirm, and wait for the first build (a few minutes).
 3. Copy the service address (like `https://bms-t214-demo.onrender.com`), then put it in the repo's **About -> Website** box so it shows on the front page, and add it here.
+4. If the address is different from `https://bms-t214-demo.onrender.com`, change `MOCK_PUBLIC_BASE_URL` in `render.yaml` (or in the Render dashboard under **Environment**) to the new address. The generated BP form PDFs and uploaded files use it in their download links; with the wrong value, downloads fail on the hosted site while they still work locally.
+
+Current demo: https://bms-t214-demo.onrender.com
 
 Good to know:
 - The free plan sleeps when idle, so the first visit after a quiet period takes about 30 seconds.
