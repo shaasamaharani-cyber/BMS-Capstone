@@ -14,6 +14,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import PageHeader from '../../components/layout/page_header';
 import { Badge, Button, Dropdown, FormField, Input, Modal, Table, useToast } from '../../components/ui';
 import { activateUser, createUser, deactivateUser, getRequestingUnits, getRoles, getUserChanges, getUsers, updateUser } from '../../api';
@@ -64,6 +65,17 @@ export default function UsersPage() {
     } : EMPTY_FORM);
     setStrFormError('');
   };
+
+  // Opened from the global search (/users?user=<id>): show that user's form, then clear the link
+  const [objSearchParams, setObjSearchParams] = useSearchParams();
+  const strLinkedUserId = objSearchParams.get('user');
+  useEffect(() => {
+    if (!strLinkedUserId || arrUsers.length === 0) return;
+    const objUser = arrUsers.find((objRow) => String(objRow.usr_id ?? objRow.id) === strLinkedUserId);
+    if (objUser) openForm(objUser);
+    setObjSearchParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [strLinkedUserId, arrUsers]);
 
   const handleSave = async () => {
     setBlnSaving(true);

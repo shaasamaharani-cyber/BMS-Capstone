@@ -80,8 +80,10 @@ export default function SearchBar({
     if (!q) return suggestions.slice(0, maxSuggestions);
     return suggestions
       .filter((s) => {
-        const hay = `${s.label} ${s.hint || ''}`.toLowerCase();
-        return hay.includes(q);
+        // Every typed word must start a word in the name, hint or keywords ("NCR 2027 returned");
+        // "pending" finds Pending requests but not "Spending Monitoring"
+        const hay = ` ${s.label} ${s.hint || ''} ${s.keywords || ''}`.toLowerCase();
+        return q.split(/\s+/).every((strWord) => new RegExp(`[^a-z0-9]${strWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(hay));
       })
       .slice(0, maxSuggestions);
   }, [localValue, suggestions, maxSuggestions]);

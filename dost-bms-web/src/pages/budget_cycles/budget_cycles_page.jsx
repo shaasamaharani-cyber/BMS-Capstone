@@ -13,6 +13,7 @@
  * All rights reserved.
  */
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import PageHeader from '../../components/layout/page_header';
 import { Badge, Button, Input, Modal, useToast } from '../../components/ui';
 import { createFiscalYear, getBudgetCycles, updateBudgetCycle } from '../../api/settings_api';
@@ -60,6 +61,15 @@ export default function BudgetCyclesPage() {
   }, []);
 
   useEffect(() => { loadCycles(); }, [loadCycles]);
+
+  // Opened from the global search (/budget-cycles?year=2028): show that year, then clear the link
+  const [objSearchParams, setObjSearchParams] = useSearchParams();
+  const strLinkedYear = objSearchParams.get('year');
+  useEffect(() => {
+    if (!strLinkedYear || arrCycles.length === 0) return;
+    if (arrCycles.some((objCycle) => objCycle.fy_year === strLinkedYear)) setStrYear(strLinkedYear);
+    setObjSearchParams({}, { replace: true });
+  }, [strLinkedYear, arrCycles, setObjSearchParams]);
   useEffect(() => {
     if (Object.keys(objDrafts).length === 0) return undefined;
     const warnBeforeUnload = (objEvent) => { objEvent.preventDefault(); objEvent.returnValue = ''; };
