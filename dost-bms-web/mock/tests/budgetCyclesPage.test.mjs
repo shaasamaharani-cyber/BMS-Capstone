@@ -43,8 +43,10 @@ test('Add BP form works without randomUUID, saves to any open year, and keeps cl
       return { data: { data: structuredClone(cycle) }, status: 200, config };
     };
     const messages = [];
+    // The page reads ?year= from the URL, so it renders inside a router as it does in the app
+    const { MemoryRouter: CyclesRouter } = await import('react-router-dom');
     await React.act(async () => {
-      root.render(React.createElement(ToastContext.Provider, { value: { showToast: (message) => messages.push(message) } }, React.createElement(BudgetCyclesPage)));
+      root.render(React.createElement(CyclesRouter, null, React.createElement(ToastContext.Provider, { value: { showToast: (message) => messages.push(message) } }, React.createElement(BudgetCyclesPage))));
     });
     const button = (label) => [...document.querySelectorAll('button')].find((node) => node.textContent.trim() === label);
     const click = async (node) => { assert.ok(node, 'Button must exist'); await React.act(async () => node.click()); };

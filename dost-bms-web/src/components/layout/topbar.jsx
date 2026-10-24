@@ -15,7 +15,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { getBudgetRequests, getUnifiedBudgets, getUsers } from '../../api';
+import { getBudgetRequests, getFiscalYears, getUnifiedBudgets, getUsers } from '../../api';
+import { fetchAllSchemas, fetchEntriesBySchema } from '../../api/forms_api';
 import { useAuth } from '../../context/auth_context';
 import { useClickOutside } from '../../hooks/use_click_outside';
 import { usePermissions } from '../../hooks/use_permissions';
@@ -28,35 +29,62 @@ import styles from './topbar.module.css';
 
 const MOCK_NOTIFICATIONS = [];
 
-// Records the signed-in role may open, each with where it lives ("Budget request › BR-2027-005 · NCR").
-// The server already limits every list to what this role may see.
+// Records the signed-in role may open, each with where it lives ("Budget request › BR-2027-005 · NCR")
+// and the page that shows that one record. The server already limits every list to what this role may see.
 async function loadSearchRecords(arrPermissions) {
   const can = (strPermission) => arrPermissions.includes(strPermission);
   const quietly = (promise) => promise.then(extractApiRows).catch(() => []);
+  // The division reviews requests; requesters and directors open the request itself
   const strRequestPath = can(PERMISSIONS.BUDGET_REVIEW) ? '/budget-review' : '/budget-requests';
-  const [arrRequests, arrBudgets, arrUsers] = await Promise.all([
-    can(PERMISSIONS.BUDGET_REQUESTS) || can(PERMISSIONS.BUDGET_REVIEW) ? quietly(getBudgetRequests({ per_page: 200 })) : [],
+  const [arrRequests, arrBudgets, arrUsers, arrYears, arrSchemas, arrEntries] = await Promise.all([
+    can(PERMISSIONS.BUDGET_REQUESTS) || can(PERMISSIONS.BUDGET_REVIEW) || can(PERMISSIONS.BUDGET_CONSOLIDATION) ? quietly(getBudgetRequests({ per_page: 200 })) : [],
     can(PERMISSIONS.BUDGET_CONSOLIDATION) ? quietly(getUnifiedBudgets({ per_page: 200 })) : [],
     can(PERMISSIONS.USERS) ? quietly(getUsers(1, 200)) : [],
+    can(PERMISSIONS.BUDGET_CYCLES) ? quietly(getFiscalYears()) : [],
+    can(PERMISSIONS.FORMS) ? fetchAllSchemas().catch(() => []) : [],
+    can(PERMISSIONS.FORMS) ? quietly(fetchEntriesBySchema(undefined, { per_page: 200 })) : [],
   ]);
+  const objSchemaName = Object.fromEntries(arrSchemas.map((objSchema) => [objSchema.id, objSchema.name]));
   return [
     ...arrRequests.map((objRequest) => ({
       id: `request-${objRequest.id}`,
       label: objRequest.br_title,
       hint: `Budget request › ${objRequest.br_reference_no} · ${objRequest.requesting_unit?.ru_name || ''}`,
+      // Status words as stored and as shown on screen ("submitted" is shown as Pending, "rejected" as Returned)
+      keywords: `FY${objRequest.fiscal_year?.fy_year || ''} ${objRequest.br_status || ''} ${{ submitted: 'pending', rejected: 'returned' }[objRequest.br_status] || ''}`,
       path: `${strRequestPath}/${objRequest.id}`,
     })),
     ...arrBudgets.map((objBudget) => ({
       id: `budget-${objBudget.id}`,
       label: objBudget.title,
       hint: `Consolidated budget › ${objBudget.code} · FY${objBudget.fiscalYear}`,
+      keywords: `${objBudget.statusLabel || objBudget.status || ''} ${objBudget.stage || ''}`,
       path: `/budget-consolidation/${objBudget.id}`,
     })),
     ...arrUsers.map((objUser) => ({
       id: `user-${objUser.id}`,
       label: objUser.usr_name,
       hint: `User › ${objUser.usr_email}`,
-      path: '/users',
+      keywords: `${formatRoleName(objUser.role?.role_name || '')} ${objUser.requesting_unit?.ru_name || ''}`,
+      path: `/users?user=${objUser.usr_id ?? objUser.id}`,
+    })),
+    ...arrYears.map((objYear) => ({
+      id: `cycle-${objYear.fy_year}`,
+      label: `FY${objYear.fy_year} budget cycle`,
+      hint: `Budget cycle › ${objYear.fy_is_active ? 'Open' : 'Closed'}`,
+      path: `/budget-cycles?year=${objYear.fy_year}`,
+    })),
+    ...arrSchemas.map((objSchema) => ({
+      id: `form-${objSchema.id}`,
+      label: objSchema.name,
+      hint: 'BP form',
+      path: `/forms?schema=${encodeURIComponent(objSchema.id)}`,
+    })),
+    ...arrEntries.map((objEntry) => ({
+      id: `entry-${objEntry.id}`,
+      label: objEntry.name || `${objSchemaName[objEntry.schemaId] || objEntry.schemaId} entry`,
+      hint: `Form entry › ${objSchemaName[objEntry.schemaId] || objEntry.schemaId}`,
+      path: `/forms/${encodeURIComponent(objEntry.schemaId)}/entries/${encodeURIComponent(objEntry.id)}`,
     })),
   ];
 }

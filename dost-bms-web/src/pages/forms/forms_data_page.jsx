@@ -14,7 +14,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import PageHeader from '../../components/layout/page_header';
 import { Button, Pagination, Table } from '../../components/ui';
 import { deleteEntry, fetchAllSchemas, fetchEntriesBySchema } from '../../api/forms_api';
@@ -51,6 +51,15 @@ export default function FormsDataPage() {
       .finally(() => mounted && setBlnLoading(false));
     return () => { mounted = false; };
   }, []);
+
+  // Opened from the global search (/forms?schema=<id>): select that BP form, then clear the link
+  const [objSearchParams, setObjSearchParams] = useSearchParams();
+  const strLinkedSchemaId = objSearchParams.get('schema');
+  useEffect(() => {
+    if (!strLinkedSchemaId || arrSchemas.length === 0) return;
+    if (arrSchemas.some((objSchema) => objSchema.id === strLinkedSchemaId)) setStrSelectedSchemaId(strLinkedSchemaId);
+    setObjSearchParams({}, { replace: true });
+  }, [strLinkedSchemaId, arrSchemas, setObjSearchParams]);
 
   useEffect(() => {
     if (!strSelectedSchemaId) {
