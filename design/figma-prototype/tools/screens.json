@@ -1,0 +1,223 @@
+[
+ {
+  "id": "01-login",
+  "name": "Login"
+ },
+ {
+  "id": "r01-dashboard",
+  "name": "Requester / Dashboard",
+  "user": "requester.ncr@dost.gov.ph",
+  "route": "/dashboard"
+ },
+ {
+  "id": "r02-requests",
+  "name": "Requester / Budget Requests",
+  "user": "requester.ncr@dost.gov.ph",
+  "route": "/budget-requests"
+ },
+ {
+  "id": "r03-request-detail",
+  "name": "Requester / Request Detail",
+  "user": "requester.ncr@dost.gov.ph",
+  "route": "/budget-requests/20"
+ },
+ {
+  "id": "r04-spending",
+  "name": "Requester / Spending Monitoring",
+  "user": "requester.ncr@dost.gov.ph",
+  "route": "/spending-monitoring"
+ },
+ {
+  "id": "r11-wizard",
+  "name": "Requester / New Request - 1 Request details",
+  "user": "requester.ncr@dost.gov.ph",
+  "route": "/budget-requests/unified/new",
+  "actions": []
+ },
+ {
+  "id": "r12-wizard",
+  "name": "Requester / New Request - 2 Questions",
+  "user": "requester.ncr@dost.gov.ph",
+  "route": "/budget-requests/unified/new",
+  "actions": [
+   {
+    "click": "main button:has-text(\"Next\") >> nth=-1",
+    "wait": 1500
+   }
+  ]
+ },
+ {
+  "id": "r13-wizard",
+  "name": "Requester / New Request - 3 Required forms",
+  "user": "requester.ncr@dost.gov.ph",
+  "route": "/budget-requests/unified/new",
+  "actions": [
+   {
+    "click": "main button:has-text(\"Next\") >> nth=-1",
+    "wait": 1500
+   },
+   {
+    "click": "main button:has-text(\"Next\") >> nth=-1",
+    "wait": 1500
+   }
+  ]
+ },
+ {
+  "id": "r14-wizard",
+  "name": "Requester / New Request - 4 Pre-filled forms",
+  "user": "requester.ncr@dost.gov.ph",
+  "route": "/budget-requests/unified/new",
+  "actions": [
+   {
+    "click": "main button:has-text(\"Next\") >> nth=-1",
+    "wait": 1500
+   },
+   {
+    "click": "main button:has-text(\"Next\") >> nth=-1",
+    "wait": 1500
+   },
+   {
+    "click": "main button:has-text(\"Next\") >> nth=-1",
+    "wait": 1500
+   }
+  ]
+ },
+ {
+  "id": "r15-wizard",
+  "name": "Requester / New Request - 5 Review & submit",
+  "user": "requester.ncr@dost.gov.ph",
+  "route": "/budget-requests/unified/new",
+  "actions": [
+   {
+    "click": "main button:has-text(\"Next\") >> nth=-1",
+    "wait": 1500
+   },
+   {
+    "click": "main button:has-text(\"Next\") >> nth=-1",
+    "wait": 1500
+   },
+   {
+    "click": "main button:has-text(\"Next\") >> nth=-1",
+    "wait": 1500
+   },
+   {
+    "click": "main button:has-text(\"Next\") >> nth=-1",
+    "wait": 1500
+   }
+  ]
+ },
+ {
+  "id": "t01-dashboard",
+  "name": "Budget & Finance / Dashboard",
+  "user": "tech.staff@dost.gov.ph",
+  "route": "/dashboard"
+ },
+ {
+  "id": "t02-review",
+  "name": "Budget & Finance / Budget Review",
+  "user": "tech.staff@dost.gov.ph",
+  "route": "/budget-review"
+ },
+ {
+  "id": "t03-review-detail",
+  "name": "Budget & Finance / Review Detail",
+  "user": "tech.staff@dost.gov.ph",
+  "route": "/budget-review/2"
+ },
+ {
+  "id": "t04-consolidation",
+  "name": "Budget & Finance / Budget Consolidation",
+  "user": "tech.staff@dost.gov.ph",
+  "route": "/budget-consolidation"
+ },
+ {
+  "id": "t05-consolidation-detail",
+  "name": "Budget & Finance / Consolidation Detail",
+  "user": "tech.staff@dost.gov.ph",
+  "route": "/budget-consolidation/1"
+ },
+ {
+  "id": "t06-spending",
+  "name": "Budget & Finance / Spending Monitoring",
+  "user": "tech.staff@dost.gov.ph",
+  "route": "/spending-monitoring"
+ },
+ {
+  "id": "t07-reports",
+  "name": "Budget & Finance / Reports",
+  "user": "tech.staff@dost.gov.ph",
+  "route": "/reports"
+ },
+ {
+  "id": "t08-forms",
+  "name": "Budget & Finance / Forms",
+  "user": "tech.staff@dost.gov.ph",
+  "route": "/forms"
+ },
+ {
+  "id": "f01-dashboard",
+  "name": "Finance Director / Dashboard",
+  "user": "finance.director@dost.gov.ph",
+  "route": "/dashboard"
+ },
+ {
+  "id": "a01-dashboard",
+  "name": "Admin / Dashboard",
+  "user": "main.admin@dost.gov.ph",
+  "route": "/dashboard"
+ },
+ {
+  "id": "a02-users",
+  "name": "Admin / Users & Roles",
+  "user": "main.admin@dost.gov.ph",
+  "route": "/users"
+ },
+ {
+  "id": "a03-cycles",
+  "name": "Admin / Budget Cycles",
+  "user": "main.admin@dost.gov.ph",
+  "route": "/budget-cycles"
+ },
+ {
+  "id": "a04-forms",
+  "name": "Admin / Forms",
+  "user": "main.admin@dost.gov.ph",
+  "route": "/forms"
+ },
+ {
+  "id": "a05-settings",
+  "name": "Admin / Settings",
+  "user": "main.admin@dost.gov.ph",
+  "route": "/settings"
+ },
+ {
+  "id": "f02-consolidation",
+  "name": "Finance Director / Budget Consolidation",
+  "user": "finance.director@dost.gov.ph",
+  "route": "/budget-consolidation"
+ },
+ {
+  "id": "f03-consolidation-detail",
+  "name": "Finance Director / Consolidation Detail",
+  "user": "finance.director@dost.gov.ph",
+  "route": "/budget-consolidation/1"
+ },
+ {
+  "id": "f04-spending",
+  "name": "Finance Director / Spending Monitoring",
+  "user": "finance.director@dost.gov.ph",
+  "route": "/spending-monitoring"
+ },
+ {
+  "id": "f05-reports",
+  "name": "Finance Director / Reports",
+  "user": "finance.director@dost.gov.ph",
+  "route": "/reports"
+ },
+ {
+  "id": "f06-forms",
+  "name": "Finance Director / Forms",
+  "user": "finance.director@dost.gov.ph",
+  "route": "/forms"
+ }
+]

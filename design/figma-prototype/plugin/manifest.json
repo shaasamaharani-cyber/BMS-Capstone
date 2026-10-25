@@ -1,0 +1,10 @@
+{
+  "name": "DOST BMS Prototype Builder",
+  "id": "dost-bms-prototype-builder",
+  "api": "1.0.0",
+  "main": "code.js",
+  "editorType": [
+    "figma"
+  ],
+  "documentAccess": "dynamic-page"
+}
